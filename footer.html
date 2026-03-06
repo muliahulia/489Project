@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniConnect Footer Component</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: '#0d1b2a',
+            'navy-mid': '#1a2e45',
+            'navy-light': '#243b55',
+            gold: '#c9a84c',
+            'gold-light': '#e8c97a',
+            cream: '#f5f0e8',
+            'cream-dark': '#ede5d6',
+          },
+          fontFamily: {
+            'serif': ['Playfair Display', 'serif'],
+            'sans': ['DM Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-cream font-sans">
+
+<!-- Footer -->
+<footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20">
+  <div class="container mx-auto px-4 sm:px-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
+      
+      <!-- About Section -->
+      <div>
+        <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">About UniConnect</h3>
+        <p class="text-navy/70 text-sm leading-relaxed">
+          A verified academic platform connecting students, faculty, and administrators across universities.
+        </p>
+      </div>
+
+      <!-- Quick Links -->
+      <div>
+        <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Quick Links</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="#" class="text-navy/70 hover:text-gold transition">Privacy Policy</a></li>
+          <li><a href="#" class="text-navy/70 hover:text-gold transition">Terms of Service</a></li>
+          <li><a href="#" class="text-navy/70 hover:text-gold transition">Contact Us</a></li>
+          <li><a href="#" class="text-navy/70 hover:text-gold transition">Help Center</a></li>
+        </ul>
+      </div>
+
+      <!-- Contact Info -->
+      <div>
+        <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Get in Touch</h3>
+        <p class="text-navy/70 text-sm leading-relaxed">
+          Have questions? Reach out to our support team at<br class="hidden sm:inline">
+          <a href="mailto:support@uniconnect.edu" class="text-gold hover:text-gold-light transition break-all sm:break-normal">support@uniconnect.edu</a>
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Copyright -->
+    <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-navy/20 text-center">
+      <p class="text-navy/60 text-xs sm:text-sm">&copy; 2026 UniConnect. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

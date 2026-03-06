@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniConnect Header Component</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: '#0d1b2a',
+            'navy-mid': '#1a2e45',
+            'navy-light': '#243b55',
+            gold: '#c9a84c',
+            'gold-light': '#e8c97a',
+            cream: '#f5f0e8',
+            'cream-dark': '#ede5d6',
+          },
+          fontFamily: {
+            'serif': ['Playfair Display', 'serif'],
+            'sans': ['DM Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gold-trim {
+      height: 6px;
+      background: #c9a84c;
+    }
+  </style>
+</head>
+<body class="bg-cream font-sans">
+
+<!-- Header / Navigation -->
+<header class="bg-cream">
+  <div class="container mx-auto px-4 sm:px-6 py-6">
+    <div class="flex flex-row items-center justify-between gap-4">
+      <!-- Logo -->
+      <div class="bg-navy px-4 py-3 sm:px-8 sm:py-4 rounded-lg flex-shrink-0">
+        <h1 class="text-lg sm:text-2xl font-bold text-gold font-serif text-center">• UniConnect</h1>
+        <p class="text-[9px] sm:text-xs text-gray-400 tracking-widest uppercase text-center">Your University Network</p>
+      </div>
+      
+      <!-- Navigation -->
+      <nav class="flex flex-row items-center justify-end gap-2 sm:gap-3">
+        <a href="#about" class="px-4 sm:px-8 py-2 sm:py-3 bg-navy text-gold font-medium hover:bg-navy-light transition rounded-lg text-xs sm:text-sm">
+          About
+        </a>
+        <a href="#resources" class="px-4 sm:px-8 py-2 sm:py-3 bg-navy text-gold font-medium hover:bg-navy-light transition rounded-lg text-xs sm:text-sm">
+          Resources
+        </a>
+        <a href="login.html" class="px-4 sm:px-8 py-2 sm:py-3 bg-gold text-navy font-semibold hover:bg-gold-light transition rounded-lg text-xs sm:text-sm whitespace-nowrap">
+          Login/Sign up
+        </a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<!-- Gold Trim -->
+<div class="gold-trim"></div>
+
+</body>
+</html>
