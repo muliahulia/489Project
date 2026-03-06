@@ -1,0 +1,557 @@
+
+<!-- None of the buttons or features work yet
+ - This can be modified as pleased but just as an idea for the theme!-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* Page-specific styles */
+    body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+
+    .left-panel {
+      position: relative;
+      background: var(--navy);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3rem;
+      overflow: hidden;
+    }
+
+    .left-panel::before {
+      content: '';
+      position: absolute;
+      top: -120px; left: -120px;
+      width: 420px; height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .left-panel::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; right: -80px;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .diagonal {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .diagonal svg {
+      width: 100%; height: 100%;
+    }
+
+    .brand {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-text {
+      position: relative;
+      z-index: 2;
+    }
+    .hero-text h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.2rem, 3.5vw, 3.2rem);
+      color: var(--cream);
+      line-height: 1.18;
+      font-weight: 400;
+    }
+    .hero-text h1 em {
+      font-style: normal;
+      color: var(--gold);
+    }
+    .hero-text p {
+      margin-top: 1.25rem;
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 300;
+      line-height: 1.7;
+      max-width: 320px;
+    }
+
+    .features {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+    }
+    .feature-item:nth-child(1) { animation-delay: 0.2s; }
+    .feature-item:nth-child(2) { animation-delay: 0.35s; }
+    .feature-item:nth-child(3) { animation-delay: 0.5s; }
+
+    .feature-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      border: 1px solid rgba(201,168,76,0.3);
+      background: rgba(201,168,76,0.08);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 1rem;
+    }
+    .feature-text {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.55);
+      font-weight: 300;
+    }
+    .feature-text strong {
+      font-weight: 500;
+      color: rgba(255,255,255,0.8);
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .right-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      background: var(--cream);
+      position: relative;
+    }
+
+    .right-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+    }
+
+    .form-card {
+      width: 100%;
+      max-width: 400px;
+      animation: slideIn 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+
+    .form-header {
+      margin-bottom: 2.2rem;
+    }
+    .form-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      color: var(--text-dark);
+      font-weight: 700;
+    }
+    .form-header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .role-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.8rem;
+      background: var(--cream-dark);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .role-btn {
+      flex: 1;
+      padding: 0.55rem 0;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .role-btn.active {
+      background: var(--navy);
+      color: var(--gold);
+      box-shadow: 0 2px 8px rgba(13,27,42,0.25);
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .field {
+      position: relative;
+    }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.45rem;
+    }
+    .field input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.92rem;
+      color: var(--text-dark);
+      background: #fff;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      outline: none;
+    }
+    .field input:focus {
+      border-color: var(--navy-light);
+      box-shadow: 0 0 0 3px rgba(36,59,85,0.1);
+    }
+    .field input::placeholder { color: #b0b8c4; }
+
+    .field .field-icon {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #b0b8c4;
+      cursor: pointer;
+      font-size: 1rem;
+      user-select: none;
+    }
+    .field input.has-icon { padding-right: 2.8rem; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .options-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    .remember-me input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--navy);
+      cursor: pointer;
+    }
+    .remember-me span {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .forgot-link {
+      font-size: 0.85rem;
+      color: var(--navy-light);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .forgot-link:hover { color: var(--gold); }
+
+    /* Submit button overrides */
+    .btn-primary {
+      padding: 0.9rem;
+      letter-spacing: 0.04em;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(13,27,42,0.3);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin: 1.4rem 0;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--cream-dark);
+    }
+    .divider span {
+      font-size: 0.78rem;
+      color: #b0b8c4;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .signup-prompt {
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+    .signup-prompt a {
+      color: var(--navy);
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 1.5px solid var(--gold);
+      padding-bottom: 1px;
+      transition: color 0.2s;
+    }
+    .signup-prompt a:hover { color: var(--gold); }
+
+    /* Verification badge shown for students */
+    .verify-notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      background: rgba(13,27,42,0.05);
+      border: 1px solid rgba(13,27,42,0.1);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.4rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .verify-notice .badge-icon {
+      font-size: 1rem;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    /* Error state */
+    .error-banner {
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(192,57,43,0.08);
+      border: 1px solid rgba(192,57,43,0.25);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      margin-bottom: 1.2rem;
+      font-size: 0.84rem;
+      color: var(--error);
+    }
+    .error-banner.visible { display: flex; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { grid-template-columns: 1fr; overflow: auto; }
+      .left-panel { display: none; }
+      .right-panel::before { height: 3px; }
+    }
+  </style>
+</head>
+<body>
+<!-- Left panel for inforamto n-->
+
+  <div class="left-panel">
+    <div class="diagonal">
+      <svg viewBox="0 0 600 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="480" y1="0" x2="120" y2="900" stroke="rgba(201,168,76,0.07)" stroke-width="1.5"/>
+        <line x1="520" y1="0" x2="160" y2="900" stroke="rgba(201,168,76,0.04)" stroke-width="1"/>
+        <line x1="440" y1="0" x2="80"  y2="900" stroke="rgba(201,168,76,0.04)" stroke-width="1"/>
+      </svg>
+    </div>
+
+    <div class="brand">
+      <div class="brand-wordmark">
+        <span class="dot"></span> UniConnect
+      </div>
+      <div class="brand-tagline">Your University Network</div>
+    </div>
+
+    <div class="hero-text">
+      <h1>Connect, Learn,<br/><em>and Grow</em><br/>Together</h1>
+      <p>A verified academic platform for students, faculty, and administrators to blah blah blah.</p>
+    </div>
+
+    <div class="features">
+      <div class="feature-item">
+        <div class="feature-icon">🎓</div>
+        <div class="feature-text">
+          <strong>University Verified</strong>
+          Access requires verified university affiliation
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🤝</div>
+        <div class="feature-text">
+          <strong>Peer Communities</strong>
+          blah blah blah
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📚</div>
+        <div class="feature-text">
+          <strong>Official Resources</strong>
+          Access posts and content from school officials
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Right panel for signing in-->
+  <div class="right-panel">
+    <div class="form-card">
+
+      <div class="form-header">
+        <h2>Welcome back</h2>
+        <p>Sign in to your UniConnect account</p>
+      </div>
+
+      <div class="role-selector" role="group" aria-label="Select account type">
+        <button class="role-btn active" onclick="setRole(this, 'student')">Student</button>
+        <button class="role-btn" onclick="setRole(this, 'official')">School Official</button>
+        <button class="role-btn" onclick="setRole(this, 'admin')">Admin</button>
+      </div>
+
+      <div class="verify-notice" id="verify-notice">
+        <span class="badge-icon">🔒</span>
+        <span>Students must have a verified university email. New here? <a href="#" style="color:var(--navy);font-weight:600;">Sign up and verify your account.</a></span>
+      </div>
+
+     
+      <div class="error-banner" id="error-banner">
+        <span>⚠️</span>
+        <span id="error-msg">Invalid credentials. Please try again.</span>
+      </div>
+
+      <form id="login-form" onsubmit="handleSubmit(event)" novalidate>
+        <div class="field-group">
+          <div class="field">
+            <label for="email">Email Address</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="you@university.edu"
+              autocomplete="email"
+            />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              placeholder="Enter your password"
+              class="has-icon"
+              autocomplete="current-password"
+            />
+            <span class="field-icon" id="toggle-pw" onclick="togglePassword()" title="Show/hide password">👁</span>
+          </div>
+        </div>
+
+        <div class="options-row">
+          <label class="remember-me">
+            <input type="checkbox" id="remember"/>
+            <span>Remember me</span>
+          </label>
+          <a href="#" class="forgot-link">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submit-btn">
+          Sign In
+        </button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+
+      <div class="signup-prompt">
+        Don't have an account? <a href="#">Create one</a>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let currentRole = 'student';
+
+    function setRole(btn, role) {
+      currentRole = role;
+      document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const notice = document.getElementById('verify-notice');
+      notice.style.display = role === 'student' ? 'flex' : 'none';
+
+      const emailInput = document.getElementById('email');
+      if (role === 'admin') {
+        emailInput.placeholder = 'admin@uniconnect.edu';
+      } else if (role === 'official') {
+        emailInput.placeholder = 'official@university.edu';
+      } else {
+        emailInput.placeholder = 'you@university.edu';
+      }
+
+      hideError();
+    }
+
+    function togglePassword() {
+      const pw = document.getElementById('password');
+      pw.type = pw.type === 'password' ? 'text' : 'password';
+    }
+
+    function showError(msg) {
+      const banner = document.getElementById('error-banner');
+      document.getElementById('error-msg').textContent = msg;
+      banner.classList.add('visible');
+    }
+
+    function hideError() {
+      document.getElementById('error-banner').classList.remove('visible');
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      hideError();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('submit-btn');
+
+      // Basic validation
+      if (!email) { showError('Please enter your email address.'); return; }
+      if (!password) { showError('Please enter your password.'); return; }
+
+      // University email check for students
+      if (currentRole === 'student' && !email.includes('.edu')) {
+        showError('Students must use a university (.edu) email address.');
+        return;
+      }
+
+      // Simulate loading
+      btn.textContent = 'Signing in…';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        showError('Invalid email or password. Please check your credentials.');
+        btn.textContent = 'Sign In';
+        btn.disabled = false;
+      }, 1400);
+    }
+  </script>
+</body>
+</html>
