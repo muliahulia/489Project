@@ -9,29 +9,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>UniConnect — Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --navy: #0d1b2a;
-      --navy-mid: #1a2e45;
-      --navy-light: #243b55;
-      --gold: #c9a84c;
-      --gold-light: #e8c97a;
-      --cream: #f5f0e8;
-      --cream-dark: #ede5d6;
-      --text-dark: #0d1b2a;
-      --text-muted: #5a6a7a;
-      --error: #c0392b;
-      --success: #1e7e5c;
-    }
-
+    /* Page-specific styles */
     body {
-      min-height: 100vh;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      font-family: 'DM Sans', sans-serif;
-      background: var(--cream);
       overflow: hidden;
     }
 
@@ -79,31 +62,6 @@
     .brand {
       position: relative;
       z-index: 2;
-    }
-    .brand-wordmark {
-      font-family: 'Playfair Display', serif;
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--gold);
-      letter-spacing: 0.02em;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .brand-wordmark .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--gold);
-      display: inline-block;
-      margin-bottom: 2px;
-    }
-    .brand-tagline {
-      font-size: 0.78rem;
-      font-weight: 300;
-      color: rgba(255,255,255,0.45);
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      margin-top: 0.35rem;
     }
 
     .hero-text {
@@ -319,29 +277,16 @@
     }
     .forgot-link:hover { color: var(--gold); }
 
-    /* Submit button */
+    /* Submit button overrides */
     .btn-primary {
-      width: 100%;
       padding: 0.9rem;
-      background: var(--navy);
-      color: var(--gold);
-      border: none;
-      border-radius: 10px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.95rem;
-      font-weight: 600;
       letter-spacing: 0.04em;
-      cursor: pointer;
-      transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
       position: relative;
       overflow: hidden;
     }
     .btn-primary:hover {
-      background: var(--navy-mid);
       box-shadow: 0 6px 20px rgba(13,27,42,0.3);
-      transform: translateY(-1px);
     }
-    .btn-primary:active { transform: translateY(0); }
 
     .divider {
       display: flex;
@@ -411,16 +356,6 @@
       color: var(--error);
     }
     .error-banner.visible { display: flex; }
-
-    /* Animations */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(24px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
 
     /* Responsive */
     @media (max-width: 768px) {
