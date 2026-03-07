@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Feed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <!-- Tailwind required for footer -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: '#0d1b2a',
+            'navy-mid': '#1a2e45',
+            'navy-light': '#243b55',
+            gold: '#c9a84c',
+            'gold-light': '#e8c97a',
+            cream: '#f5f0e8',
+            'cream-dark': '#ede5d6',
+          },
+          fontFamily: {
+            'serif': ['Playfair Display', 'serif'],
+            'sans': ['DM Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* ── Topbar ── */
+    .topbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--topbar-h);
+      background: var(--navy);
+      border-bottom: 2px solid var(--gold);
+      display: flex; align-items: center;
+      padding: 0 1.5rem; gap: 1rem; z-index: 100;
+    }
+    .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--gold); }
+    .topbar-search { flex: 1; max-width: 380px; margin-left: 1.5rem; position: relative; }
+    .topbar-search input {
+      width: 100%; padding: 0.4rem 1rem 0.4rem 2.2rem;
+      border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.07); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
+    }
+    .topbar-search input::placeholder { color: rgba(255,255,255,0.35); }
+    .topbar-search input:focus { border-color: var(--gold); }
+    .topbar-search span { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: rgba(255,255,255,0.4); }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--gold); color: var(--navy);
+      font-weight: 700; font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(201,168,76,0.4); cursor: pointer;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      padding-top: var(--topbar-h);
+      min-height: 100vh;
+    }
+
+    /* ── Left Sidebar ── */
+    .sidebar {
+      position: fixed; top: var(--topbar-h); left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: #fff; border-right: 1px solid var(--border);
+      padding: 1.5rem 0; overflow-y: auto; z-index: 90;
+    }
+    .sidebar-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #9aaabb; padding: 0.5rem 1.25rem; margin-top: 0.75rem; }
+    .sidebar a { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1.25rem; font-size: 0.88rem; color: var(--text-muted); border-left: 3px solid transparent; transition: all 0.15s; }
+    .sidebar a:hover { background: var(--cream); color: var(--text-dark); }
+    .sidebar a.active { background: rgba(201,168,76,0.1); color: var(--navy); font-weight: 600; border-left-color: var(--gold); }
+
+    /* ── Main content ── */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-w);
+      margin-right: 260px; /* right sidebar width */
+      padding: 2rem;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Constrain feed to a readable fixed width */
+    .feed-column {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    .page-header { margin-bottom: 1.75rem; }
+    .page-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
+    .page-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    /* ── Create Post Box ── */
+    .create-post {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      margin-bottom: 1.25rem;
+    }
+
+    .create-post-top {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .create-post-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 700; font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(201,168,76,0.4);
+      flex-shrink: 0;
+    }
+
+    .create-post-input-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: var(--cream);
+      transition: border-color 0.15s, background 0.15s;
+      overflow: hidden;
+      padding-right: 0.25rem;
+    }
+    .create-post-input-wrap:focus-within {
+      border-color: var(--navy-light);
+      background: #fff;
+    }
+
+    .create-post-input {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border: none;
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      outline: none;
+      cursor: pointer;
+    }
+    .create-post-input:focus { cursor: text; }
+    .create-post-input::placeholder { color: #b0b8c4; }
+
+    .create-post-attach {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .create-post-attach:hover {
+      background: var(--cream-dark);
+      color: var(--navy);
+    }
+
+    /* ── Right Sidebar ── */
+    .right-sidebar {
+      position: fixed; top: var(--topbar-h); right: 0; bottom: 0;
+      width: 260px;
+      background: #fff; border-left: 1px solid var(--border);
+      padding: 1.5rem 1.25rem; overflow-y: auto; z-index: 90;
+    }
+
+    .right-sidebar-section { margin-bottom: 2rem; }
+
+    .right-sidebar-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.75rem;
+    }
+
+    .right-sidebar-item {
+      display: block;
+      padding: 0.45rem 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .right-sidebar-item:last-child { border-bottom: none; }
+    .right-sidebar-item:hover { color: var(--navy); }
+
+    /* ── Post Card (from post.html) ── */
+    .post-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      position: relative;
+      margin-bottom: 1.25rem;
+      width: 100%;
+    }
+
+    .post-actions {
+      position: absolute;
+      top: 1.25rem;
+      right: 1.25rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .post-action-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+    }
+    .post-action-btn:hover {
+      background: var(--cream-dark);
+      color: var(--navy);
+    }
+
+    .post-author {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-right: 8rem;
+    }
+
+    .post-avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      background: var(--cream-dark);
+    }
+
+    .post-avatar-initials {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--border);
+      letter-spacing: 0.03em;
+    }
+
+    .post-author-info { display: flex; flex-direction: column; gap: 0.15rem; }
+
+    .post-author-name { font-weight: 600; font-size: 1rem; color: var(--text-dark); }
+    .post-author-name a { color: var(--text-dark); text-decoration: none; }
+    .post-author-name a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+    .post-meta { font-size: 0.8rem; color: var(--text-muted); }
+    .post-meta a { color: var(--text-muted); text-decoration: none; }
+    .post-meta a:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+
+    .post-community { font-size: 0.8rem; color: var(--navy); font-weight: 500; }
+    .post-community a { color: var(--navy); text-decoration: none; }
+    .post-community a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+    .post-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      font-size: 0.93rem;
+      color: var(--text-dark);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <nav class="topbar">
+    <div class="topbar-brand">UniConnect</div>
+    <div class="topbar-search">
+      <span>🔍</span>
+      <input type="text" placeholder="Search..."/>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-avatar">JS</div>
+    </div>
+  </nav>
+
+  <div class="layout">
+
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-label">Main</div>
+      <a href="dashboard.html">🏠 Home</a>
+      <a href="feed.html" class="active">📰 Feed</a>
+      <a href="communities.html">👥 Communities</a>
+      <a href="courses.html">📚 Courses</a>
+
+      <div class="sidebar-label">Account</div>
+      <a href="profile.html">👤 Profile</a>
+      <a href="settings.html">⚙️ Settings</a>
+      <a href="login.html">🚪 Log Out</a>
+    </aside>
+
+    <!-- Feed -->
+    <main class="main">
+      <div class="feed-column">
+
+      <div class="page-header">
+        <h1 class="page-title">Feed</h1>
+        <p class="page-subtitle">Recent posts from your courses and communities.</p>
+      </div>
+
+      <!-- Create Post -->
+      <div class="create-post">
+        <div class="create-post-top">
+          <div class="create-post-avatar">JS</div>
+          <div class="create-post-input-wrap">
+            <input class="create-post-input" type="text" placeholder="What's on your mind?"/>
+            <button class="create-post-attach" title="Attach media">📎</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Post 1 -->
+      <div class="post-card">
+        <div class="post-actions">
+          <button class="post-action-btn" title="Like">👍</button>
+          <button class="post-action-btn" title="Comment">💬</button>
+          <button class="post-action-btn" title="Bookmark">🔖</button>
+        </div>
+        <div class="post-author">
+          <div class="post-avatar-initials">JB</div>
+          <div class="post-author-info">
+            <span class="post-author-name"><a href="#">Jaden Bryant</a></span>
+            <span class="post-meta"><a href="post.html">March 6, 2026 at 9:14 AM</a></span>
+            <span class="post-community"><a href="#">Software Engineering</a></span>
+          </div>
+        </div>
+        <div class="post-body">
+          <p>Does anyone have notes from Tuesday's lecture on REST API design? I had to leave early and missed the last 20 minutes.</p>
+          <p>Specifically looking for the part where Prof. Henderson talked about versioning strategies — I think it was either URI-based or header-based but I'm not sure which he recommended.</p>
+          <p>Would really appreciate it, midterm is next week and I want to make sure I have everything covered!</p>
+        </div>
+      </div>
+
+      <!-- Post 2 -->
+      <div class="post-card">
+        <div class="post-actions">
+          <button class="post-action-btn" title="Like">👍</button>
+          <button class="post-action-btn" title="Comment">💬</button>
+          <button class="post-action-btn" title="Bookmark">🔖</button>
+        </div>
+        <div class="post-author">
+          <div class="post-avatar-initials">JS</div>
+          <div class="post-author-info">
+            <span class="post-author-name"><a href="#">Julia Smith</a></span>
+            <span class="post-meta"><a href="post.html">March 6, 2026 at 8:45 AM</a></span>
+            <span class="post-community"><a href="#">Data Structures &amp; Algorithms</a></span>
+          </div>
+        </div>
+        <div class="post-body">
+          <p>Reminder that the study group for the graph algorithms unit is meeting tonight at 7 PM in the library, room 204.</p>
+          <p>We'll be going through Dijkstra's and Bellman-Ford — bring your notes and any practice problems you've been stuck on.</p>
+          <p>There's space for a few more people if anyone wants to join. Just reply here or message me directly!</p>
+        </div>
+      </div>
+
+      <!-- Post 3 -->
+      <div class="post-card">
+        <div class="post-actions">
+          <button class="post-action-btn" title="Like">👍</button>
+          <button class="post-action-btn" title="Comment">💬</button>
+          <button class="post-action-btn" title="Bookmark">🔖</button>
+        </div>
+        <div class="post-author">
+          <div class="post-avatar-initials">LGR</div>
+          <div class="post-author-info">
+            <span class="post-author-name"><a href="#">Luis Garcia Rangel</a></span>
+            <span class="post-meta"><a href="post.html">March 5, 2026 at 11:30 PM</a></span>
+            <span class="post-community"><a href="#">Computer Science Club</a></span>
+          </div>
+        </div>
+        <div class="post-body">
+          <p>Just finished my submission for the spring hackathon — super glad that's done. Built a course scheduler that uses a constraint-satisfaction algorithm to avoid time conflicts.</p>
+          <p>Ended up being way more complex than I expected once I added support for professor preferences and room capacity limits.</p>
+          <p>If anyone wants to collaborate on cleaning it up and maybe open-sourcing it, let me know. Could be a solid portfolio piece for all of us.</p>
+        </div>
+      </div>
+
+      </div><!-- /.feed-column -->
+    </main>
+
+    <!-- Right Sidebar -->
+    <aside class="right-sidebar">
+
+      <div class="right-sidebar-section">
+        <h2 class="right-sidebar-title">Courses</h2>
+        <a href="#" class="right-sidebar-item">Intro to Computer Science</a>
+        <a href="#" class="right-sidebar-item">Data Structures &amp; Algorithms</a>
+        <a href="#" class="right-sidebar-item">Software Engineering</a>
+        <a href="#" class="right-sidebar-item">Database Systems</a>
+        <a href="#" class="right-sidebar-item">Web Development</a>
+      </div>
+
+      <div class="right-sidebar-section">
+        <h2 class="right-sidebar-title">Communities</h2>
+        <a href="#" class="right-sidebar-item">Computer Science Club</a>
+        <a href="#" class="right-sidebar-item">Study Groups</a>
+        <a href="#" class="right-sidebar-item">Campus Events</a>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20" style="margin-left: var(--sidebar-w); margin-right: 260px;">
+    <div class="container mx-auto px-4 sm:px-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
+
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">About UniConnect</h3>
+          <p class="text-navy/70 text-sm leading-relaxed">
+            A verified academic platform connecting students, faculty, and administrators across universities.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Quick Links</h3>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Privacy Policy</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Terms of Service</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Contact Us</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Help Center</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Get in Touch</h3>
+          <p class="text-navy/70 text-sm leading-relaxed">
+            Have questions? Reach out to our support team at<br class="hidden sm:inline">
+            <a href="mailto:support@uniconnect.edu" class="text-gold hover:text-gold-light transition break-all sm:break-normal">support@uniconnect.edu</a>
+          </p>
+        </div>
+
+      </div>
+
+      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-navy/20 text-center">
+        <p class="text-navy/60 text-xs sm:text-sm">&copy; 2026 UniConnect. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
