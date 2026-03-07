@@ -93,13 +93,46 @@
       margin: 0 auto;
     }
 
+    /* ── Page header row ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
     /* ── Page title ── */
     .page-title {
       font-family: 'Playfair Display', serif;
       font-size: 1.9rem;
       font-weight: 700;
       color: var(--text-dark);
-      margin-bottom: 1.5rem;
+      margin-bottom: 0;
+    }
+
+    /* ── Create button ── */
+    .btn-create {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      background: var(--navy);
+      color: var(--gold);
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+    .btn-create:hover {
+      background: var(--navy-mid);
+      box-shadow: 0 3px 10px rgba(13,27,42,0.18);
     }
 
     /* ── Community Card ── */
@@ -212,7 +245,10 @@
     <main class="main">
       <div class="communities-column">
 
-        <h1 class="page-title">Communities at WSU</h1>
+        <div class="page-header">
+          <h1 class="page-title">Communities at WSU</h1>
+          <a href="create-community.html" class="btn-create">+ Create Community</a>
+        </div>
 
         <!-- 1 -->
         <a href="community.html" class="community-card">
