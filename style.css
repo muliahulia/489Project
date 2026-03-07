@@ -33,6 +33,8 @@ body {
   min-height: 100vh;
 }
 
+main { animation: slideIn 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
+
 /* Links */
 a {
   text-decoration: none;
