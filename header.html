@@ -5,65 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UniConnect Header Component</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: '#0d1b2a',
-            'navy-mid': '#1a2e45',
-            'navy-light': '#243b55',
-            gold: '#c9a84c',
-            'gold-light': '#e8c97a',
-            cream: '#f5f0e8',
-            'cream-dark': '#ede5d6',
-          },
-          fontFamily: {
-            'serif': ['Playfair Display', 'serif'],
-            'sans': ['DM Sans', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="style.css"/>
   <style>
-    .gold-trim {
-      height: 6px;
-      background: #c9a84c;
+    .topbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--topbar-h);
+      background: var(--navy);
+      border-bottom: 2px solid var(--gold);
+      display: flex; align-items: center;
+      padding: 0 1.5rem; gap: 1rem; z-index: 100;
+    }
+    .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--gold); }
+    .topbar-search { flex: 1; max-width: 380px; margin-left: 1.5rem; position: relative; }
+    .topbar-search input {
+      width: 100%; padding: 0.4rem 1rem 0.4rem 2.2rem;
+      border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.07); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
+    }
+    .topbar-search input::placeholder { color: rgba(255,255,255,0.35); }
+    .topbar-search input:focus { border-color: var(--gold); }
+    .topbar-search span { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: rgba(255,255,255,0.4); }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--gold); color: var(--navy);
+      font-weight: 700; font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(201,168,76,0.4); cursor: pointer;
     }
   </style>
 </head>
-<body class="bg-cream font-sans">
+<body>
 
-<!-- Header / Navigation -->
-<header class="bg-cream">
-  <div class="container mx-auto px-4 sm:px-6 py-6">
-    <div class="flex flex-row items-center justify-between gap-4">
-      <!-- Logo -->
-      <div class="bg-navy px-4 py-3 sm:px-8 sm:py-4 rounded-lg flex-shrink-0">
-        <h1 class="text-lg sm:text-2xl font-bold text-gold font-serif text-center">• UniConnect</h1>
-        <p class="text-[9px] sm:text-xs text-gray-400 tracking-widest uppercase text-center">Your University Network</p>
-      </div>
-      
-      <!-- Navigation -->
-      <nav class="flex flex-row items-center justify-end gap-2 sm:gap-3">
-        <a href="#about" class="px-4 sm:px-8 py-2 sm:py-3 bg-navy text-gold font-medium hover:bg-navy-light transition rounded-lg text-xs sm:text-sm">
-          About
-        </a>
-        <a href="#resources" class="px-4 sm:px-8 py-2 sm:py-3 bg-navy text-gold font-medium hover:bg-navy-light transition rounded-lg text-xs sm:text-sm">
-          Resources
-        </a>
-        <a href="login.html" class="px-4 sm:px-8 py-2 sm:py-3 bg-gold text-navy font-semibold hover:bg-gold-light transition rounded-lg text-xs sm:text-sm whitespace-nowrap">
-          Login/Sign up
-        </a>
-      </nav>
-    </div>
+<!-- TOPBAR -->
+<nav class="topbar">
+  <div class="topbar-brand">UniConnect</div>
+  <div class="topbar-search">
+    <span>🔍</span>
+    <input type="text" placeholder="Search..."/>
   </div>
-</header>
-
-<!-- Gold Trim -->
-<div class="gold-trim"></div>
+  <div class="topbar-right">
+    <div class="topbar-avatar">JS</div><!-- change initials per user -->
+  </div>
+</nav>
 
 </body>
 </html>
