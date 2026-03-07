@@ -4,13 +4,34 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UniConnect — Page Name</title>
+  <title>UniConnect — Communities</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
+  <!-- Tailwind required for footer -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: '#0d1b2a',
+            'navy-mid': '#1a2e45',
+            'navy-light': '#243b55',
+            gold: '#c9a84c',
+            'gold-light': '#e8c97a',
+            cream: '#f5f0e8',
+            'cream-dark': '#ede5d6',
+          },
+          fontFamily: {
+            'serif': ['Playfair Display', 'serif'],
+            'sans': ['DM Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    /* Page-specific styles */
-
-    /*THis is the top part for the header*/
+    /* ── Topbar ── */
     .topbar {
       position: fixed; top: 0; left: 0; right: 0;
       height: var(--topbar-h);
@@ -27,8 +48,6 @@
       background: rgba(255,255,255,0.07); color: #fff;
       font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
     }
-
-    /* added a search bar to fill up space*/
     .topbar-search input::placeholder { color: rgba(255,255,255,0.35); }
     .topbar-search input:focus { border-color: var(--gold); }
     .topbar-search span { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: rgba(255,255,255,0.4); }
@@ -41,10 +60,14 @@
       border: 2px solid rgba(201,168,76,0.4); cursor: pointer;
     }
 
-    /*  */
-    .layout { display: flex; padding-top: var(--topbar-h); min-height: 100vh; }
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      padding-top: var(--topbar-h);
+      min-height: 100vh;
+    }
 
-    /*  */
+    /* ── Left Sidebar ── */
     .sidebar {
       position: fixed; top: var(--topbar-h); left: 0; bottom: 0;
       width: var(--sidebar-w);
@@ -56,23 +79,108 @@
     .sidebar a:hover { background: var(--cream); color: var(--text-dark); }
     .sidebar a.active { background: rgba(201,168,76,0.1); color: var(--navy); font-weight: 600; border-left-color: var(--gold); }
 
-    /*  */
-    .main { flex: 1; margin-left: var(--sidebar-w); padding: 2rem; max-width: 1100px; }
-    .page-header { margin-bottom: 1.75rem; }
-    .page-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
-    .page-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem; }
+    /* ── Main ── */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-w);
+      padding: 2rem;
+      min-width: 0;
+    }
 
-    /* buttons*/
+    .communities-column {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+    }
 
-    
-    
+    /* ── Page title ── */
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Community Card ── */
+    .community-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1rem;
+      text-decoration: none;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .community-card:hover {
+      border-color: var(--gold);
+      box-shadow: 0 2px 10px rgba(201,168,76,0.15);
+    }
+
+    /* ── Club image circle ── */
+    .club-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 0.72rem;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      line-height: 1.3;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+    }
+
+    /* Color variants */
+    .club-avatar.v2 { background: var(--navy-mid); }
+    .club-avatar.v3 { background: var(--navy-light); }
+    .club-avatar.v4 { background: #2c4a6e; }
+    .club-avatar.v5 { background: #1e3a52; }
+    .club-avatar.v6 { background: #163044; }
+    .club-avatar.v7 { background: #0f2233; }
+    .club-avatar.v8 { background: #20364f; }
+
+    /* ── Club info ── */
+    .club-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      min-width: 0;
+    }
+
+    .club-name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .club-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-dark);
+    }
+
+    .club-members {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .club-description {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
   </style>
 </head>
 <body>
 
-
-
-  <!--TOPBAR — copy to every page!!! this is our main theme, change initials  -->
+  <!-- TOPBAR -->
   <nav class="topbar">
     <div class="topbar-brand">UniConnect</div>
     <div class="topbar-search">
@@ -80,18 +188,18 @@
       <input type="text" placeholder="Search..."/>
     </div>
     <div class="topbar-right">
-      <div class="topbar-avatar">JS</div><!-- change initials per user I just used my inititals as and example -->
+      <div class="topbar-avatar">JB</div>
     </div>
   </nav>
 
   <div class="layout">
 
-    
+    <!-- Left Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-label">Main</div>
       <a href="dashboard.html">🏠 Home</a>
       <a href="feed.html">📰 Feed</a>
-      <a href="communities.html">👥 Communities</a>
+      <a href="communities.html" class="active">👥 Communities</a>
       <a href="courses.html">📚 Courses</a>
 
       <div class="sidebar-label">Account</div>
@@ -100,17 +208,150 @@
       <a href="login.html">🚪 Log Out</a>
     </aside>
 
-
-    <!--Main content area — change per page --> 
+    <!-- Main Content -->
     <main class="main">
+      <div class="communities-column">
 
-      <div class="page-header">
-        <h1 class="page-title">Page Title</h1>
-        <p class="page-subtitle">Short description of this page.</p>
-      </div>
+        <h1 class="page-title">Communities at WSU</h1>
 
+        <!-- 1 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar">CS<br>Club</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">Computer Science Club</span>
+              <span class="club-members">142 members</span>
+            </div>
+            <p class="club-description">A community for CS students to connect, collaborate, and grow. We host weekly talks, coding challenges, and networking events with industry professionals throughout the semester.</p>
+          </div>
+        </a>
+
+        <!-- 2 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar v2">Hack<br>WSU</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">HackWSU</span>
+              <span class="club-members">89 members</span>
+            </div>
+            <p class="club-description">WSU's official hackathon organization. We run HackWSU each spring and host smaller build nights and workshops year-round to help students develop real-world project experience.</p>
+          </div>
+        </a>
+
+        <!-- 3 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar v3">AI<br>ML</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">AI &amp; ML Interest Group</span>
+              <span class="club-members">67 members</span>
+            </div>
+            <p class="club-description">Dedicated to exploring artificial intelligence and machine learning through paper readings, project showcases, and guest lectures from researchers and engineers in the field.</p>
+          </div>
+        </a>
+
+        <!-- 4 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar v4">Open<br>Src</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">Open Source Initiative</span>
+              <span class="club-members">54 members</span>
+            </div>
+            <p class="club-description">We contribute to open-source projects together and help members make their first pull requests. Great for building a portfolio and learning collaborative software development practices.</p>
+          </div>
+        </a>
+
+        <!-- 5 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar v5">Women<br>CS</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">Women in Computer Science</span>
+              <span class="club-members">78 members</span>
+            </div>
+            <p class="club-description">Supporting and empowering women and non-binary students in tech through mentorship, community building, career panels, and networking opportunities with local and national companies.</p>
+          </div>
+        </a>
+
+        <!-- 6 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar v6">Cyber<br>Sec</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">Cybersecurity Club</span>
+              <span class="club-members">61 members</span>
+            </div>
+            <p class="club-description">Focused on ethical hacking, CTF competitions, and security research. We compete in national Capture the Flag events and run hands-on workshops covering topics from network security to cryptography.</p>
+          </div>
+        </a>
+
+        <!-- 7 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar v7">Game<br>Dev</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">Game Development Club</span>
+              <span class="club-members">95 members</span>
+            </div>
+            <p class="club-description">A creative space for students interested in building games. We use Unity, Unreal, and Godot, participate in game jams, and collaborate on original projects across programming, art, and design.</p>
+          </div>
+        </a>
+
+        <!-- 8 -->
+        <a href="#" class="community-card">
+          <div class="club-avatar v8">Algo<br>SG</div>
+          <div class="club-info">
+            <div class="club-name-row">
+              <span class="club-name">Algorithms Study Group</span>
+              <span class="club-members">43 members</span>
+            </div>
+            <p class="club-description">Meet weekly to work through algorithm problems, review data structures, and prepare for technical interviews. All skill levels are welcome — bring your laptop and your questions.</p>
+          </div>
+        </a>
+
+      </div><!-- /.communities-column -->
     </main>
-  </div>
+
+  </div><!-- /.layout -->
+
+  <!-- Footer -->
+  <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20" style="margin-left: var(--sidebar-w);">
+    <div class="container mx-auto px-4 sm:px-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
+
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">About UniConnect</h3>
+          <p class="text-navy/70 text-sm leading-relaxed">
+            A verified academic platform connecting students, faculty, and administrators across universities.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Quick Links</h3>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Privacy Policy</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Terms of Service</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Contact Us</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Help Center</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Get in Touch</h3>
+          <p class="text-navy/70 text-sm leading-relaxed">
+            Have questions? Reach out to our support team at<br class="hidden sm:inline">
+            <a href="mailto:support@uniconnect.edu" class="text-gold hover:text-gold-light transition break-all sm:break-normal">support@uniconnect.edu</a>
+          </p>
+        </div>
+
+      </div>
+      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-navy/20 text-center">
+        <p class="text-navy/60 text-xs sm:text-sm">&copy; 2026 UniConnect. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
 
 </body>
 </html>
+>>>>>>> origin/main

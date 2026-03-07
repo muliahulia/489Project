@@ -57,7 +57,7 @@
     .sidebar a.active { background: rgba(201,168,76,0.1); color: var(--navy); font-weight: 600; border-left-color: var(--gold); }
 
     /*  */
-    .main { flex: 1; margin-left: var(--sidebar-w); padding: 2rem; max-width: 1100px; }
+    .main { flex: 1; margin-left: var(--sidebar-w); padding: 2rem; max-width: none; }
     .page-header { margin-bottom: 1.75rem; }
     .page-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
     .page-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem; }
@@ -110,11 +110,7 @@
         }
     }
 
-    .report-banner { display: flex; flex-direction: row; background-color: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; box-shadow: 0 1px 4px rgba(13,27,42,0.07); margin-bottom: 1.25rem; justify-content: space-between; align-items: center;}
-
-    main {
-        animation: slideIn 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
-    }
+    .report-banner { display: flex; flex-direction: row; background-color: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 10px; box-shadow: 0 1px 4px rgba(13,27,42,0.07); margin-bottom: 1.25rem; justify-content: space-between; align-items: center;}
   </style>
 </head>
 <body>
