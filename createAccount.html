@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Forgot Password</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* Page-specific styles */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 4px 24px rgba(13,27,42,0.1);
+    }
+
+    .card-top {
+      border-top: 3px solid var(--gold);
+      border-radius: 16px 16px 0 0;
+      margin: -2.5rem -2.5rem 2rem -2.5rem;
+      padding: 0;
+    }
+
+    .brand {
+      margin-bottom: 1.75rem;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      color: var(--text-dark);
+      margin-bottom: 0.4rem;
+    }
+    .subtitle {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+      line-height: 1.55;
+    }
+
+    .btn {
+      margin-bottom: 1.25rem;
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--navy); }
+
+    /* Success state */
+    .success-state { display: none; text-align: center; }
+    .success-icon {
+      width: 56px; height: 56px;
+      background: rgba(30,126,92,0.1);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      margin: 0 auto 1.25rem;
+    }
+    .success-state h2 { font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.5rem; }
+    .success-state p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem; }
+
+    /* Error state */
+    .error-banner {
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(192,57,43,0.08);
+      border: 1px solid rgba(192,57,43,0.25);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      margin-bottom: 1.2rem;
+      font-size: 0.84rem;
+      color: var(--error);
+    }
+    .error-banner.visible { display: flex; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="card-top"></div>
+
+    <div class="brand">
+      <div class="brand-name">UniConnect</div>
+    </div>
+
+    <div id="form-state">
+      <h1>Welcome!</h1>
+      <p class="subtitle">Enter your information below to sign up to UniConnect.</p>
+
+      <div class="error-banner" id="error-banner">
+        <span>⚠️</span>
+        <span id="error-msg">Invalid credentials. Please try again.</span>
+      </div>
+
+      <div class="field">
+        <label>First name</label>
+        <input type="firstName" id="firstName" placeholder="John" autocomplete="name"/>
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input type="lastName" id="lastName" placeholder="Smith" autocomplete="family-name"/>
+      </div>
+      <div class="field">
+        <label>School</label>
+        <input type="schoolName" id="schoolName" placeholder="Washington State University" autocomplete="name"/>
+      </div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="you@university.edu" autocomplete="email"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="" autocomplete="new-password"/>
+      </div>
+      <div class="field">
+        <label>Confirm Password</label>
+        <input type="cpassword" id="cpassword" placeholder="" autocomplete="new-password"/>
+      </div>
+      
+
+      <button class="btn" onclick="handleSubmit()">Sign Up</button>
+      <a href="login.html" class="back-link">← Back to login</a>
+    </div>
+
+    <div class="success-state" id="success-state">
+      <div class="success-icon">✉️</div>
+      <h2>Check your email</h2>
+      <p>We have sent an email to <strong id="sent-email"></strong>. Check your inbox and follow the provided instructions.</p>
+      <a href="login.html" class="back-link">← Back to login</a>
+    </div>
+  </div>
+
+  <script>
+    function handleSubmit(e) {
+    event.preventDefault();
+
+    const firstName = document.getElementById("firstName").value.trim();
+    const lastName = document.getElementById("lastName").value.trim();
+    const schoolName = document.getElementById("schoolName").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("cpassword").value;
+    const sentEmail = document.getElementById("sent-email");
+    var errorBanner = document.getElementById("error-banner");
+    var errorMessage = document.getElementById("error-msg");
+
+    const ul = document.createElement("ul");
+    ul.style.paddingLeft = "20px";
+    errorMessage.textContent = "Please fill out all fields."
+    errorBanner.style.display= "none";
+
+    if (!firstName) {
+        const li1 = document.createElement("li");
+        li1.textContent = "First name is required.";
+        ul.appendChild(li1);
+    }
+
+    if (!lastName) {
+        const li2 = document.createElement("li");
+        li2.textContent = "Last name is required.";
+        ul.appendChild(li2);
+    }
+
+    if (!schoolName) {
+        const li3 = document.createElement("li");
+        li3.textContent = "School name is required.";
+        ul.appendChild(li3);
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        const li4 = document.createElement("li");
+        li4.textContent = "Please enter a school email ending in \".edu\".";
+        ul.appendChild(li4);
+    }
+
+    if (password.length < 8) {
+        const li5 = document.createElement("li");
+        li5.textContent = "Password must contain at least 8 characters.";
+        ul.appendChild(li5);
+    }
+
+    if (password !== confirmPassword) {
+        const li6 = document.createElement("li");
+        li6.textContent = "Password must match.";
+        ul.appendChild(li6);
+    }
+
+    if (!firstName || !lastName || !schoolName || !emailRegex.test(email) || password.length < 8|| password != confirmPassword) {
+        errorMessage.appendChild(ul);
+        errorBanner.style.display= "block";
+        return;
+    }
+
+    const userData = {
+        firstName,
+        lastName,
+        email,
+        password
+    };
+
+    console.log("Submitting user:", userData);
+    document.getElementById("form-state").style.display = "none";
+    sentEmail.textContent = email;
+    document.getElementById("success-state").style.display = "block";
+}
+  </script>
+
+</body>
+</html>
