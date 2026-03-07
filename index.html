@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniConnect — Your University Network</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: '#0d1b2a',
+            'navy-mid': '#1a2e45',
+            'navy-light': '#243b55',
+            gold: '#c9a84c',
+            'gold-light': '#e8c97a',
+            cream: '#f5f0e8',
+            'cream-dark': '#ede5d6',
+          },
+          fontFamily: {
+            'serif': ['Playfair Display', 'serif'],
+            'sans': ['DM Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-circle-1 {
+      position: absolute;
+      top: -120px;
+      left: -120px;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .gradient-circle-2 {
+      position: absolute;
+      bottom: -80px;
+      right: -80px;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .gold-trim {
+      height: 6px;
+      background: #c9a84c;
+    }
+  </style>
+</head>
+<body class="bg-navy font-sans h-screen flex flex-col overflow-x-hidden overflow-y-auto relative">
+  
+  <!-- Header / Navigation -->
+  <header class="bg-cream">
+    <div class="container mx-auto px-4 sm:px-6 py-6">
+      <div class="flex flex-row items-center justify-between gap-4">
+        <!-- Logo -->
+        <div class="bg-navy px-4 py-3 sm:px-8 sm:py-4 rounded-lg flex-shrink-0">
+          <h1 class="text-lg sm:text-2xl font-bold text-gold font-serif text-center">• UniConnect</h1>
+          <p class="text-[9px] sm:text-xs text-gray-400 tracking-widest uppercase text-center">Your University Network</p>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="flex flex-row items-center justify-end gap-2 sm:gap-3">
+          <a href="#about" class="px-4 sm:px-8 py-2 sm:py-3 bg-navy text-gold font-medium hover:bg-navy-light transition rounded-lg text-xs sm:text-sm">
+            About
+          </a>
+          <a href="#resources" class="px-4 sm:px-8 py-2 sm:py-3 bg-navy text-gold font-medium hover:bg-navy-light transition rounded-lg text-xs sm:text-sm">
+            Resources
+          </a>
+          <a href="login.html" class="px-4 sm:px-8 py-2 sm:py-3 bg-gold text-navy font-semibold hover:bg-gold-light transition rounded-lg text-xs sm:text-sm whitespace-nowrap">
+            Login/Sign up
+          </a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Gold Trim -->
+  <div class="gold-trim"></div>
+
+  <!-- Decorative Circles -->
+  <div class="gradient-circle-1"></div>
+  <div class="gradient-circle-2"></div>
+
+  <!-- Main Content -->
+  <main class="flex-grow flex items-center justify-center py-8 sm:py-12 lg:py-16 relative z-10">
+    <!-- Diagonal lines, covers full main section like login.html -->
+    <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 600 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="480" y1="0" x2="120" y2="900" stroke="rgba(201,168,76,0.07)" stroke-width="1.5"/>
+      <line x1="520" y1="0" x2="160" y2="900" stroke="rgba(201,168,76,0.04)" stroke-width="1"/>
+      <line x1="440" y1="0" x2="80"  y2="900" stroke="rgba(201,168,76,0.04)" stroke-width="1"/>
+    </svg>
+    <div class="container mx-auto px-4 sm:px-6 relative">
+      <div class="max-w-4xl mx-auto text-center space-y-6 sm:space-y-8">
+        
+        <!-- Call to Action -->
+        <div class="px-6 sm:px-12 py-6 sm:py-10">
+          <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-serif mb-3">
+            Connect, Learn, and <span class="text-gold">Grow Together</span>
+          </h2>
+          <p class="text-gold-light/80 text-sm sm:text-base max-w-2xl mx-auto mt-4">
+            A verified academic platform for students, faculty, and administrators to connect and collaborate.
+          </p>
+        </div>
+
+        <!-- Feature Highlights / Info Bars -->
+        <div class="space-y-3 sm:space-y-4 max-w-2xl mx-auto">
+          <div class="bg-navy-light/50 backdrop-blur-sm border border-gold/20 px-4 py-3 sm:py-4 rounded-lg">
+            <p class="text-cream text-sm sm:text-base font-medium">🎓 University Verified Access</p>
+          </div>
+          <div class="bg-navy-light/50 backdrop-blur-sm border border-gold/20 px-4 py-3 sm:py-4 rounded-lg">
+            <p class="text-cream text-sm sm:text-base font-medium">🤝 Connect with Peers and Faculty</p>
+          </div>
+          <div class="bg-navy-light/50 backdrop-blur-sm border border-gold/20 px-4 py-3 sm:py-4 rounded-lg">
+            <p class="text-cream text-sm sm:text-base font-medium">📚 Access Exclusive Resources</p>
+          </div>
+        </div>
+
+        <!-- Role Selection Buttons -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 pt-6 sm:pt-8">
+          <!-- Student Button -->
+          <a href="login.html" class="group bg-gold hover:bg-gold-light transition-all duration-300 px-8 py-4 sm:py-5 rounded-lg flex items-center justify-between gap-4 w-full sm:w-auto sm:min-w-[220px] shadow-lg hover:shadow-xl">
+            <span class="text-lg sm:text-xl font-semibold text-navy">Student</span>
+            <svg class="w-6 h-6 sm:w-8 sm:h-8 text-navy group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+            </svg>
+          </a>
+
+          <!-- School Official Button -->
+          <a href="login.html" class="group bg-cream hover:bg-white transition-all duration-300 px-8 py-4 sm:py-5 rounded-lg border-2 border-gold flex items-center justify-between gap-4 w-full sm:w-auto sm:min-w-[220px] shadow-lg hover:shadow-xl">
+            <span class="text-lg sm:text-xl font-semibold text-navy">School Official</span>
+            <svg class="w-6 h-6 sm:w-8 sm:h-8 text-navy group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+            </svg>
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20">
+    <div class="container mx-auto px-4 sm:px-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
+        
+        <!-- About Section -->
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">About UniConnect</h3>
+          <p class="text-navy/70 text-sm leading-relaxed">
+            A verified academic platform connecting students, faculty, and administrators across universities.
+          </p>
+        </div>
+
+        <!-- Quick Links -->
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Quick Links</h3>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Privacy Policy</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Terms of Service</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Contact Us</a></li>
+            <li><a href="#" class="text-navy/70 hover:text-gold transition">Help Center</a></li>
+          </ul>
+        </div>
+
+        <!-- Contact Info -->
+        <div>
+          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Get in Touch</h3>
+          <p class="text-navy/70 text-sm leading-relaxed">
+            Have questions? Reach out to our support team at<br class="hidden sm:inline">
+            <a href="mailto:support@uniconnect.edu" class="text-gold hover:text-gold-light transition break-all sm:break-normal">support@uniconnect.edu</a>
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Copyright -->
+      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-navy/20 text-center">
+        <p class="text-navy/60 text-xs sm:text-sm">&copy; 2026 UniConnect. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
