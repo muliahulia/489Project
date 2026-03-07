@@ -139,11 +139,12 @@
       <a href="communities.html">👥 Communities</a>
       <a href="courses.html">📚 Courses</a>
 
-      <div class="sidebar-label">Admininstrative</div>
+      <div class="sidebar-label">Administrative</div>
       <a href="adminDashboard.html">📊 Dashboard</a>
       <a href="reportDashboard.html" class="active">🚩 Reports</a>
       <a href="accountModeration.html">👤 Account Moderation</a>
       <a href="communityModeration.html">🏘️ Community Moderation</a>
+      <a href="schoolModeration.html">🏫 School Moderation</a>
 
       <div class="sidebar-label">Account</div>
       <a href="profile.html">👤 Profile</a>
@@ -169,26 +170,26 @@
                 <div class="report-banner">
                         <div class="account-reported">Post1</div>
                         <div class="report-reason">Innapropriate content</div>
-                        <button class="btn btn-secondary" onclick="viewReport(event)">Details</button>
+                        <button class="btn btn-secondary" onclick="window.location.href='report.html'">Details</button>
                     </div>
                     <div class="report-banner">
                         <div class="account-reported">Post</div>
                         <div class="report-reason">Spam</div>
-                        <button class="btn btn-secondary" onclick="viewReport(event)">Details</button>
+                        <button class="btn btn-secondary" onclick="window.location.href='report.html'">Details</button>
                     </div>
-                    <button class="btn btn-primary" onclick="directToSelectedTab(event)">View More</button>
+                    <button class="btn btn-primary" >View More</button>
             </div>
             <div class="card">
                 <div class="card-title">Community Reports</div>
                 <div class="report-banner">
                         <div class="account-reported">WSU</div>
                         <div class="report-reason">Too Cool</div>
-                        <button class="btn btn-secondary" onclick="viewReport(event)">Details</button>
+                        <button class="btn btn-secondary" onclick="window.location.href='report.html'">Details</button>
                     </div>
                     <div class="report-banner">
                         <div class="account-reported">LI</div>
                         <div class="report-reason">Spam</div>
-                        <button class="btn btn-secondary" onclick="viewReport(event)">Details</button>
+                        <button class="btn btn-secondary" onclick="window.location.href='report.html'">Details</button>
                     </div>
                     <button class="btn btn-primary" onclick="directToSelectedTab(event)">View More</button>
             </div>
@@ -197,12 +198,12 @@
                 <div class="report-banner">
                         <div class="account-reported">User1</div>
                         <div class="report-reason">Impersonating others</div>
-                        <button class="btn btn-secondary" onclick="viewReport(event)">Details</button>
+                        <button class="btn btn-secondary" onclick="window.location.href='report.html'">Details</button>
                     </div>
                     <div class="report-banner">
                         <div class="account-reported">User2</div>
                         <div class="report-reason">Spam</div>
-                        <button class="btn btn-secondary" onclick="viewReport(event)">Details</button>
+                        <button class="btn btn-secondary" onclick="window.location.href='report.html'">Details</button>
                     </div>
                     <button class="btn btn-primary" onclick="directToSelectedTab(event)">View More</button>
             </div>
@@ -223,22 +224,6 @@
 
     </main>
   </div>
-  <script>
-    function directToSelectedTab(e) {
-      const button = event.target;              // the button that was clicked
-      const reportId = button.dataset.report;   // get the data-report attribute
 
-      console.log("Button clicked:", reportId);
-
-      // Hide all pages first
-      document.querySelectorAll(".report-page").forEach(p => p.style.display = "none");
-
-      // Show the specific report page based on the button
-      const page = document.getElementById(reportId);
-      if (page) {
-          page.style.display = "block";
-      }
-    }
-  </script>
 </body>
 </html>

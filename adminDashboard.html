@@ -137,12 +137,12 @@
       <a href="communities.html">👥 Communities</a>
       <a href="courses.html">📚 Courses</a>
 
-      <div class="sidebar-label">Admininstrative</div>
+      <div class="sidebar-label">Administrative</div>
       <a href="adminDashboard.html" class="active">📊 Dashboard</a>
       <a href="reportDashboard.html">🚩 Reports</a>
       <a href="accountModeration.html">👤 Account Moderation</a>
       <a href="communityModeration.html">🏘️ Community Moderation</a>
-      <a href="postModeration.html">🏘️ Post Moderation</a>
+      <a href="schoolModeration.html">🏫 School Moderation</a>
 
       <div class="sidebar-label">Account</div>
       <a href="profile.html">👤 Profile</a>
@@ -168,6 +168,7 @@
             <div class="card-title">Active Users</div>
             <div class="card-content">
                 <div class="active-sessions">643 - Active Sessions</div>
+                <canvas id="chart-reports"></canvas>
                 <div></div>
             </div>
             <div></div>
@@ -175,18 +176,21 @@
           </div>
           <div class="card">
             <div class="card-title">Reports</div>
+            <div class="active-sessions">23 - Reports today</div>
             <canvas id="chart-reports"></canvas>
-            <button class="btn btn-primary" onclick="window.location.href='reportDashboard.html?id=123'">View Reports</button>
+            <button class="btn btn-primary" onclick="window.location.href='reportDashboard.html'">View Reports</button>
           </div>
           <div class="card">
             <div class="card-title">Account Moderation</div>
+            <div class="active-sessions">3 - Accounts ready for review</div>
             <canvas id="chart-account-moderation"></canvas>
-            <button class="btn btn-primary">View Accounts</button>
+            <button class="btn btn-primary" onclick="window.location.href='accountModeration.html'">View Accounts</button>
           </div>
           <div class="card">
             <div class="card-title">Community Moderation</div>
+            <div class="active-sessions">2 - Flagged communities</div>
             <canvas id="chart-community-moderation"></canvas>
-            <button class="btn btn-primary">View Communities</button>
+            <button class="btn btn-primary" onclick="window.location.href='communityModeration.html'">View Communities</button>
           </div>
         </div>
       </div>
