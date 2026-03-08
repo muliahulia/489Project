@@ -4,7 +4,7 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UniConnect — Course</title>
+  <title>UniConnect — Courses</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
   <!-- Tailwind required for footer -->
@@ -87,266 +87,99 @@
       min-width: 0;
     }
 
-    .course-column {
+    .courses-column {
       width: 100%;
-      max-width: 680px;
+      max-width: 720px;
       margin: 0 auto;
     }
 
-    /* ── Course Header ── */
-    .course-header {
+    /* ── Page title ── */
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--text-dark);
       margin-bottom: 1.5rem;
     }
 
-    .course-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      margin-bottom: 0.25rem;
+    /* ── Course Card ── */
+    .course-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1rem;
+      text-decoration: none;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .course-card:hover {
+      border-color: var(--gold);
+      box-shadow: 0 2px 10px rgba(201,168,76,0.15);
     }
 
-    .course-instructor {
-      font-size: 0.88rem;
+    /* ── Course icon circle ── */
+    .course-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 0.68rem;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      line-height: 1.3;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+    }
+
+    /* Color variants */
+    .course-avatar.v2 { background: var(--navy-mid); }
+    .course-avatar.v3 { background: var(--navy-light); }
+    .course-avatar.v4 { background: #2c4a6e; }
+    .course-avatar.v5 { background: #1e3a52; }
+    .course-avatar.v6 { background: #163044; }
+    .course-avatar.v7 { background: #0f2233; }
+
+    /* ── Course info ── */
+    .course-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      min-width: 0;
+    }
+
+    .course-name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .course-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-dark);
+    }
+
+    .course-code {
+      font-size: 0.78rem;
       color: var(--text-muted);
-      margin-bottom: 0.6rem;
+      font-family: 'DM Sans', monospace;
+    }
+
+    .course-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
     }
 
     .course-description {
-      font-size: 0.93rem;
-      color: var(--text-dark);
-      line-height: 1.65;
-    }
-
-    /* ── Members Card ── */
-    .members-card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 1rem 1.25rem;
-      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
-      margin-bottom: 2rem;
-    }
-
-    .members-label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #9aaabb;
-      margin-bottom: 0.75rem;
-    }
-
-    .members-row {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-    }
-
-    .member-avatar {
-      width: 46px; height: 46px;
-      border-radius: 50%;
-      background: var(--navy);
-      color: var(--gold);
-      font-weight: 700;
-      font-size: 0.78rem;
-      display: flex; align-items: center; justify-content: center;
-      border: 2px solid #fff;
-      flex-shrink: 0;
-      letter-spacing: 0.03em;
-    }
-
-    .member-avatar:nth-child(2) { background: var(--navy-mid); }
-    .member-avatar:nth-child(3) { background: var(--navy-light); }
-    .member-avatar:nth-child(4) { background: #2c4a6e; }
-    .member-avatar:nth-child(5) { background: #1e3a52; }
-
-    .members-overflow {
-      font-size: 0.82rem;
-      color: var(--navy);
-      font-weight: 600;
-      margin-left: 0.4rem;
-      white-space: nowrap;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      padding: 0;
-      text-decoration: none;
-    }
-    .members-overflow:hover {
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    /* ── Modal ── */
-    .modal-backdrop {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(13,27,42,0.45);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-backdrop.open { display: flex; }
-
-    .modal {
-      background: #fff;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 480px;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 8px 40px rgba(13,27,42,0.18);
-      overflow: hidden;
-      margin: 1rem;
-    }
-
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .modal-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--text-dark);
-    }
-
-    .modal-close {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      border: none;
-      background: var(--cream);
+      font-size: 0.88rem;
       color: var(--text-muted);
-      font-size: 1.1rem;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s, color 0.15s;
-    }
-    .modal-close:hover { background: var(--cream-dark); color: var(--navy); }
-
-    .modal-body {
-      overflow-y: auto;
-      padding: 0.75rem 1.5rem 1.5rem;
-    }
-
-    .modal-student {
-      display: flex;
-      align-items: center;
-      gap: 0.85rem;
-      padding: 0.6rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .modal-student:last-child { border-bottom: none; }
-
-    .modal-avatar {
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      background: var(--navy);
-      color: var(--gold);
-      font-weight: 700;
-      font-size: 0.75rem;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      letter-spacing: 0.03em;
-    }
-
-    .modal-student-name {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--text-dark);
-    }
-
-    /* ── Feed Section ── */
-    .section-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      margin-bottom: 1rem;
-    }
-
-    /* ── Post Cards ── */
-    .post-card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
-      position: relative;
-      margin-bottom: 1.25rem;
-      width: 100%;
-    }
-
-    .post-actions {
-      position: absolute;
-      top: 1.25rem;
-      right: 1.25rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .post-action-btn {
-      width: 34px; height: 34px;
-      border-radius: 8px;
-      background: var(--cream);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      font-size: 1rem;
-      color: var(--text-muted);
-      transition: background 0.15s, color 0.15s;
-    }
-    .post-action-btn:hover { background: var(--cream-dark); color: var(--navy); }
-
-    .post-author {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1.25rem;
-      padding-right: 8rem;
-    }
-
-    .post-avatar-initials {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      background: var(--navy);
-      color: var(--gold);
-      font-weight: 700;
-      font-size: 0.85rem;
-      display: flex; align-items: center; justify-content: center;
-      border: 2px solid var(--border);
-      letter-spacing: 0.03em;
-    }
-
-    .post-author-info { display: flex; flex-direction: column; gap: 0.15rem; }
-
-    .post-author-name { font-weight: 600; font-size: 1rem; color: var(--text-dark); }
-    .post-author-name a { color: var(--text-dark); text-decoration: none; }
-    .post-author-name a:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-    .post-meta { font-size: 0.8rem; color: var(--text-muted); }
-    .post-meta a { color: var(--text-muted); text-decoration: none; }
-    .post-meta a:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
-
-    .post-community { font-size: 0.8rem; color: var(--navy); font-weight: 500; }
-    .post-community a { color: var(--navy); text-decoration: none; }
-    .post-community a:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-    .post-body {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      font-size: 0.93rem;
-      color: var(--text-dark);
-      line-height: 1.6;
+      line-height: 1.55;
     }
   </style>
 </head>
@@ -360,7 +193,7 @@
       <input type="text" placeholder="Search..."/>
     </div>
     <div class="topbar-right">
-      <div class="topbar-avatar">JS</div>
+      <div class="topbar-avatar">JB</div>
     </div>
   </nav>
 
@@ -382,136 +215,105 @@
 
     <!-- Main Content -->
     <main class="main">
-      <div class="course-column">
+      <div class="courses-column">
 
-        <!-- Course Header -->
-        <div class="course-header">
-          <h1 class="course-title">Software Engineering</h1>
-          <p class="course-instructor">Taught by Dr. Marcus Henderson</p>
-          <p class="course-description">
-            An introduction to the principles and practices of software engineering, covering the full software development lifecycle. Topics include requirements gathering, system design, agile methodologies, version control, testing strategies, and deployment. Students will work in teams to design and build a real-world software project from inception to delivery.
-          </p>
-        </div>
+        <h1 class="page-title">Courses at WSU</h1>
 
-        <!-- Members Card -->
-        <div class="members-card">
-          <div class="members-label">In Course</div>
-          <div class="members-row">
-            <div class="member-avatar">JB</div>
-            <div class="member-avatar">JS</div>
-            <div class="member-avatar">LGR</div>
-            <div class="member-avatar">AM</div>
-            <div class="member-avatar">TR</div>
-            <button class="members-overflow" onclick="document.getElementById('studentsModal').classList.add('open')">… and 38 others.</button>
-          </div>
-        </div>
-
-        <!-- Course Feed -->
-        <h2 class="section-title">Feed</h2>
-
-        <!-- Post 1 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">JB</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="#">Jaden Bryant</a></span>
-              <span class="post-meta"><a href="post.html">March 6, 2026 at 9:14 AM</a></span>
-              <span class="post-community"><a href="#">Software Engineering</a></span>
+        <!-- 1 -->
+        <a href="course.html" class="course-card">
+          <div class="course-avatar">CPT_S<br>489</div>
+          <div class="course-info">
+            <div class="course-name-row">
+              <span class="course-name">Software Engineering</span>
+              <span class="course-code">CPT_S 489</span>
             </div>
+            <span class="course-meta">Dr. Marcus Henderson · 43 students · Spring 2026</span>
+            <p class="course-description">Covers the software development lifecycle, requirements engineering, design patterns, testing strategies, and team-based project management using modern tools and agile methodologies.</p>
           </div>
-          <div class="post-body">
-            <p>Does anyone have notes from Tuesday's lecture on REST API design? I had to leave early and missed the last 20 minutes.</p>
-            <p>Specifically looking for the part where Dr. Henderson talked about versioning strategies — I think it was either URI-based or header-based but I'm not sure which he recommended.</p>
-            <p>Would really appreciate it, midterm is next week and I want to make sure I have everything covered!</p>
-          </div>
-        </div>
+        </a>
 
-        <!-- Post 2 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">JS</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="#">Julia Smith</a></span>
-              <span class="post-meta"><a href="post.html">March 5, 2026 at 4:02 PM</a></span>
-              <span class="post-community"><a href="#">Software Engineering</a></span>
+        <!-- 2 -->
+        <a href="course.html" class="course-card">
+          <div class="course-avatar v2">CPT_S<br>451</div>
+          <div class="course-info">
+            <div class="course-name-row">
+              <span class="course-name">Database Systems</span>
+              <span class="course-code">CPT_S 451</span>
             </div>
+            <span class="course-meta">Dr. Priya Sharma · 38 students · Spring 2026</span>
+            <p class="course-description">An in-depth study of relational database design, SQL, query optimization, transaction management, normalization, and an introduction to NoSQL and distributed data systems.</p>
           </div>
-          <div class="post-body">
-            <p>Our team just finished the requirements document for the project — posting it here in case it helps anyone who's still working on theirs.</p>
-            <p>We ended up using user stories with acceptance criteria rather than formal use-case diagrams. Dr. Henderson seemed to prefer that format based on his feedback last semester.</p>
-            <p>Happy to answer questions if anyone wants to compare notes before the submission deadline on Friday.</p>
-          </div>
-        </div>
+        </a>
 
-      </div><!-- /.course-column -->
+        <!-- 3 -->
+        <a href="course.html" class="course-card">
+          <div class="course-avatar v3">CPT_S<br>350</div>
+          <div class="course-info">
+            <div class="course-name-row">
+              <span class="course-name">Systems Programming</span>
+              <span class="course-code">CPT_S 350</span>
+            </div>
+            <span class="course-meta">Dr. Alan Torres · 51 students · Spring 2026</span>
+            <p class="course-description">Explores low-level programming in C and C++, memory management, process control, file systems, inter-process communication, and operating system interfaces.</p>
+          </div>
+        </a>
+
+        <!-- 4 -->
+        <a href="course.html" class="course-card">
+          <div class="course-avatar v4">MATH<br>315</div>
+          <div class="course-info">
+            <div class="course-name-row">
+              <span class="course-name">Discrete Mathematics</span>
+              <span class="course-code">MATH 315</span>
+            </div>
+            <span class="course-meta">Dr. Linda Kowalski · 60 students · Spring 2026</span>
+            <p class="course-description">Covers logic, set theory, combinatorics, graph theory, proof techniques, and their applications in computer science including algorithm analysis and cryptography.</p>
+          </div>
+        </a>
+
+        <!-- 5 -->
+        <a href="course.html" class="course-card">
+          <div class="course-avatar v5">CPT_S<br>223</div>
+          <div class="course-info">
+            <div class="course-name-row">
+              <span class="course-name">Data Structures &amp; Algorithms</span>
+              <span class="course-code">CPT_S 223</span>
+            </div>
+            <span class="course-meta">Dr. James O'Brien · 72 students · Fall 2025</span>
+            <p class="course-description">Fundamental data structures including trees, graphs, hash tables, and heaps, paired with algorithm design paradigms such as divide and conquer, dynamic programming, and greedy methods.</p>
+          </div>
+        </a>
+
+        <!-- 6 -->
+        <a href="course.html" class="course-card">
+          <div class="course-avatar v6">CPT_S<br>427</div>
+          <div class="course-info">
+            <div class="course-name-row">
+              <span class="course-name">Machine Learning</span>
+              <span class="course-code">CPT_S 427</span>
+            </div>
+            <span class="course-meta">Dr. Nadia Patel · 44 students · Fall 2025</span>
+            <p class="course-description">Introduction to supervised and unsupervised learning, neural networks, model evaluation, regularization, and practical implementation using Python-based ML frameworks.</p>
+          </div>
+        </a>
+
+        <!-- 7 -->
+        <a href="course.html" class="course-card">
+          <div class="course-avatar v7">CPT_S<br>101</div>
+          <div class="course-info">
+            <div class="course-name-row">
+              <span class="course-name">Intro to Programming</span>
+              <span class="course-code">CPT_S 101</span>
+            </div>
+            <span class="course-meta">Dr. Sara Nguyen · 98 students · Fall 2023</span>
+            <p class="course-description">Foundational programming concepts using Python including variables, control flow, functions, file I/O, and basic object-oriented principles. Designed for students with no prior coding experience.</p>
+          </div>
+        </a>
+
+      </div><!-- /.courses-column -->
     </main>
 
   </div><!-- /.layout -->
-
-  <!-- Students Modal -->
-  <div class="modal-backdrop" id="studentsModal" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">All Students — Software Engineering</span>
-        <button class="modal-close" onclick="document.getElementById('studentsModal').classList.remove('open')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="modal-student"><div class="modal-avatar">JB</div><span class="modal-student-name">Jaden Bryant</span></div>
-        <div class="modal-student"><div class="modal-avatar">JS</div><span class="modal-student-name">Julia Smith</span></div>
-        <div class="modal-student"><div class="modal-avatar">LGR</div><span class="modal-student-name">Luis Garcia Rangel</span></div>
-        <div class="modal-student"><div class="modal-avatar">AM</div><span class="modal-student-name">Aisha Mohammed</span></div>
-        <div class="modal-student"><div class="modal-avatar">TR</div><span class="modal-student-name">Tyler Rhodes</span></div>
-        <div class="modal-student"><div class="modal-avatar">KP</div><span class="modal-student-name">Keiko Park</span></div>
-        <div class="modal-student"><div class="modal-avatar">DN</div><span class="modal-student-name">Diego Navarro</span></div>
-        <div class="modal-student"><div class="modal-avatar">SC</div><span class="modal-student-name">Sophia Chen</span></div>
-        <div class="modal-student"><div class="modal-avatar">MO</div><span class="modal-student-name">Marcus Okafor</span></div>
-        <div class="modal-student"><div class="modal-avatar">RV</div><span class="modal-student-name">Rachel Vasquez</span></div>
-        <div class="modal-student"><div class="modal-avatar">BK</div><span class="modal-student-name">Ben Kim</span></div>
-        <div class="modal-student"><div class="modal-avatar">NW</div><span class="modal-student-name">Naomi Watts</span></div>
-        <div class="modal-student"><div class="modal-avatar">PL</div><span class="modal-student-name">Patrick Lin</span></div>
-        <div class="modal-student"><div class="modal-avatar">FO</div><span class="modal-student-name">Fatima Ouedraogo</span></div>
-        <div class="modal-student"><div class="modal-avatar">CH</div><span class="modal-student-name">Caleb Harris</span></div>
-        <div class="modal-student"><div class="modal-avatar">IM</div><span class="modal-student-name">Ingrid Müller</span></div>
-        <div class="modal-student"><div class="modal-avatar">JT</div><span class="modal-student-name">James Torres</span></div>
-        <div class="modal-student"><div class="modal-avatar">AB</div><span class="modal-student-name">Amara Bello</span></div>
-        <div class="modal-student"><div class="modal-avatar">OZ</div><span class="modal-student-name">Olivia Zhang</span></div>
-        <div class="modal-student"><div class="modal-avatar">SR</div><span class="modal-student-name">Samuel Rivera</span></div>
-        <div class="modal-student"><div class="modal-avatar">HN</div><span class="modal-student-name">Hannah Nguyen</span></div>
-        <div class="modal-student"><div class="modal-avatar">EF</div><span class="modal-student-name">Ethan Foster</span></div>
-        <div class="modal-student"><div class="modal-avatar">MP</div><span class="modal-student-name">Mia Patel</span></div>
-        <div class="modal-student"><div class="modal-avatar">AW</div><span class="modal-student-name">Aaron Williams</span></div>
-        <div class="modal-student"><div class="modal-avatar">LC</div><span class="modal-student-name">Layla Carter</span></div>
-        <div class="modal-student"><div class="modal-avatar">DM</div><span class="modal-student-name">David Mensah</span></div>
-        <div class="modal-student"><div class="modal-avatar">ZA</div><span class="modal-student-name">Zainab Al-Farsi</span></div>
-        <div class="modal-student"><div class="modal-avatar">CJ</div><span class="modal-student-name">Carlos Jiménez</span></div>
-        <div class="modal-student"><div class="modal-avatar">VS</div><span class="modal-student-name">Vera Sokolova</span></div>
-        <div class="modal-student"><div class="modal-avatar">TG</div><span class="modal-student-name">Thomas Grant</span></div>
-        <div class="modal-student"><div class="modal-avatar">RN</div><span class="modal-student-name">Riya Nair</span></div>
-        <div class="modal-student"><div class="modal-avatar">JM</div><span class="modal-student-name">Jordan Mills</span></div>
-        <div class="modal-student"><div class="modal-avatar">YW</div><span class="modal-student-name">Yuki Watanabe</span></div>
-        <div class="modal-student"><div class="modal-avatar">CB</div><span class="modal-student-name">Charlotte Brooks</span></div>
-        <div class="modal-student"><div class="modal-avatar">IA</div><span class="modal-student-name">Ibrahim Adeyemi</span></div>
-        <div class="modal-student"><div class="modal-avatar">PK</div><span class="modal-student-name">Priya Kumar</span></div>
-        <div class="modal-student"><div class="modal-avatar">NO</div><span class="modal-student-name">Nico Oliveira</span></div>
-        <div class="modal-student"><div class="modal-avatar">EL</div><span class="modal-student-name">Elena Larsson</span></div>
-        <div class="modal-student"><div class="modal-avatar">KD</div><span class="modal-student-name">Kofi Danso</span></div>
-        <div class="modal-student"><div class="modal-avatar">MW</div><span class="modal-student-name">Maya Wilson</span></div>
-        <div class="modal-student"><div class="modal-avatar">AT</div><span class="modal-student-name">Alex Thompson</span></div>
-        <div class="modal-student"><div class="modal-avatar">SB</div><span class="modal-student-name">Sara Bergström</span></div>
-        <div class="modal-student"><div class="modal-avatar">OM</div><span class="modal-student-name">Omar Malik</span></div>
-      </div>
-    </div>
-  </div>
 
   <!-- Footer -->
   <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20" style="margin-left: var(--sidebar-w);">
