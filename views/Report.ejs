@@ -10,12 +10,6 @@
 /* Topbar / Sidebar */
 
 .layout { display:flex; padding-top:var(--topbar-h); min-height:100vh;}
-.sidebar { position:fixed; top:var(--topbar-h); left:0; bottom:0; width:var(--sidebar-w); background:#fff; border-right:1px solid var(--border); padding:1.5rem 0; overflow-y:auto; z-index:90; }
-.sidebar-label { font-size:0.68rem; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:#9aaabb; padding:0.5rem 1.25rem; margin-top:0.75rem;}
-.sidebar a { display:flex; align-items:center; gap:0.75rem; padding:0.6rem 1.25rem; font-size:0.88rem; color:var(--text-muted); border-left:3px solid transparent; transition: all 0.15s; }
-.sidebar a:hover { background:var(--cream); color:var(--text-dark);}
-.sidebar a.active { background: rgba(201,168,76,0.1); color: var(--navy); font-weight:600; border-left-color: var(--gold); }
-
 .main { flex:1; margin-left:var(--sidebar-w); padding:2rem; max-width:1100px; }
 .card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:1.75rem; box-shadow:0 1px 4px rgba(13,27,42,0.07); margin-bottom:1.25rem; }
 .card-title { font-family:'Playfair Display', serif; font-size:1.1rem; font-weight:700; margin-bottom:1.25rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border); }
@@ -38,25 +32,7 @@ textarea { min-height:80px; resize:vertical; }
 <div class="layout">
 
   <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sidebar-label">Main</div>
-    <a href="dashboard.html">🏠 Home</a>
-    <a href="feed.html">📰 Feed</a>
-    <a href="communities.html">👥 Communities</a>
-    <a href="courses.html">📚 Courses</a>
-
-    <div class="sidebar-label">Administrative</div>
-    <a href="adminDashboard.html">📊 Dashboard</a>
-    <a href="reportDashboard.html" class="active">🚩 Reports</a>
-    <a href="accountModeration.html">👤 Account Moderation</a>
-    <a href="communityModeration.html">🏘️ Community Moderation</a>
-    <a href="schoolModeration.html">🏫 School Moderation</a>
-
-    <div class="sidebar-label">Account</div>
-    <a href="profile.html">👤 Profile</a>
-    <a href="settings.html">⚙️ Settings</a>
-    <a href="login.html">🚪 Log Out</a>
-  </aside>
+  <%- include('sidebar', { activePage: 'reportDashboard', showAdministrative: true }) %>
 
   <!-- MAIN -->
   <main class="main">
