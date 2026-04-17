@@ -1,0 +1,22 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./views/**/*.ejs'],
+  theme: {
+    extend: {
+      colors: {
+        navy: '#0d1b2a',
+        'navy-mid': '#1a2e45',
+        'navy-light': '#243b55',
+        gold: '#c9a84c',
+        'gold-light': '#e8c97a',
+        cream: '#f5f0e8',
+        'cream-dark': '#ede5d6',
+      },
+      fontFamily: {
+        serif: ['Playfair Display', 'serif'],
+        sans: ['DM Sans', 'sans-serif'],
+      },
+    },
+  },
+  plugins: [],
+};

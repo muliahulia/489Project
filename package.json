@@ -3,7 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "build:tailwind": "tailwindcss -c ./tailwind.config.js -i ./styles/tailwind.css -o ./public/stylesheets/tailwind.css --minify",
+    "watch:tailwind": "tailwindcss -c ./tailwind.config.js -i ./styles/tailwind.css -o ./public/stylesheets/tailwind.css --watch",
+    "prestart": "npm run build:tailwind",
     "start": "node ./bin/www"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
