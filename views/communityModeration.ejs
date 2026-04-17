@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Account Moderation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    /* Page-specific styles — same as Settings page */
+
+    .layout { display: flex; padding-top: var(--topbar-h); min-height: 100vh; }
+    .main { flex: 1; margin-left: var(--sidebar-w); padding: 2rem; max-width: 1100px; }
+    .page-header { margin-bottom: 1.75rem; }
+    .page-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
+    .page-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    /* Account moderation styles — matching Settings page cards/toggles */
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; box-shadow: 0 1px 4px rgba(13,27,42,0.07); margin-bottom: 1.25rem; }
+    .card-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+
+    .user-list { max-height: 300px; overflow-y: auto; margin-bottom: 1rem; }
+    .user-item { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .user-item:last-child { border-bottom: none; }
+    .user-item.active {
+        background: rgba(201,168,76,0.15);
+        border-left: 3px solid var(--gold);
+        font-weight: 600;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
+    .btn-primary { background: var(--gold); color: var(--navy); padding: 0.6rem 1.4rem; border-radius: 8px; font-size: 0.88rem; cursor: pointer; border: none; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-secondary { background: var(--cream); color: var(--text-dark); padding: 0.55rem 1.25rem; border-radius: 8px; font-size: 0.85rem; border: none; cursor: pointer; }
+    .btn-danger { background: var(--error); color: #fff; padding: 0.55rem 1.25rem; border-radius: 8px; font-size: 0.85rem; border: none; cursor: pointer; }
+
+    input, select { width: 100%; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--border); font-family: 'DM Sans', sans-serif; margin-top: 0.25rem; }
+    main { animation: slideIn 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
+  </style>
+</head>
+<body>
+
+  <%- include('header', { initials: 'JB' }) %>
+
+  <div class="layout">
+
+    <%- include('sidebar', { activePage: 'communityModeration', showAdministrative: true }) %>
+
+    <!-- MAIN content area -->
+    <main class="main">
+
+      <div class="page-header">
+        <h1 class="page-title">Community Moderation</h1>
+        <p class="page-subtitle">Search for communities and manage posts or settings.</p>
+        </div>
+
+        <!-- COMMUNITY LIST -->
+        <div class="card">
+        <div class="card-title">Communities</div>
+        <div class="community-list" id="communityList"></div>
+        </div>
+
+        <!-- COMMUNITY DETAILS -->
+        <div class="card" id="communityFormCard" style="display:none;">
+        <div class="card-title">Community Details</div>
+
+        <div class="form-row">
+            <div>
+            <label>Community Name</label>
+            <input type="text" id="communityName">
+            </div>
+
+            <div>
+            <label>School</label>
+            <input type="text" id="communitySchool">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+            <label>Creator</label>
+            <input type="text" id="communityCreator">
+            </div>
+
+            <div>
+            <label>Status</label>
+            <select id="communityStatus">
+                <option value="active">Active</option>
+                <option value="restricted">Restricted</option>
+                <option value="deleted">Deleted</option>
+            </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn-secondary" onclick="cancelEdit()">Cancel</button>
+            <button class="btn-primary" onclick="saveCommunity()">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- COMMUNITY POSTS -->
+    <div class="card" id="communityPostsCard" style="display:none;">
+    <div class="card-title">Community Posts</div>
+    <div class="post-list" id="postList"></div>
+    </div>
+
+    </main>
+  </div>
+
+    <script>
+        const communities = [
+        {
+            id: 1,
+            name: "Computer Science Club",
+            school: "Washington State University",
+            creator: "John Doe",
+            status: "active",
+            posts: [
+            { id: 1, title: "Weekly Meeting", author: "Alice", flagged: false },
+            { id: 2, title: "Hackathon Signups", author: "Bob", flagged: true }
+            ]
+        },
+        {
+            id: 2,
+            name: "Engineering Study Group",
+            school: "University of Washington",
+            creator: "Jane Smith",
+            status: "active",
+            posts: [
+            { id: 3, title: "Statics Help", author: "Mike", flagged: false }
+            ]
+        }
+        ];
+
+        const communityListEl = document.getElementById("communityList");
+        const communityFormCard = document.getElementById("communityFormCard");
+        const communityPostsCard = document.getElementById("communityPostsCard");
+
+        let selectedCommunity = null;
+
+
+        /* Render list of communities */
+        function renderCommunities(list) {
+        communityListEl.innerHTML = "";
+
+        list.forEach(c => {
+            const div = document.createElement("div");
+            div.className = "user-item";
+            div.textContent = `${c.name} (${c.school})`;
+
+            div.onclick = () => selectCommunity(c);
+
+            if (selectedCommunity && selectedCommunity.id === c.id) {
+            div.classList.add("active");
+            }
+
+            communityListEl.appendChild(div);
+        });
+        }
+
+
+        /* Filter communities using search bar */
+        function filterUsers() {
+        const q = document.getElementById("searchUsers").value.toLowerCase();
+
+        const filtered = communities.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.school.toLowerCase().includes(q)
+        );
+
+        renderCommunities(filtered);
+        }
+
+
+        /* Select community and load its data */
+        function selectCommunity(community) {
+
+        selectedCommunity = community;
+
+        renderCommunities(communities);
+
+        communityFormCard.style.display = "block";
+        communityPostsCard.style.display = "block";
+
+        document.getElementById("communityName").value = community.name;
+        document.getElementById("communitySchool").value = community.school;
+        document.getElementById("communityCreator").value = community.creator;
+        document.getElementById("communityStatus").value = community.status;
+
+        renderPosts(community.posts);
+        }
+
+
+        /* Render posts inside the selected community */
+        function renderPosts(posts) {
+
+        const postList = document.getElementById("postList");
+        postList.innerHTML = "";
+
+        posts.forEach(p => {
+
+            const div = document.createElement("div");
+            div.className = "user-item";
+
+            div.innerHTML = `
+            <span>${p.title} - ${p.author} ${p.flagged ? "⚠️" : ""}</span>
+            <button class="btn-danger" onclick="deletePost(${p.id})">Delete</button>
+            `;
+
+            postList.appendChild(div);
+        });
+        }
+
+
+        /* Save community changes */
+        function saveCommunity() {
+
+        if (!selectedCommunity) return;
+
+        selectedCommunity.name = document.getElementById("communityName").value;
+        selectedCommunity.school = document.getElementById("communitySchool").value;
+        selectedCommunity.creator = document.getElementById("communityCreator").value;
+        selectedCommunity.status = document.getElementById("communityStatus").value;
+
+        renderCommunities(communities);
+        }
+
+
+        /* Cancel editing */
+        function cancelEdit() {
+        selectedCommunity = null;
+        communityFormCard.style.display = "none";
+        communityPostsCard.style.display = "none";
+        }
+
+
+        /* Delete a post */
+        function deletePost(id) {
+
+        if (!selectedCommunity) return;
+
+        selectedCommunity.posts = selectedCommunity.posts.filter(p => p.id !== id);
+
+        renderPosts(selectedCommunity.posts);
+        }
+
+
+        renderCommunities(communities);
+        </script>
+
+</body>
+</html>

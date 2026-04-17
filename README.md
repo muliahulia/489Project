@@ -1,17 +1,32 @@
-# 489Project
+# Description
+This web application is designed to help students build connections and access academic resources to improve their success. After registering and verifying their university affiliation, users can interact with content, create posts, follow other users, and participate in communities. 
 
-Color theme is in code
+The system also includes administrative and institutional roles to ensure content quality, enforce policies, and provide official academic resources. 
 
-   --navy:       #0d1b2a;
-      --navy-mid:   #1a2e45;
-      --gold:       #c9a84c;
-      --gold-light: #e8c97a;
-      --cream:      #f5f0e8;
-      --cream-dark: #ede5d6;
-      --border:     #e2d9cc;
-      --text-dark:  #0d1b2a;
-      --text-muted: #5a6a7a;
-      --error:      #c0392b;
-      --success:    #1e7e5c;
-      --sidebar-w:  220px;
-      --topbar-h:   60px;
+# Core Features 
+
+User authentication and account management  
+
+University affiliation verification  
+
+Content creation (posts, comments, reactions)  
+
+Social features (follow users, view profiles)  
+
+Community creation and management  
+
+Course enrollment and management  
+
+Administrative moderation tools  
+
+Reporting and analytics 
+
+# Technology Stack 
+
+Frontend: Html 
+
+Backend: Javascript 
+
+Database: Firebase 
+
+Other Tools: Vscode 

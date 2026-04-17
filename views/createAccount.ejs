@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>UniConnect — Forgot Password</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
   <style>
     /* Page-specific styles */
     body {
@@ -161,8 +161,8 @@
     const password = document.getElementById("password").value;
     const confirmPassword = document.getElementById("cpassword").value;
     const sentEmail = document.getElementById("sent-email");
-    var errorBanner = document.getElementById("error-banner");
-    var errorMessage = document.getElementById("error-msg");
+    let errorBanner = document.getElementById("error-banner");
+    let errorMessage = document.getElementById("error-msg");
 
     const ul = document.createElement("ul");
     ul.style.paddingLeft = "20px";

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UniConnect — Report Moderation</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/stylesheets/style.css"/>
+<style>
+/* Topbar / Sidebar */
+
+.layout { display:flex; padding-top:var(--topbar-h); min-height:100vh;}
+.main { flex:1; margin-left:var(--sidebar-w); padding:2rem; max-width:1100px; }
+.card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:1.75rem; box-shadow:0 1px 4px rgba(13,27,42,0.07); margin-bottom:1.25rem; }
+.card-title { font-family:'Playfair Display', serif; font-size:1.1rem; font-weight:700; margin-bottom:1.25rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border); }
+
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.5rem;}
+.form-actions { display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;}
+.btn-primary { background:var(--gold); color:var(--navy); padding:0.6rem 1.4rem; border-radius:8px; font-size:0.88rem; cursor:pointer; border:none;}
+.btn-primary:hover { opacity:0.9; }
+.btn-secondary { background:var(--cream); color:var(--text-dark); padding:0.55rem 1.25rem; border-radius:8px; font-size:0.85rem; border:none; cursor:pointer; }
+.btn-danger { background:var(--error); color:#fff; padding:0.55rem 1.25rem; border-radius:8px; font-size:0.85rem; border:none; cursor:pointer; }
+
+input, select, textarea { width:100%; padding:0.55rem 0.75rem; border-radius:8px; border:1px solid var(--border); font-family:'DM Sans',sans-serif; margin-top:0.25rem;}
+textarea { min-height:80px; resize:vertical; }
+</style>
+</head>
+<body>
+
+<%- include('header', { initials: 'JS' }) %>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <%- include('sidebar', { activePage: 'reportDashboard', showAdministrative: true }) %>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="card" id="reportDetailCard">
+      <div class="card-title">
+        <span class="cancel-btn" onclick="cancelEdit()">Cancel</span>
+        Report Details
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label>Reported User</label>
+          <input type="text" id="reportedUser" disabled>
+        </div>
+        <div>
+          <label>Reporter</label>
+          <input type="text" id="reporter" disabled>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label>Reason</label>
+          <input type="text" id="reason" disabled>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="status">
+            <option value="Pending Review">Pending Review</option>
+            <option value="Reviewed">Reviewed</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div style="grid-column: span 2;">
+          <label>Details</label>
+          <textarea id="details"></textarea>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div style="grid-column: span 2;">
+          <label>Original Message</label>
+          <textarea id="originalMessage" disabled></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary" onclick="saveReport()">Save</button>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+  // Dummy report data
+  const report = {
+    reportedUser: "Michael Johnson",
+    reporter: "Sarah Lee",
+    reason: "Inappropriate Content",
+    status: "Pending Review",
+    details: "The user posted offensive material in the community forum on 3/4/2026. Requires admin review and potential action.",
+    originalMessage: "Hey everyone, check out this controversial post that sparked the report..."
+  };
+
+  // Populate form fields
+  function populateForm() {
+    document.getElementById('reportedUser').value = report.reportedUser;
+    document.getElementById('reporter').value = report.reporter;
+    document.getElementById('reason').value = report.reason;
+    document.getElementById('status').value = report.status;
+    document.getElementById('details').value = report.details;
+    document.getElementById('originalMessage').value = report.originalMessage;
+  }
+
+  populateForm(); // initial load
+
+  // Save editable fields
+  function saveReport() {
+    report.status = document.getElementById('status').value;
+    report.details = document.getElementById('details').value;
+    console.log("Updated Report:", report);
+  }
+
+  // Cancel edits and return
+  function cancelEdit() {
+    populateForm(); // reset editable fields
+    window.history.back();
+  }
+</script>
+
+</body>
+</html>

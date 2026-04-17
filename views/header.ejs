@@ -1,0 +1,21 @@
+<%
+  const headerSearchPlaceholder = typeof searchPlaceholder !== 'undefined' ? searchPlaceholder : 'Search...';
+  const headerSearchId = typeof searchId !== 'undefined' ? searchId : '';
+  const headerSearchOnInput = typeof searchOnInput !== 'undefined' ? searchOnInput : '';
+  const headerInitials = typeof initials !== 'undefined' ? initials : 'JS';
+%>
+<nav class="topbar">
+  <div class="topbar-brand">UniConnect</div>
+  <div class="topbar-search">
+    <span>🔍</span>
+    <input
+      type="text"
+      placeholder="<%= headerSearchPlaceholder %>"
+      <% if (headerSearchId) { %>id="<%= headerSearchId %>"<% } %>
+      <% if (headerSearchOnInput) { %>oninput="<%= headerSearchOnInput %>"<% } %>
+    />
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-avatar"><%= headerInitials %></div>
+  </div>
+</nav>

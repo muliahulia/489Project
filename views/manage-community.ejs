@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>UniConnect — Manage Community</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -31,33 +31,6 @@
   </script>
   <style>
     /* ── Topbar ── */
-    .topbar {
-      position: fixed; top: 0; left: 0; right: 0;
-      height: var(--topbar-h);
-      background: var(--navy);
-      border-bottom: 2px solid var(--gold);
-      display: flex; align-items: center;
-      padding: 0 1.5rem; gap: 1rem; z-index: 100;
-    }
-    .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--gold); }
-    .topbar-search { flex: 1; max-width: 380px; margin-left: 1.5rem; position: relative; }
-    .topbar-search input {
-      width: 100%; padding: 0.4rem 1rem 0.4rem 2.2rem;
-      border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.07); color: #fff;
-      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
-    }
-    .topbar-search input::placeholder { color: rgba(255,255,255,0.35); }
-    .topbar-search input:focus { border-color: var(--gold); }
-    .topbar-search span { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: rgba(255,255,255,0.4); }
-    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
-    .topbar-avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: var(--gold); color: var(--navy);
-      font-weight: 700; font-size: 0.8rem;
-      display: flex; align-items: center; justify-content: center;
-      border: 2px solid rgba(201,168,76,0.4); cursor: pointer;
-    }
 
     /* ── Layout ── */
     .layout {
@@ -66,17 +39,6 @@
       min-height: 100vh;
     }
 
-    /* ── Left Sidebar ── */
-    .sidebar {
-      position: fixed; top: var(--topbar-h); left: 0; bottom: 0;
-      width: var(--sidebar-w);
-      background: #fff; border-right: 1px solid var(--border);
-      padding: 1.5rem 0; overflow-y: auto; z-index: 90;
-    }
-    .sidebar-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #9aaabb; padding: 0.5rem 1.25rem; margin-top: 0.75rem; }
-    .sidebar a { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1.25rem; font-size: 0.88rem; color: var(--text-muted); border-left: 3px solid transparent; transition: all 0.15s; }
-    .sidebar a:hover { background: var(--cream); color: var(--text-dark); }
-    .sidebar a.active { background: rgba(201,168,76,0.1); color: var(--navy); font-weight: 600; border-left-color: var(--gold); }
 
     /* ── Main ── */
     .main {
@@ -526,33 +488,12 @@
 </head>
 <body>
 
-  <!-- TOPBAR -->
-  <nav class="topbar">
-    <div class="topbar-brand">UniConnect</div>
-    <div class="topbar-search">
-      <span>🔍</span>
-      <input type="text" placeholder="Search..."/>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-avatar">JB</div>
-    </div>
-  </nav>
+  <%- include('header', { initials: 'JB' }) %>
 
   <div class="layout">
 
     <!-- Left Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-label">Main</div>
-      <a href="dashboard.html">🏠 Home</a>
-      <a href="feed.html">📰 Feed</a>
-      <a href="communities.html" class="active">👥 Communities</a>
-      <a href="courses.html">📚 Courses</a>
-
-      <div class="sidebar-label">Account</div>
-      <a href="profile.html">👤 Profile</a>
-      <a href="settings.html">⚙️ Settings</a>
-      <a href="login.html">🚪 Log Out</a>
-    </aside>
+    <%- include('sidebar', { activePage: 'communities' }) %>
 
     <!-- Main Content -->
     <main class="main">
@@ -721,42 +662,7 @@
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20" style="margin-left: var(--sidebar-w);">
-    <div class="container mx-auto px-4 sm:px-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
-
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">About UniConnect</h3>
-          <p class="text-navy/70 text-sm leading-relaxed">
-            A verified academic platform connecting students, faculty, and administrators across universities.
-          </p>
-        </div>
-
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Quick Links</h3>
-          <ul class="space-y-2 text-sm">
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Privacy Policy</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Terms of Service</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Contact Us</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Help Center</a></li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Get in Touch</h3>
-          <p class="text-navy/70 text-sm leading-relaxed">
-            Have questions? Reach out to our support team at<br class="hidden sm:inline">
-            <a href="mailto:support@uniconnect.edu" class="text-gold hover:text-gold-light transition break-all sm:break-normal">support@uniconnect.edu</a>
-          </p>
-        </div>
-
-      </div>
-      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-navy/20 text-center">
-        <p class="text-navy/60 text-xs sm:text-sm">&copy; 2026 UniConnect. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+  <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
 
   <script>
     /* ── Pre-filled counter init ── */

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Page Name</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    /* Page-specific styles */
+
+    /*THis is the top part for the header*/
+
+    /*  */
+    .layout { display: flex; padding-top: var(--topbar-h); min-height: 100vh; }
+
+    /*  */
+
+    /*  */
+    .main { flex: 1; margin-left: var(--sidebar-w); padding: 2rem; max-width: 1100px; }
+    .page-header { margin-bottom: 1.75rem; }
+    .page-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
+    .page-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    /* buttons*/
+
+    
+    
+  </style>
+</head>
+<body>
+
+
+
+  <%- include('header', { initials: 'JB' }) %>
+
+  <div class="layout">
+
+    
+    <%- include('sidebar') %>
+
+
+    <!--Main content area — change per page --> 
+    <main class="main">
+
+      <div class="page-header">
+        <h1 class="page-title">Page Title</h1>
+        <p class="page-subtitle">Short description of this page.</p>
+      </div>
+
+    </main>
+  </div>
+
+</body>
+</html>

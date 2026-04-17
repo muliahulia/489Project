@@ -4,9 +4,9 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UniConnect — Course</title>
+  <title>UniConnect — Community</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
   <!-- Tailwind required for footer -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -32,33 +32,6 @@
   </script>
   <style>
     /* ── Topbar ── */
-    .topbar {
-      position: fixed; top: 0; left: 0; right: 0;
-      height: var(--topbar-h);
-      background: var(--navy);
-      border-bottom: 2px solid var(--gold);
-      display: flex; align-items: center;
-      padding: 0 1.5rem; gap: 1rem; z-index: 100;
-    }
-    .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--gold); }
-    .topbar-search { flex: 1; max-width: 380px; margin-left: 1.5rem; position: relative; }
-    .topbar-search input {
-      width: 100%; padding: 0.4rem 1rem 0.4rem 2.2rem;
-      border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.07); color: #fff;
-      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
-    }
-    .topbar-search input::placeholder { color: rgba(255,255,255,0.35); }
-    .topbar-search input:focus { border-color: var(--gold); }
-    .topbar-search span { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: rgba(255,255,255,0.4); }
-    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
-    .topbar-avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: var(--gold); color: var(--navy);
-      font-weight: 700; font-size: 0.8rem;
-      display: flex; align-items: center; justify-content: center;
-      border: 2px solid rgba(201,168,76,0.4); cursor: pointer;
-    }
 
     /* ── Layout ── */
     .layout {
@@ -67,17 +40,6 @@
       min-height: 100vh;
     }
 
-    /* ── Left Sidebar ── */
-    .sidebar {
-      position: fixed; top: var(--topbar-h); left: 0; bottom: 0;
-      width: var(--sidebar-w);
-      background: #fff; border-right: 1px solid var(--border);
-      padding: 1.5rem 0; overflow-y: auto; z-index: 90;
-    }
-    .sidebar-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #9aaabb; padding: 0.5rem 1.25rem; margin-top: 0.75rem; }
-    .sidebar a { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1.25rem; font-size: 0.88rem; color: var(--text-muted); border-left: 3px solid transparent; transition: all 0.15s; }
-    .sidebar a:hover { background: var(--cream); color: var(--text-dark); }
-    .sidebar a.active { background: rgba(201,168,76,0.1); color: var(--navy); font-weight: 600; border-left-color: var(--gold); }
 
     /* ── Main ── */
     .main {
@@ -93,7 +55,7 @@
       margin: 0 auto;
     }
 
-    /* ── Course Header ── */
+    /* ── Community Header ── */
     .course-header {
       margin-bottom: 1.5rem;
     }
@@ -352,61 +314,40 @@
 </head>
 <body>
 
-  <!-- TOPBAR -->
-  <nav class="topbar">
-    <div class="topbar-brand">UniConnect</div>
-    <div class="topbar-search">
-      <span>🔍</span>
-      <input type="text" placeholder="Search..."/>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-avatar">JS</div>
-    </div>
-  </nav>
+  <%- include('header', { initials: 'LG' }) %>
 
   <div class="layout">
 
     <!-- Left Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-label">Main</div>
-      <a href="dashboard.html">🏠 Home</a>
-      <a href="feed.html">📰 Feed</a>
-      <a href="communities.html">👥 Communities</a>
-      <a href="courses.html" class="active">📚 Courses</a>
-
-      <div class="sidebar-label">Account</div>
-      <a href="profile.html">👤 Profile</a>
-      <a href="settings.html">⚙️ Settings</a>
-      <a href="login.html">🚪 Log Out</a>
-    </aside>
+    <%- include('sidebar', { activePage: 'communities' }) %>
 
     <!-- Main Content -->
     <main class="main">
       <div class="course-column">
 
-        <!-- Course Header -->
+        <!-- Community Header -->
         <div class="course-header">
-          <h1 class="course-title">Software Engineering</h1>
-          <p class="course-instructor">Taught by Dr. Marcus Henderson</p>
+          <h1 class="course-title">Computer Science Club</h1>
+          <p class="course-instructor">142 members · Founded 2018</p>
           <p class="course-description">
-            An introduction to the principles and practices of software engineering, covering the full software development lifecycle. Topics include requirements gathering, system design, agile methodologies, version control, testing strategies, and deployment. Students will work in teams to design and build a real-world software project from inception to delivery.
+            A community for CS students to connect, collaborate, and grow. We host weekly talks, coding challenges, and networking events with industry professionals throughout the semester. Whether you're just getting started or already deep into your studies, there's a place for you here.
           </p>
         </div>
 
         <!-- Members Card -->
         <div class="members-card">
-          <div class="members-label">In Course</div>
+          <div class="members-label">Members</div>
           <div class="members-row">
             <div class="member-avatar">JB</div>
             <div class="member-avatar">JS</div>
             <div class="member-avatar">LGR</div>
             <div class="member-avatar">AM</div>
             <div class="member-avatar">TR</div>
-            <button class="members-overflow" onclick="document.getElementById('studentsModal').classList.add('open')">… and 38 others.</button>
+            <button class="members-overflow" onclick="document.getElementById('membersModal').classList.add('open')">… and 137 others.</button>
           </div>
         </div>
 
-        <!-- Course Feed -->
+        <!-- Community Feed -->
         <h2 class="section-title">Feed</h2>
 
         <!-- Post 1 -->
@@ -417,17 +358,16 @@
             <button class="post-action-btn" title="Bookmark">🔖</button>
           </div>
           <div class="post-author">
-            <div class="post-avatar-initials">JB</div>
+            <div class="post-avatar-initials">KP</div>
             <div class="post-author-info">
-              <span class="post-author-name"><a href="profile.html">Jaden Bryant</a></span>
-              <span class="post-meta"><a href="post.html">March 6, 2026 at 9:14 AM</a></span>
-              <span class="post-community"><a href="course.html">Software Engineering</a></span>
+              <span class="post-author-name"><a href="profile.html">Keiko Park</a></span>
+              <span class="post-meta"><a href="post.html">March 6, 2026 at 11:20 AM</a></span>
+              <span class="post-community"><a href="community.html">Computer Science Club</a></span>
             </div>
           </div>
           <div class="post-body">
-            <p>Does anyone have notes from Tuesday's lecture on REST API design? I had to leave early and missed the last 20 minutes.</p>
-            <p>Specifically looking for the part where Dr. Henderson talked about versioning strategies — I think it was either URI-based or header-based but I'm not sure which he recommended.</p>
-            <p>Would really appreciate it, midterm is next week and I want to make sure I have everything covered!</p>
+            <p>Hey everyone! Just a reminder that our speaker event this Thursday at 6 PM in EME 101 is still on. We have a senior engineer from Microsoft coming to talk about career paths in cloud infrastructure.</p>
+            <p>Free pizza will be provided. Please RSVP in the form linked in the bio so we can get a headcount for food. Bring questions — she's happy to do a real Q&amp;A!</p>
           </div>
         </div>
 
@@ -439,17 +379,37 @@
             <button class="post-action-btn" title="Bookmark">🔖</button>
           </div>
           <div class="post-author">
-            <div class="post-avatar-initials">JS</div>
+            <div class="post-avatar-initials">DN</div>
             <div class="post-author-info">
-              <span class="post-author-name"><a href="profile.html">Julia Smith</a></span>
-              <span class="post-meta"><a href="post.html">March 5, 2026 at 4:02 PM</a></span>
-              <span class="post-community"><a href="course.html">Software Engineering</a></span>
+              <span class="post-author-name"><a href="profile.html">Diego Navarro</a></span>
+              <span class="post-meta"><a href="post.html">March 5, 2026 at 3:45 PM</a></span>
+              <span class="post-community"><a href="community.html">Computer Science Club</a></span>
             </div>
           </div>
           <div class="post-body">
-            <p>Our team just finished the requirements document for the project — posting it here in case it helps anyone who's still working on theirs.</p>
-            <p>We ended up using user stories with acceptance criteria rather than formal use-case diagrams. Dr. Henderson seemed to prefer that format based on his feedback last semester.</p>
-            <p>Happy to answer questions if anyone wants to compare notes before the submission deadline on Friday.</p>
+            <p>Sharing my notes from last week's session on system design patterns — covered monoliths vs. microservices, event-driven architecture, and when to use each.</p>
+            <p>Happy to discuss further or do a follow-up session if there's interest. Drop a 👍 if you'd find that useful and I'll set something up with the officers.</p>
+          </div>
+        </div>
+
+        <!-- Post 3 -->
+        <div class="post-card">
+          <div class="post-actions">
+            <button class="post-action-btn" title="Like">👍</button>
+            <button class="post-action-btn" title="Comment">💬</button>
+            <button class="post-action-btn" title="Bookmark">🔖</button>
+          </div>
+          <div class="post-author">
+            <div class="post-avatar-initials">JB</div>
+            <div class="post-author-info">
+              <span class="post-author-name"><a href="profile.html">Jaden Bryant</a></span>
+              <span class="post-meta"><a href="post.html">March 4, 2026 at 9:05 PM</a></span>
+              <span class="post-community"><a href="community.html">Computer Science Club</a></span>
+            </div>
+          </div>
+          <div class="post-body">
+            <p>Does anyone have experience with Rust? I've been wanting to try it for a side project and curious if anyone here has used it beyond a tutorial.</p>
+            <p>Specifically interested in whether it's worth learning for systems work alongside C++ or if one replaces the other for most practical purposes.</p>
           </div>
         </div>
 
@@ -458,12 +418,12 @@
 
   </div><!-- /.layout -->
 
-  <!-- Students Modal -->
-  <div class="modal-backdrop" id="studentsModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <!-- Members Modal -->
+  <div class="modal-backdrop" id="membersModal" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">All Students — Software Engineering</span>
-        <button class="modal-close" onclick="document.getElementById('studentsModal').classList.remove('open')">&times;</button>
+        <span class="modal-title">Members — Computer Science Club</span>
+        <button class="modal-close" onclick="document.getElementById('membersModal').classList.remove('open')">&times;</button>
       </div>
       <div class="modal-body">
         <div class="modal-student"><div class="modal-avatar">JB</div><span class="modal-student-name">Jaden Bryant</span></div>
@@ -513,42 +473,7 @@
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20" style="margin-left: var(--sidebar-w);">
-    <div class="container mx-auto px-4 sm:px-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
-
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">About UniConnect</h3>
-          <p class="text-navy/70 text-sm leading-relaxed">
-            A verified academic platform connecting students, faculty, and administrators across universities.
-          </p>
-        </div>
-
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Quick Links</h3>
-          <ul class="space-y-2 text-sm">
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Privacy Policy</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Terms of Service</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Contact Us</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Help Center</a></li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Get in Touch</h3>
-          <p class="text-navy/70 text-sm leading-relaxed">
-            Have questions? Reach out to our support team at<br class="hidden sm:inline">
-            <a href="mailto:support@uniconnect.edu" class="text-gold hover:text-gold-light transition break-all sm:break-normal">support@uniconnect.edu</a>
-          </p>
-        </div>
-
-      </div>
-      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-navy/20 text-center">
-        <p class="text-navy/60 text-xs sm:text-sm">&copy; 2026 UniConnect. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+  <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
 
 </body>
 </html>
