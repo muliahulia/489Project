@@ -9,23 +9,9 @@
 <style>
 /* Topbar / Sidebar */
 
-.layout { display:flex; padding-top:var(--topbar-h); min-height:100vh;}
-.main { flex:1; margin-left:var(--sidebar-w); padding:2rem; max-width:1100px; }
-.card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:1.75rem; box-shadow:0 1px 4px rgba(13,27,42,0.07); margin-bottom:1.25rem; }
-.card-title { font-family:'Playfair Display', serif; font-size:1.1rem; font-weight:700; margin-bottom:1.25rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border); }
-
-.form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.5rem;}
-.form-actions { display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;}
-.btn-primary { background:var(--gold); color:var(--navy); padding:0.6rem 1.4rem; border-radius:8px; font-size:0.88rem; cursor:pointer; border:none;}
-.btn-primary:hover { opacity:0.9; }
-.btn-secondary { background:var(--cream); color:var(--text-dark); padding:0.55rem 1.25rem; border-radius:8px; font-size:0.85rem; border:none; cursor:pointer; }
-.btn-danger { background:var(--error); color:#fff; padding:0.55rem 1.25rem; border-radius:8px; font-size:0.85rem; border:none; cursor:pointer; }
-
-input, select, textarea { width:100%; padding:0.55rem 0.75rem; border-radius:8px; border:1px solid var(--border); font-family:'DM Sans',sans-serif; margin-top:0.25rem;}
-textarea { min-height:80px; resize:vertical; }
 </style>
 </head>
-<body>
+<body class="moderation-page">
 
 <%- include('header', { initials: 'JS' }) %>
 
@@ -35,7 +21,7 @@ textarea { min-height:80px; resize:vertical; }
   <%- include('sidebar', { activePage: 'reportDashboard', showAdministrative: true }) %>
 
   <!-- MAIN -->
-  <main class="main">
+  <main class="main main-pad main-contained">
     <div class="card" id="reportDetailCard">
       <div class="card-title">
         <span class="cancel-btn" onclick="cancelEdit()">Cancel</span>

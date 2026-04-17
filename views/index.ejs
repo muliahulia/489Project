@@ -5,28 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UniConnect — Your University Network</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: '#0d1b2a',
-            'navy-mid': '#1a2e45',
-            'navy-light': '#243b55',
-            gold: '#c9a84c',
-            'gold-light': '#e8c97a',
-            cream: '#f5f0e8',
-            'cream-dark': '#ede5d6',
-          },
-          fontFamily: {
-            'serif': ['Playfair Display', 'serif'],
-            'sans': ['DM Sans', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
+  <%- include('tailwind-config') %>
   <style>
     .gradient-circle-1 {
       position: absolute;

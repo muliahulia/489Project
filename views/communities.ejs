@@ -8,45 +8,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
   <!-- Tailwind required for footer -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: '#0d1b2a',
-            'navy-mid': '#1a2e45',
-            'navy-light': '#243b55',
-            gold: '#c9a84c',
-            'gold-light': '#e8c97a',
-            cream: '#f5f0e8',
-            'cream-dark': '#ede5d6',
-          },
-          fontFamily: {
-            'serif': ['Playfair Display', 'serif'],
-            'sans': ['DM Sans', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
+  <%- include('tailwind-config') %>
   <style>
     /* ── Topbar ── */
 
-    /* ── Layout ── */
-    .layout {
-      display: flex;
-      padding-top: var(--topbar-h);
-      min-height: 100vh;
-    }
-
-
     /* ── Main ── */
     .main {
-      flex: 1;
-      margin-left: var(--sidebar-w);
       padding: 2rem;
-      min-width: 0;
     }
 
     .communities-column {
@@ -67,9 +35,6 @@
 
     /* ── Page title ── */
     .page-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.9rem;
-      font-weight: 700;
       color: var(--text-dark);
       margin-bottom: 0;
     }

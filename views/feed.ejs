@@ -8,46 +8,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
   <!-- Tailwind required for footer -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: '#0d1b2a',
-            'navy-mid': '#1a2e45',
-            'navy-light': '#243b55',
-            gold: '#c9a84c',
-            'gold-light': '#e8c97a',
-            cream: '#f5f0e8',
-            'cream-dark': '#ede5d6',
-          },
-          fontFamily: {
-            'serif': ['Playfair Display', 'serif'],
-            'sans': ['DM Sans', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
+  <%- include('tailwind-config') %>
   <style>
     /* ── Topbar ── */
 
-    /* ── Layout ── */
-    .layout {
-      display: flex;
-      padding-top: var(--topbar-h);
-      min-height: 100vh;
-    }
-
-
     /* ── Main content ── */
     .main {
-      flex: 1;
-      margin-left: var(--sidebar-w);
       margin-right: 260px; /* right sidebar width */
       padding: 2rem;
-      min-width: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -60,8 +28,6 @@
     }
 
     .page-header { margin-bottom: 1.75rem; }
-    .page-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
-    .page-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem; }
 
     /* ── Create Post Box ── */
     .create-post {

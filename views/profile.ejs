@@ -7,38 +7,9 @@
   <title>UniConnect — Marcus Okafor</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: '#0d1b2a',
-            'navy-mid': '#1a2e45',
-            'navy-light': '#243b55',
-            gold: '#c9a84c',
-            'gold-light': '#e8c97a',
-            cream: '#f5f0e8',
-            'cream-dark': '#ede5d6',
-          },
-          fontFamily: {
-            'serif': ['Playfair Display', 'serif'],
-            'sans': ['DM Sans', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
+  <%- include('tailwind-config') %>
   <style>
     /* ── Topbar ── */
-
-    /* ── Layout ── */
-    .layout {
-      display: flex;
-      padding-top: var(--topbar-h);
-      min-height: 100vh;
-    }
-
 
     .connect-btn {
       height: 36px; padding: 0 1.1rem;
@@ -56,10 +27,7 @@
 
     /* ── Main ── */
     .main {
-      flex: 1;
-      margin-left: var(--sidebar-w);
       padding: 2rem;
-      min-width: 0;
     }
 
     .profile-column {
@@ -75,6 +43,7 @@
       border-radius: 14px;
       box-shadow: 0 1px 4px rgba(13,27,42,0.07);
       margin-bottom: 1.25rem;
+      padding: 0;
       overflow: hidden;
     }
     .card-body { padding: 1.5rem; }

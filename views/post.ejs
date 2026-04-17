@@ -10,13 +10,6 @@
   <style>
     /* Page-specific styles */
 
-    .layout { display: flex; padding-top: var(--topbar-h); min-height: 100vh; }
-
-
-    .main { flex: 1; margin-left: var(--sidebar-w); padding: 2rem; }
-    .page-header { margin-bottom: 1.75rem; }
-    .page-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
-    .page-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem; }
 
     .page-header { width: 100%; max-width: 720px; margin: 0 auto 1.75rem; }
 
@@ -146,7 +139,7 @@
 
     <%- include('sidebar', { activePage: 'feed' }) %>
 
-    <main class="main">
+    <main class="main main-pad">
 
       <div class="page-header">
         <h1 class="page-title">Post</h1>
