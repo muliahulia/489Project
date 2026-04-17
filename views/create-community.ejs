@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>UniConnect — Create Community</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -31,33 +31,6 @@
   </script>
   <style>
     /* ── Topbar ── */
-    .topbar {
-      position: fixed; top: 0; left: 0; right: 0;
-      height: var(--topbar-h);
-      background: var(--navy);
-      border-bottom: 2px solid var(--gold);
-      display: flex; align-items: center;
-      padding: 0 1.5rem; gap: 1rem; z-index: 100;
-    }
-    .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--gold); }
-    .topbar-search { flex: 1; max-width: 380px; margin-left: 1.5rem; position: relative; }
-    .topbar-search input {
-      width: 100%; padding: 0.4rem 1rem 0.4rem 2.2rem;
-      border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.07); color: #fff;
-      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
-    }
-    .topbar-search input::placeholder { color: rgba(255,255,255,0.35); }
-    .topbar-search input:focus { border-color: var(--gold); }
-    .topbar-search span { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: rgba(255,255,255,0.4); }
-    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
-    .topbar-avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: var(--gold); color: var(--navy);
-      font-weight: 700; font-size: 0.8rem;
-      display: flex; align-items: center; justify-content: center;
-      border: 2px solid rgba(201,168,76,0.4); cursor: pointer;
-    }
 
     /* ── Layout ── */
     .layout {
@@ -386,17 +359,7 @@
 </head>
 <body>
 
-  <!-- TOPBAR -->
-  <nav class="topbar">
-    <div class="topbar-brand">UniConnect</div>
-    <div class="topbar-search">
-      <span>🔍</span>
-      <input type="text" placeholder="Search..."/>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-avatar">JB</div>
-    </div>
-  </nav>
+  <%- include('header', { initials: 'LG' }) %>
 
   <div class="layout">
 
