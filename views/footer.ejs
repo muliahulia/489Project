@@ -1,37 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UniConnect Footer Component</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: '#0d1b2a',
-            'navy-mid': '#1a2e45',
-            'navy-light': '#243b55',
-            gold: '#c9a84c',
-            'gold-light': '#e8c97a',
-            cream: '#f5f0e8',
-            'cream-dark': '#ede5d6',
-          },
-          fontFamily: {
-            'serif': ['Playfair Display', 'serif'],
-            'sans': ['DM Sans', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
-</head>
-<body class="bg-cream font-sans">
+<%
+  const layoutStyles = {
+    sidebarLeft: 'margin-left: var(--sidebar-w);',
+    sidebarBoth: 'margin-left: var(--sidebar-w); margin-right: 260px;'
+  };
+  const resolvedFooterStyle = layoutStyles[footerLayout] || '';
+%>
 
 <!-- Footer -->
-<footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20">
+<footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20"<% if (resolvedFooterStyle) { %> style="<%= resolvedFooterStyle %>"<% } %>>
   <div class="container mx-auto px-4 sm:px-6">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
       
@@ -71,6 +47,3 @@
     </div>
   </div>
 </footer>
-
-</body>
-</html>
