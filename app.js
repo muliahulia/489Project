@@ -13,6 +13,7 @@ var moderationRouter = require('./routes/moderation');
 var postsRouter = require('./routes/posts');
 var profileRouter = require('./routes/profile');
 var settingsRouter = require('./routes/settings');
+var coursesRouter = require('./routes/courses');
 
 var app = express();
 
@@ -44,6 +45,8 @@ app.use('/moderation', moderationRouter);
 app.use('/posts', postsRouter);
 app.use('/profile', profileRouter);
 app.use('/settings', settingsRouter);
+app.use('/courses', coursesRouter);
+
 
 // 404
 app.use(function(req, res, next) {
