@@ -14,6 +14,7 @@ var postsRouter = require('./routes/posts');
 var profileRouter = require('./routes/profile');
 var settingsRouter = require('./routes/settings');
 var coursesRouter = require('./routes/courses');
+var createCommunityRouter = require('./routes/create-community');
 
 var app = express();
 
@@ -39,13 +40,14 @@ app.use(session({
 app.use('/', indexRouter);
 app.use('/', authRouter);
 app.use('/dashboard', dashboardRouter);
-app.use('/community', communityRouter);
+app.use('/communities', communityRouter);
 app.use('/admin', adminRouter);
 app.use('/moderation', moderationRouter);
 app.use('/posts', postsRouter);
 app.use('/profile', profileRouter);
 app.use('/settings', settingsRouter);
 app.use('/courses', coursesRouter);
+app.use('/create-community', createCommunityRouter);
 
 
 // 404
