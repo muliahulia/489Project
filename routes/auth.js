@@ -1,15 +1,31 @@
 var express = require('express');
 var router = express.Router();
 
-router.get('/login', (req, res) => res.render('login'));
-router.post('/login', (req, res) => { /* UC-001 */ });
+router.get('/login', (req, res) => {
+  res.render('login');
+});
 
-router.get('/signup', (req, res) => res.render('signup'));
-router.post('/signup', (req, res) => { /* UC-002 */ });
+router.get('/CreateAccount', (req, res) => {
+  res.render('createAccount');
+});
 
-router.post('/logout', (req, res) => {
-  req.session.destroy();
+router.post('/login', (req, res) => {
+  res.redirect('/dashboard');
+});
+
+router.post('/signup', (req, res) => {
   res.redirect('/login');
 });
+
+router.post('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
+});
+// FORGOT PASSWORD
+router.get('/forgotpassword', (req, res) => {
+    res.render('Forgotpassword');
+  });
+  
 
 module.exports = router;
