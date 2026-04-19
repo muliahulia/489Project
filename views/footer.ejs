@@ -3,8 +3,12 @@
     sidebarLeft: 'margin-left: var(--sidebar-w);',
     sidebarBoth: 'margin-left: var(--sidebar-w); margin-right: 260px;'
   };
-  const resolvedFooterStyle = layoutStyles[footerLayout] || '';
+
+  // SAFE fallback so it never crashes
+  const layoutKey = (typeof footerLayout !== 'undefined') ? footerLayout : '';
+  const resolvedFooterStyle = layoutStyles[layoutKey] || '';
 %>
+
 
 <!-- Footer -->
 <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20"<% if (resolvedFooterStyle) { %> style="<%= resolvedFooterStyle %>"<% } %>>
@@ -47,3 +51,4 @@
     </div>
   </div>
 </footer>
+
