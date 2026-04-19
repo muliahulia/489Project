@@ -466,9 +466,9 @@
 
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-          <a href="communities.html">Communities</a>
+          <a href="communities.ejs">Communities</a>
           <span>›</span>
-          <a href="community.html">Computer Science Club</a>
+          <a href="community.ejs">Computer Science Club</a>
           <span>›</span>
           <span>Manage</span>
         </nav>
@@ -590,7 +590,7 @@
 
             <!-- ── Actions ── -->
             <button type="submit" class="btn-submit">Save Changes</button>
-            <a href="community.html" class="btn-cancel">Cancel</a>
+            <a href="community.ejs" class="btn-cancel">Cancel</a>
 
           </form>
         </div>
@@ -716,7 +716,7 @@
         return;
       }
 
-      window.location.href = 'community.html';
+      window.location.href = 'community.ejs';
     });
 
     nameInput.addEventListener('input', () => nameInput.style.borderColor = '');
@@ -788,7 +788,7 @@
       deleteModal.classList.remove('open');
     });
     document.getElementById('confirmDelete').addEventListener('click', () => {
-      window.location.href = 'communities.html';
+      window.location.href = 'communities.ejs';
     });
     deleteModal.addEventListener('click', (e) => {
       if (e.target === deleteModal) deleteModal.classList.remove('open');

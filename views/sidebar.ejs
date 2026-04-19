@@ -7,22 +7,22 @@
 
 <aside class="sidebar">
   <div class="sidebar-label">Main</div>
-  <a href="dashboard.html" class="<%= currentPage === 'dashboard' ? 'active' : '' %>">🏠 Home</a>
-  <a href="feed.html" class="<%= currentPage === 'feed' ? 'active' : '' %>">📰 Feed</a>
-  <a href="communities.html" class="<%= currentPage === 'communities' ? 'active' : '' %>">👥 Communities</a>
-  <a href="courses.html" class="<%= currentPage === 'courses' ? 'active' : '' %>">📚 Courses</a>
+  <a href="dashboard.ejs" class="<%= currentPage === 'dashboard' ? 'active' : '' %>">🏠 Home</a>
+  <a href="feed.ejs" class="<%= currentPage === 'feed' ? 'active' : '' %>">📰 Feed</a>
+  <a href="communities.ejs" class="<%= currentPage === 'communities' ? 'active' : '' %>">👥 Communities</a>
+  <a href="courses.ejs" class="<%= currentPage === 'courses' ? 'active' : '' %>">📚 Courses</a>
 
   <% if (hasAdministrative) { %>
     <div class="sidebar-label">Administrative</div>
-    <a href="adminDashboard.html" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
-    <a href="reportDashboard.html" class="<%= currentPage === 'reportDashboard' ? 'active' : '' %>">🚩 Reports</a>
-    <a href="accountModeration.html" class="<%= currentPage === 'accountModeration' ? 'active' : '' %>">👤 Account Moderation</a>
-    <a href="communityModeration.html" class="<%= currentPage === 'communityModeration' ? 'active' : '' %>">🏘️ Community Moderation</a>
+    <a href="adminDashboard.ejs" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
+    <a href="reportDashboard.ejs" class="<%= currentPage === 'reportDashboard' ? 'active' : '' %>">🚩 Reports</a>
+    <a href="accountModeration.ejs" class="<%= currentPage === 'accountModeration' ? 'active' : '' %>">👤 Account Moderation</a>
+    <a href="communityModeration.ejs" class="<%= currentPage === 'communityModeration' ? 'active' : '' %>">🏘️ Community Moderation</a>
     <a href="<%= schoolHref %>" class="<%= currentPage === 'schoolModeration' ? 'active' : '' %>">🏫 <%= schoolLabel %></a>
   <% } %>
 
   <div class="sidebar-label">Account</div>
-  <a href="profile.html" class="<%= currentPage === 'profile' ? 'active' : '' %>">👤 Profile</a>
-  <a href="settings.html" class="<%= currentPage === 'settings' ? 'active' : '' %>">⚙️ Settings</a>
-  <a href="login.html">🚪 Log Out</a>
+  <a href="profile.ejs" class="<%= currentPage === 'profile' ? 'active' : '' %>">👤 Profile</a>
+  <a href="settings.ejs" class="<%= currentPage === 'settings' ? 'active' : '' %>">⚙️ Settings</a>
+  <a href="login.ejs">🚪 Log Out</a>
 </aside>
