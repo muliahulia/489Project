@@ -5,78 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>UniConnect — Report Moderation</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="/stylesheets/style.css"/>
 <style>
 /* Topbar / Sidebar */
-.topbar { position: fixed; top:0; left:0; right:0; height: var(--topbar-h); background: var(--navy); border-bottom:2px solid var(--gold); display:flex; align-items:center; padding:0 1.5rem; gap:1rem; z-index:100;}
-.topbar-brand { font-family:'Playfair Display', serif; font-size:1.3rem; font-weight:700; color:var(--gold);}
-.topbar-search { flex:1; max-width:380px; margin-left:1.5rem; position:relative;}
-.topbar-search input { width:100%; padding:0.4rem 1rem 0.4rem 2.2rem; border-radius:999px; border:1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.07); color:#fff; font-family:'DM Sans',sans-serif; font-size:0.85rem; outline:none;}
-.topbar-search span { position:absolute; left:0.7rem; top:50%; transform:translateY(-50%); font-size:0.8rem; color:rgba(255,255,255,0.4);}
-.topbar-right { margin-left:auto; display:flex; align-items:center; gap:0.75rem;}
-.topbar-avatar { width:34px; height:34px; border-radius:50%; background:var(--gold); color:var(--navy); font-weight:700; font-size:0.8rem; display:flex; align-items:center; justify-content:center; border:2px solid rgba(201,168,76,0.4); cursor:pointer; }
 
-.layout { display:flex; padding-top:var(--topbar-h); min-height:100vh;}
-.sidebar { position:fixed; top:var(--topbar-h); left:0; bottom:0; width:var(--sidebar-w); background:#fff; border-right:1px solid var(--border); padding:1.5rem 0; overflow-y:auto; z-index:90; }
-.sidebar-label { font-size:0.68rem; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:#9aaabb; padding:0.5rem 1.25rem; margin-top:0.75rem;}
-.sidebar a { display:flex; align-items:center; gap:0.75rem; padding:0.6rem 1.25rem; font-size:0.88rem; color:var(--text-muted); border-left:3px solid transparent; transition: all 0.15s; }
-.sidebar a:hover { background:var(--cream); color:var(--text-dark);}
-.sidebar a.active { background: rgba(201,168,76,0.1); color: var(--navy); font-weight:600; border-left-color: var(--gold); }
-
-.main { flex:1; margin-left:var(--sidebar-w); padding:2rem; max-width:1100px; }
-.card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:1.75rem; box-shadow:0 1px 4px rgba(13,27,42,0.07); margin-bottom:1.25rem; }
-.card-title { font-family:'Playfair Display', serif; font-size:1.1rem; font-weight:700; margin-bottom:1.25rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border); }
-
-.form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.5rem;}
-.form-actions { display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;}
-.btn-primary { background:var(--gold); color:var(--navy); padding:0.6rem 1.4rem; border-radius:8px; font-size:0.88rem; cursor:pointer; border:none;}
-.btn-primary:hover { opacity:0.9; }
-.btn-secondary { background:var(--cream); color:var(--text-dark); padding:0.55rem 1.25rem; border-radius:8px; font-size:0.85rem; border:none; cursor:pointer; }
-.btn-danger { background:var(--error); color:#fff; padding:0.55rem 1.25rem; border-radius:8px; font-size:0.85rem; border:none; cursor:pointer; }
-
-input, select, textarea { width:100%; padding:0.55rem 0.75rem; border-radius:8px; border:1px solid var(--border); font-family:'DM Sans',sans-serif; margin-top:0.25rem;}
-textarea { min-height:80px; resize:vertical; }
 </style>
 </head>
-<body>
+<body class="moderation-page">
 
-<!-- TOPBAR -->
-<nav class="topbar">
-  <div class="topbar-brand">UniConnect</div>
-  <div class="topbar-search">
-    <span>🔍</span>
-    <input type="text" placeholder="Search reports..." id="searchReports"/>
-  </div>
-  <div class="topbar-right">
-    <div class="topbar-avatar">JS</div>
-  </div>
-</nav>
+<%- include('header', { initials: 'JS' }) %>
 
 <div class="layout">
 
   <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sidebar-label">Main</div>
-    <a href="dashboard.html">🏠 Home</a>
-    <a href="feed.html">📰 Feed</a>
-    <a href="communities.html">👥 Communities</a>
-    <a href="courses.html">📚 Courses</a>
-
-    <div class="sidebar-label">Administrative</div>
-    <a href="adminDashboard.html">📊 Dashboard</a>
-    <a href="reportDashboard.html" class="active">🚩 Reports</a>
-    <a href="accountModeration.html">👤 Account Moderation</a>
-    <a href="communityModeration.html">🏘️ Community Moderation</a>
-    <a href="schoolModeration.html">🏫 School Moderation</a>
-
-    <div class="sidebar-label">Account</div>
-    <a href="profile.html">👤 Profile</a>
-    <a href="settings.html">⚙️ Settings</a>
-    <a href="login.html">🚪 Log Out</a>
-  </aside>
+  <%- include('sidebar', { activePage: 'reportDashboard', showAdministrative: true }) %>
 
   <!-- MAIN -->
-  <main class="main">
+  <main class="main main-pad main-contained">
     <div class="card" id="reportDetailCard">
       <div class="card-title">
         <span class="cancel-btn" onclick="cancelEdit()">Cancel</span>

@@ -5,28 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UniConnect — Your University Network</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: '#0d1b2a',
-            'navy-mid': '#1a2e45',
-            'navy-light': '#243b55',
-            gold: '#c9a84c',
-            'gold-light': '#e8c97a',
-            cream: '#f5f0e8',
-            'cream-dark': '#ede5d6',
-          },
-          fontFamily: {
-            'serif': ['Playfair Display', 'serif'],
-            'sans': ['DM Sans', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
   <style>
     .gradient-circle-1 {
       position: absolute;
@@ -74,7 +53,7 @@
           <a href="#resources" class="px-4 sm:px-8 py-2 sm:py-3 bg-navy text-gold font-medium hover:bg-navy-light transition rounded-lg text-xs sm:text-sm">
             Resources
           </a>
-          <a href="login.html" class="px-4 sm:px-8 py-2 sm:py-3 bg-gold text-navy font-semibold hover:bg-gold-light transition rounded-lg text-xs sm:text-sm whitespace-nowrap">
+          <a href="/login" class="px-4 sm:px-8 py-2 sm:py-3 bg-gold text-navy font-semibold hover:bg-gold-light transition rounded-lg text-xs sm:text-sm whitespace-nowrap">
             Login/Sign up
           </a>
         </nav>
@@ -126,7 +105,8 @@
         <!-- Role Selection Buttons -->
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 pt-6 sm:pt-8">
           <!-- Student Button -->
-          <a href="login.html" class="group bg-gold hover:bg-gold-light transition-all duration-300 px-8 py-4 sm:py-5 rounded-lg flex items-center justify-between gap-4 w-full sm:w-auto sm:min-w-[220px] shadow-lg hover:shadow-xl">
+          <a href="/login"
+            class="group bg-gold hover:bg-gold-light transition-all duration-300 px-8 py-4 sm:py-5 rounded-lg flex items-center justify-between gap-4 w-full sm:w-auto sm:min-w-[220px] shadow-lg hover:shadow-xl">
             <span class="text-lg sm:text-xl font-semibold text-navy">Student</span>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-navy group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
@@ -134,7 +114,8 @@
           </a>
 
           <!-- School Official Button -->
-          <a href="login.html" class="group bg-cream hover:bg-white transition-all duration-300 px-8 py-4 sm:py-5 rounded-lg border-2 border-gold flex items-center justify-between gap-4 w-full sm:w-auto sm:min-w-[220px] shadow-lg hover:shadow-xl">
+          <a href="/login"
+            class="group bg-cream hover:bg-white transition-all duration-300 px-8 py-4 sm:py-5 rounded-lg border-2 border-gold flex items-center justify-between gap-4 w-full sm:w-auto sm:min-w-[220px] shadow-lg hover:shadow-xl">
             <span class="text-lg sm:text-xl font-semibold text-navy">School Official</span>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-navy group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
@@ -146,47 +127,7 @@
     </div>
   </main>
 
-  <!-- Footer -->
-  <footer class="bg-cream relative z-10 py-8 sm:py-12 border-t-2 border-gold/20">
-    <div class="container mx-auto px-4 sm:px-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center md:text-left">
-        
-        <!-- About Section -->
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">About UniConnect</h3>
-          <p class="text-navy/70 text-sm leading-relaxed">
-            A verified academic platform connecting students, faculty, and administrators across universities.
-          </p>
-        </div>
-
-        <!-- Quick Links -->
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Quick Links</h3>
-          <ul class="space-y-2 text-sm">
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Privacy Policy</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Terms of Service</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Contact Us</a></li>
-            <li><a href="#" class="text-navy/70 hover:text-gold transition">Help Center</a></li>
-          </ul>
-        </div>
-
-        <!-- Contact Info -->
-        <div>
-          <h3 class="font-serif text-lg sm:text-xl font-bold text-navy mb-3">Get in Touch</h3>
-          <p class="text-navy/70 text-sm leading-relaxed">
-            Have questions? Reach out to our support team at<br class="hidden sm:inline">
-            <a href="mailto:support@uniconnect.edu" class="text-gold hover:text-gold-light transition break-all sm:break-normal">support@uniconnect.edu</a>
-          </p>
-        </div>
-
-      </div>
-
-      <!-- Copyright -->
-      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-navy/20 text-center">
-        <p class="text-navy/60 text-xs sm:text-sm">&copy; 2026 UniConnect. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+  <%- include('footer') %>
 
 </body>
 </html>
