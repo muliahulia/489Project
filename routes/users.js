@@ -1,9 +1,12 @@
 var express = require('express');
 var router = express.Router();
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
+router.get('/:id', (req, res) => {
+  res.render('profile');
+});
+
+router.post('/follow/:id', (req, res) => {
+  // UC-010
 });
 
 module.exports = router;
