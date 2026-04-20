@@ -144,79 +144,6 @@
     .right-sidebar-item:last-child { border-bottom: none; }
     .right-sidebar-item:hover { color: var(--navy); }
 
-    .post-card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
-      position: relative;
-      margin-bottom: 1.25rem;
-      width: 100%;
-    }
-
-    .post-actions {
-      position: absolute;
-      top: 1.25rem;
-      right: 1.25rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .post-action-btn {
-      width: 34px; height: 34px;
-      border-radius: 8px;
-      background: var(--cream);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      font-size: 1rem;
-      color: var(--text-muted);
-    }
-
-    .post-author {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1.25rem;
-      padding-right: 8rem;
-    }
-
-    .post-avatar-initials {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      background: var(--navy);
-      color: var(--gold);
-      font-weight: 700;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid var(--border);
-      letter-spacing: 0.03em;
-    }
-
-    .post-author-info { display: flex; flex-direction: column; gap: 0.15rem; }
-
-    .post-author-name { font-weight: 600; font-size: 1rem; color: var(--text-dark); }
-    .post-author-name a { color: var(--text-dark); text-decoration: none; }
-
-    .post-meta { font-size: 0.8rem; color: var(--text-muted); }
-
-    .post-community { font-size: 0.8rem; color: var(--navy); font-weight: 500; }
-    .post-community a { color: var(--navy); text-decoration: none; }
-
-    .post-body {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      font-size: 0.93rem;
-      color: var(--text-dark);
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
     .empty-state {
       background: #fff;
       border: 1px solid var(--border);
@@ -272,22 +199,7 @@
         <p class="empty-state">No posts found.</p>
       <% } else { %>
         <% feedPosts.forEach((post) => { %>
-          <div class="post-card">
-            <div class="post-actions">
-              <button class="post-action-btn" title="Like">👍</button>
-              <button class="post-action-btn" title="Comment">💬</button>
-              <button class="post-action-btn" title="Bookmark">🔖</button>
-            </div>
-            <div class="post-author">
-              <div class="post-avatar-initials"><%= post.authorInitials %></div>
-              <div class="post-author-info">
-                <span class="post-author-name"><a href="/profile"><%= post.authorName %></a></span>
-                <span class="post-meta"><a href="/posts/post"><%= post.createdAtLabel %></a></span>
-                <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
-              </div>
-            </div>
-            <div class="post-body"><%= post.content %></div>
-          </div>
+          <%- include('partials/post-card', { post }) %>
         <% }) %>
       <% } %>
 

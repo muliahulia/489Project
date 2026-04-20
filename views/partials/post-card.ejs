@@ -1,0 +1,16 @@
+<div class="post-card">
+  <div class="post-actions">
+    <button class="post-action-btn" title="Like">👍</button>
+    <button class="post-action-btn" title="Comment">💬</button>
+    <button class="post-action-btn" title="Bookmark">🔖</button>
+  </div>
+  <div class="post-author">
+    <div class="post-avatar-initials"><%= post.authorInitials %></div>
+    <div class="post-author-info">
+      <span class="post-author-name"><a href="/profile"><%= post.authorName %></a></span>
+      <span class="post-meta"><a href="/posts/post"><%= post.createdAtLabel %></a></span>
+      <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
+    </div>
+  </div>
+  <div class="post-body"><%= post.content %></div>
+</div>
