@@ -1,4 +1,6 @@
 <div class="post-card">
+  <% const postComments = Array.isArray(post.comments) ? post.comments : []; %>
+  <% const latestComment = postComments.length > 0 ? postComments[postComments.length - 1] : null; %>
   <div class="post-actions">
     <button
       class="post-action-btn like-btn js-like-btn <%= post.liked ? 'active' : '' %>"
@@ -9,7 +11,9 @@
     >
       👍 <span class="like-count"><%= post.likeCount || 0 %></span>
     </button>
-    <button class="post-action-btn" title="Comment">💬</button>
+    <button class="post-action-btn comment-btn js-comment-toggle" title="Comment" type="button" data-post-id="<%= post.id %>">
+      💬 <span class="comment-count <%= post.commentCount ? '' : 'is-hidden' %>"><%= post.commentCount || 0 %></span>
+    </button>
   </div>
   <div class="post-author">
     <div class="post-avatar-initials"><%= post.authorInitials %></div>
@@ -20,4 +24,45 @@
     </div>
   </div>
   <div class="post-body"><%= post.content %></div>
+
+  <% if (latestComment) { %>
+    <div class="post-comment-preview" data-post-id="<%= post.id %>">
+      <div class="post-comment post-comment-preview-item">
+        <div class="post-comment-avatar"><%= latestComment.authorInitials %></div>
+        <div class="post-comment-body">
+          <div class="post-comment-preview-copy">
+            <span class="post-comment-preview-copy-inner">
+              <strong class="post-comment-preview-name"><%= latestComment.authorName %></strong>
+              <span class="post-comment-text post-comment-preview-text"><%= latestComment.content %></span>
+            </span>
+            <button class="post-comment-show-more js-comment-expand" type="button" data-post-id="<%= post.id %>">Show more</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="post-comments" data-post-id="<%= post.id %>" hidden>
+    <div class="post-comment-list">
+      <% postComments.forEach((comment) => { %>
+        <div class="post-comment" data-comment-id="<%= comment.id %>">
+          <div class="post-comment-avatar"><%= comment.authorInitials %></div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong><%= comment.authorName %></strong>
+              <span><%= comment.createdAtLabel %></span>
+            </div>
+            <div class="post-comment-text"><%= comment.content %></div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <form class="post-comment-form js-comment-form" method="post" action="/feed/posts/<%= post.id %>/comments" data-post-id="<%= post.id %>">
+      <textarea class="post-comment-input" name="content" rows="2" maxlength="2000" placeholder="Write a comment..."></textarea>
+      <div class="post-comment-form-actions">
+        <button class="post-comment-submit" type="submit">Comment</button>
+      </div>
+    </form>
+  </div>
 </div>

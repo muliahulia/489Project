@@ -95,6 +95,65 @@ async function buildLikeState(supabase, postIds, userId) {
   };
 }
 
+async function buildCommentState(supabase, postIds, userId) {
+  if (!postIds || postIds.length === 0) {
+    return {
+      commentCountByPostId: new Map(),
+      commentsByPostId: new Map(),
+    };
+  }
+
+  const { data: commentsResult, error } = await supabase
+    .from('comments')
+    .select('id,post_id,author_id,content,created_at,is_deleted')
+    .eq('is_deleted', false)
+    .in('post_id', postIds)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    return {
+      commentCountByPostId: new Map(),
+      commentsByPostId: new Map(),
+    };
+  }
+
+  const comments = commentsResult || [];
+  const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
+
+  const profilesResult = authorIds.length > 0
+    ? await supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
+    : { data: [], error: null };
+
+  const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
+  const commentCountByPostId = new Map();
+  const commentsByPostId = new Map();
+
+  comments.forEach((comment) => {
+    const postId = comment.post_id;
+    commentCountByPostId.set(postId, (commentCountByPostId.get(postId) || 0) + 1);
+
+    const author = profileById.get(comment.author_id);
+    const authorName = (author && author.full_name) || (author && author.email) || 'Unknown User';
+    const authorEmail = (author && author.email) || '';
+    const list = commentsByPostId.get(postId) || [];
+
+    list.push({
+      id: comment.id,
+      authorName,
+      authorInitials: buildInitials(authorName, authorEmail),
+      createdAtLabel: formatCreatedAt(comment.created_at),
+      content: comment.content,
+    });
+
+    commentsByPostId.set(postId, list);
+  });
+
+  return {
+    commentCountByPostId,
+    commentsByPostId,
+  };
+}
+
 async function fetchAffiliations(supabase, userId) {
   const [courseMembershipResult, communityMembershipResult] = await Promise.all([
     supabase
@@ -169,6 +228,7 @@ async function buildFeedViewModel(supabase, sessionUser) {
   const courseIdsInPosts = [...new Set(posts.map((post) => post.course_id).filter(Boolean))];
   const communityIdsInPosts = [...new Set(posts.map((post) => post.community_id).filter(Boolean))];
   const likeState = await buildLikeState(supabase, postIds, sessionUser.id);
+  const commentState = await buildCommentState(supabase, postIds, sessionUser.id);
 
   const [profilesResult, coursesResult, communitiesResult, currentProfileResult] = await Promise.all([
     authorIds.length > 0
@@ -232,6 +292,8 @@ async function buildFeedViewModel(supabase, sessionUser) {
       content: post.content,
       likeCount: likeState.likeCountByPostId.get(post.id) || 0,
       liked: likeState.likedPostIds.has(post.id),
+      commentCount: commentState.commentCountByPostId.get(post.id) || 0,
+      comments: commentState.commentsByPostId.get(post.id) || [],
     };
   });
 
@@ -397,6 +459,98 @@ router.post('/posts/:postId/like', requireAuth, async (req, res) => {
     });
   } catch (_err) {
     return res.status(500).json({ error: 'Unable to update like.' });
+  }
+});
+
+router.post('/posts/:postId/comments', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const postId = Number.parseInt(req.params.postId, 10);
+  const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+
+  if (!Number.isInteger(postId) || postId <= 0) {
+    return res.status(400).json({ error: 'Invalid post id.' });
+  }
+
+  if (!content) {
+    return res.status(400).json({ error: 'Comment cannot be empty.' });
+  }
+
+  if (content.length > 2000) {
+    return res.status(400).json({ error: 'Comment is too long (max 2000 characters).' });
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const affiliations = await fetchAffiliations(supabase, sessionUser.id);
+    const visibilityFilter = buildPostScopeFilter(
+      affiliations.courseIds,
+      affiliations.communityIds,
+      sessionUser.id
+    );
+
+    const { data: visiblePost, error: visiblePostError } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('id', postId)
+      .eq('is_deleted', false)
+      .or(visibilityFilter)
+      .maybeSingle();
+
+    if (visiblePostError || !visiblePost) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+
+    const { error } = await supabase
+      .from('comments')
+      .insert({
+        post_id: postId,
+        author_id: sessionUser.id,
+        content,
+        is_deleted: false,
+      });
+
+    if (error) {
+      return res.status(500).json({ error: 'Unable to save comment.' });
+    }
+
+    const { data: commentsResult, error: commentsError } = await supabase
+      .from('comments')
+      .select('id,post_id,author_id,content,created_at,is_deleted')
+      .eq('post_id', postId)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: true });
+
+    if (commentsError) {
+      return res.json({ ok: true, commentCount: null, comments: [] });
+    }
+
+    const authorIds = [...new Set((commentsResult || []).map((comment) => comment.author_id).filter(Boolean))];
+    const profilesResult = authorIds.length > 0
+      ? await supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
+      : { data: [], error: null };
+
+    const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
+    const comments = (commentsResult || []).map((comment) => {
+      const author = profileById.get(comment.author_id);
+      const authorName = (author && author.full_name) || (author && author.email) || 'Unknown User';
+      const authorEmail = (author && author.email) || '';
+
+      return {
+        id: comment.id,
+        authorName,
+        authorInitials: buildInitials(authorName, authorEmail),
+        createdAtLabel: formatCreatedAt(comment.created_at),
+        content: comment.content,
+      };
+    });
+
+    return res.json({
+      ok: true,
+      commentCount: comments.length,
+      comments,
+    });
+  } catch (_err) {
+    return res.status(500).json({ error: 'Unable to save comment.' });
   }
 });
 
