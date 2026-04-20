@@ -33,6 +33,95 @@ function normalizeCreatePayload(body) {
   };
 }
 
+function toPositiveInteger(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function removeCommunityWithDependencies(supabase, communityId) {
+  const { data: posts, error: postsError } = await supabase
+    .from('posts')
+    .select('id')
+    .eq('community_id', communityId);
+
+  if (postsError) {
+    return { ok: false };
+  }
+
+  const postIds = Array.isArray(posts) ? posts.map((row) => row.id).filter(Boolean) : [];
+
+  if (postIds.length > 0) {
+    const { data: comments, error: commentsError } = await supabase
+      .from('comments')
+      .select('id')
+      .in('post_id', postIds);
+
+    if (commentsError) {
+      return { ok: false };
+    }
+
+    const commentIds = Array.isArray(comments) ? comments.map((row) => row.id).filter(Boolean) : [];
+
+    const { error: reportByPostError } = await supabase
+      .from('reports')
+      .delete()
+      .in('post_id', postIds);
+
+    if (reportByPostError) {
+      return { ok: false };
+    }
+
+    if (commentIds.length > 0) {
+      const { error: reportByCommentError } = await supabase
+        .from('reports')
+        .delete()
+        .in('comment_id', commentIds);
+
+      if (reportByCommentError) {
+        return { ok: false };
+      }
+    }
+
+    const { error: reactionsError } = await supabase
+      .from('reactions')
+      .delete()
+      .in('post_id', postIds);
+
+    if (reactionsError) {
+      return { ok: false };
+    }
+
+    const { error: commentsDeleteError } = await supabase
+      .from('comments')
+      .delete()
+      .in('post_id', postIds);
+
+    if (commentsDeleteError) {
+      return { ok: false };
+    }
+
+    const { error: postsDeleteError } = await supabase
+      .from('posts')
+      .delete()
+      .in('id', postIds);
+
+    if (postsDeleteError) {
+      return { ok: false };
+    }
+  }
+
+  const { error: membersError } = await supabase
+    .from('community_members')
+    .delete()
+    .eq('community_id', communityId);
+
+  if (membersError) {
+    return { ok: false };
+  }
+
+  return { ok: true };
+}
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     const supabase = createSupabaseAdminClient();
@@ -151,8 +240,146 @@ router.post('/create-community', requireAuth, async (req, res) => {
   }
 });
 
-router.get('/manage', requireAuth, (req, res) => {
-  res.render('manage-community');
+router.get('/manage/:id', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data: community, error } = await supabase
+      .from('communities')
+      .select('id,name,description,is_private,creator_id')
+      .eq('id', communityId)
+      .maybeSingle();
+
+    if (error || !community) {
+      return res.redirect('/communities');
+    }
+
+    if (!community.creator_id || community.creator_id !== sessionUser.id) {
+      return res.redirect(`/communities/${communityId}`);
+    }
+
+    return res.render('manage-community', {
+      communityId: community.id,
+      communityName: community.name || 'Community',
+      communityDescription:
+        typeof community.description === 'string' ? community.description : '',
+      communityVisibility: community.is_private ? 'private' : 'public',
+      initialTopics: [],
+      formError: typeof req.query.error === 'string' ? req.query.error : null,
+      formSuccess: typeof req.query.success === 'string' ? req.query.success : null,
+    });
+  } catch (_err) {
+    return res.redirect('/communities');
+  }
+});
+
+router.post('/manage/:id', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+  const { communityName, description, isPrivate } = normalizeCreatePayload(req.body);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  if (!communityName) {
+    return res.redirect(
+      `/communities/manage/${communityId}?error=` +
+      encodeURIComponent('Community name is required.')
+    );
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data: updatedCommunity, error: updateError } = await supabase
+      .from('communities')
+      .update({
+        name: communityName,
+        description: description || null,
+        is_private: isPrivate,
+      })
+      .eq('id', communityId)
+      .eq('creator_id', sessionUser.id)
+      .select('id')
+      .maybeSingle();
+
+    if (updateError || !updatedCommunity) {
+      return res.redirect(
+        `/communities/manage/${communityId}?error=` +
+        encodeURIComponent('Unable to save changes right now.')
+      );
+    }
+
+    return res.redirect(
+      `/communities/manage/${communityId}?success=` +
+      encodeURIComponent('Community updated successfully.')
+    );
+  } catch (_err) {
+    return res.redirect(
+      `/communities/manage/${communityId}?error=` +
+      encodeURIComponent('Unable to save changes right now.')
+    );
+  }
+});
+
+router.post('/manage/:id/delete', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data: community, error: communityError } = await supabase
+      .from('communities')
+      .select('id,creator_id')
+      .eq('id', communityId)
+      .maybeSingle();
+
+    if (communityError || !community) {
+      return res.redirect('/communities');
+    }
+
+    if (!community.creator_id || community.creator_id !== sessionUser.id) {
+      return res.redirect(`/communities/${communityId}`);
+    }
+
+    const cleanupResult = await removeCommunityWithDependencies(supabase, communityId);
+    if (!cleanupResult.ok) {
+      return res.redirect(
+        `/communities/manage/${communityId}?error=` +
+        encodeURIComponent('Unable to delete this community right now.')
+      );
+    }
+
+    const { error: deleteCommunityError } = await supabase
+      .from('communities')
+      .delete()
+      .eq('id', communityId)
+      .eq('creator_id', sessionUser.id);
+
+    if (deleteCommunityError) {
+      return res.redirect(
+        `/communities/manage/${communityId}?error=` +
+        encodeURIComponent('Unable to delete this community right now.')
+      );
+    }
+
+    return res.redirect('/communities');
+  } catch (_err) {
+    return res.redirect(
+      `/communities/manage/${communityId}?error=` +
+      encodeURIComponent('Unable to delete this community right now.')
+    );
+  }
 });
 
 module.exports = router;

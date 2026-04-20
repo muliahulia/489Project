@@ -86,6 +86,30 @@
       text-transform: uppercase;
     }
 
+    .membership-owner-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .membership-manage {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.42rem 0.8rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--navy);
+      background: #fff;
+      text-decoration: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .membership-manage:hover {
+      border-color: var(--navy);
+      background: var(--cream);
+    }
+
     /* ── Members Card ── */
     .members-card {
       background: #fff;
@@ -408,7 +432,10 @@
             <div class="course-header-top">
               <h1 class="course-title"><%= activeCommunity.name %></h1>
               <% if (activeCommunity.isCreator) { %>
-                <span class="membership-owner">Owner</span>
+                <div class="membership-owner-actions">
+                  <span class="membership-owner">Owner</span>
+                  <a href="/communities/manage/<%= activeCommunity.id %>" class="membership-manage">Manage</a>
+                </div>
               <% } else if (activeCommunity.canLeave) { %>
                 <form method="POST" action="/communities/<%= activeCommunity.id %>/leave">
                   <input type="hidden" name="redirectTo" value="/communities/<%= activeCommunity.id %>" />

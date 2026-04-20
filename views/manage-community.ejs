@@ -34,6 +34,26 @@
       margin-bottom: 2rem;
     }
 
+    .form-feedback {
+      border-radius: 10px;
+      padding: 0.7rem 0.9rem;
+      margin-bottom: 1rem;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .form-feedback.error {
+      border: 1px solid #f1b8be;
+      background: #fff4f5;
+      color: #9f2f38;
+    }
+
+    .form-feedback.success {
+      border: 1px solid #b8e5c8;
+      background: #f2fbf5;
+      color: #22663a;
+    }
+
     /* ── Breadcrumb ── */
     .breadcrumb {
       display: flex;
@@ -453,6 +473,21 @@
 </head>
 <body>
 
+  <%
+    const activeCommunityId = Number.isInteger(communityId) ? communityId : null;
+    const activeCommunityName = typeof communityName === 'string' && communityName.trim()
+      ? communityName.trim()
+      : 'Community';
+    const activeCommunityDescription = typeof communityDescription === 'string' ? communityDescription : '';
+    const activeCommunityVisibility = communityVisibility === 'private' ? 'private' : 'public';
+    const activeCommunityTopics = Array.isArray(initialTopics) ? initialTopics : [];
+    const manageFormError = typeof formError === 'string' ? formError : '';
+    const manageFormSuccess = typeof formSuccess === 'string' ? formSuccess : '';
+    const activeCommunityHref = activeCommunityId ? `/communities/${activeCommunityId}` : '/communities';
+    const manageAction = activeCommunityId ? `/communities/manage/${activeCommunityId}` : '/communities';
+    const deleteAction = activeCommunityId ? `/communities/manage/${activeCommunityId}/delete` : '/communities';
+  %>
+
   <%- include('header', { initials: 'JB' }) %>
 
   <div class="layout">
@@ -468,16 +503,24 @@
         <nav class="breadcrumb">
           <a href="/communities">Communities</a>
           <span>›</span>
-          <a href="/community">Computer Science Club</a>
+          <a href="<%= activeCommunityHref %>"><%= activeCommunityName %></a>
           <span>›</span>
           <span>Manage</span>
         </nav>
 
         <h1 class="page-title">Manage Community</h1>
-        <p class="page-subtitle">Update the settings for <strong>Computer Science Club</strong>.</p>
+        <p class="page-subtitle">Update the settings for <strong><%= activeCommunityName %></strong>.</p>
+
+        <% if (manageFormError) { %>
+          <div class="form-feedback error"><%= manageFormError %></div>
+        <% } %>
+
+        <% if (manageFormSuccess) { %>
+          <div class="form-feedback success"><%= manageFormSuccess %></div>
+        <% } %>
 
         <div class="form-card">
-          <form id="manageCommunityForm" novalidate>
+          <form id="manageCommunityForm" method="POST" action="<%= manageAction %>" novalidate>
 
             <!-- ── Basic Info ── -->
             <div class="section-divider">Basic Info</div>
@@ -491,7 +534,7 @@
                 placeholder="e.g. Robotics Club"
                 maxlength="60"
                 autocomplete="off"
-                value="Computer Science Club"
+                value="<%= activeCommunityName %>"
                 required
               />
               <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -507,10 +550,10 @@
                 name="description"
                 placeholder="What is this community about? What can members expect?"
                 maxlength="300"
-              >A community for CS students to connect, collaborate, and grow. We host weekly talks, coding challenges, and networking events with industry professionals throughout the semester.</textarea>
+              ><%= activeCommunityDescription %></textarea>
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span class="hint">Optional — shown on the community listing page.</span>
-                <span class="char-counter" id="descCounter">0 / 300</span>
+                <span class="char-counter" id="descCounter"><%= activeCommunityDescription.length %> / 300</span>
               </div>
             </div>
 
@@ -564,7 +607,7 @@
               <div class="visibility-group">
 
                 <label class="visibility-option">
-                  <input type="radio" name="visibility" value="public" checked/>
+                  <input type="radio" name="visibility" value="public" <%= activeCommunityVisibility === 'public' ? 'checked' : '' %>/>
                   <div class="visibility-card">
                     <div class="visibility-icon">🌐</div>
                     <div class="visibility-text">
@@ -575,7 +618,7 @@
                 </label>
 
                 <label class="visibility-option">
-                  <input type="radio" name="visibility" value="private"/>
+                  <input type="radio" name="visibility" value="private" <%= activeCommunityVisibility === 'private' ? 'checked' : '' %>/>
                   <div class="visibility-card">
                     <div class="visibility-icon">🔒</div>
                     <div class="visibility-text">
@@ -590,7 +633,7 @@
 
             <!-- ── Actions ── -->
             <button type="submit" class="btn-submit">Save Changes</button>
-            <a href="/community" class="btn-cancel">Cancel</a>
+            <a href="<%= activeCommunityHref %>" class="btn-cancel">Cancel</a>
 
           </form>
         </div>
@@ -605,6 +648,7 @@
             </div>
             <button type="button" class="btn-danger" id="deleteBtn">Delete Community</button>
           </div>
+          <form id="deleteCommunityForm" method="POST" action="<%= deleteAction %>"></form>
         </div>
 
       </div><!-- /.form-column -->
@@ -617,7 +661,7 @@
     <div class="modal">
       <h2 class="modal-title">Delete Community?</h2>
       <p class="modal-body">
-        This will permanently delete <strong>Computer Science Club</strong> along with all posts and member data.
+        This will permanently delete <strong><%= activeCommunityName %></strong> along with all posts and member data.
         This action <strong>cannot be undone</strong>.
       </p>
       <div class="modal-actions">
@@ -650,7 +694,7 @@
     descInput.addEventListener('input', () => updateCounter(descInput, descCounter, 300, 270));
 
     /* ── Topics tag input ── */
-    const INITIAL_TAGS = ['programming', 'networking', 'algorithms'];
+    const INITIAL_TAGS = <%- JSON.stringify(activeCommunityTopics) %>;
     const MAX_TAGS     = 8;
     const tags         = [];
     const wrapper      = document.getElementById('tagsWrapper');
@@ -707,16 +751,13 @@
 
     /* ── Form submission ── */
     document.getElementById('manageCommunityForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-
       const name = nameInput.value.trim();
       if (!name) {
+        e.preventDefault();
         nameInput.focus();
         nameInput.style.borderColor = 'var(--error)';
         return;
       }
-
-      window.location.href = '/community';
     });
 
     nameInput.addEventListener('input', () => nameInput.style.borderColor = '');
@@ -788,7 +829,7 @@
       deleteModal.classList.remove('open');
     });
     document.getElementById('confirmDelete').addEventListener('click', () => {
-      window.location.href = '/communities';
+      document.getElementById('deleteCommunityForm').submit();
     });
     deleteModal.addEventListener('click', (e) => {
       if (e.target === deleteModal) deleteModal.classList.remove('open');
