@@ -1,42 +1,70 @@
-var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var session = require('express-session');
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var authRouter = require('./routes/auth');
+var dashboardRouter = require('./routes/dashboard');
+var communityRouter = require('./routes/community');
+var adminRouter = require('./routes/admin');
+var moderationRouter = require('./routes/moderation');
+var postsRouter = require('./routes/posts');
+var profileRouter = require('./routes/profile');
+var settingsRouter = require('./routes/settings');
+var coursesRouter = require('./routes/courses');
+var createCommunityRouter = require('./routes/create-community');
 
 var app = express();
 
-// view engine setup
-app.set('view engine', 'jade');
+// view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// middleware
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+// session FIRST
+app.use(session({
+  secret: 'uniconnect-secret',
+  resave: false,
+  saveUninitialized: false
+}));
 
-// catch 404 and forward to error handler
+// routes
+app.use('/', indexRouter);
+app.use('/', authRouter);
+app.use('/dashboard', dashboardRouter);
+app.use('/communities', communityRouter);
+app.use('/admin', adminRouter);
+app.use('/moderation', moderationRouter);
+app.use('/posts', postsRouter);
+app.use('/profile', profileRouter);
+app.use('/settings', settingsRouter);
+app.use('/courses', coursesRouter);
+app.use('/create-community', createCommunityRouter);
+
+
+// 404
 app.use(function(req, res, next) {
-  next(createError(404));
+  const err = new Error("Page Not Found");
+  err.status = 404;
+  next(err);
 });
 
 // error handler
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
   res.status(err.status || 500);
-  res.render('error');
+
+  res.render('error', {
+    message: err.message,
+    error: req.app.get('env') === 'development' ? err : {}
+  });
 });
 
 module.exports = app;

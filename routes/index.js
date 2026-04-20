@@ -1,12 +1,22 @@
 var express = require('express');
 var router = express.Router();
 
-const pool = require('../db');
-
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+/* Home */
+router.get('/', function(req, res) {
+  res.render('index', { title: 'Home' });
 });
+
+/* Dashboard */
+router.get('/dashboard', function(req, res) {
+  res.render('dashboard');
+});
+
+router.get('/login', function(req, res) {
+  res.render('login'); // NOT login.html
+});
+
+module.exports = router;
+const pool = require('../db');
 
 /* DB test */
 router.get('/db-test', async (req, res) => {

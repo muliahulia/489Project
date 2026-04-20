@@ -3,7 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "build:tailwind": "tailwindcss -c ./tailwind.config.js -i ./styles/tailwind.css -o ./public/stylesheets/tailwind.css --minify",
+    "watch:tailwind": "tailwindcss -c ./tailwind.config.js -i ./styles/tailwind.css -o ./public/stylesheets/tailwind.css --watch",
+    "prestart": "npm run build:tailwind",
     "start": "node ./bin/www"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
@@ -11,6 +17,7 @@
     "dotenv": "^17.4.2",
     "ejs": "^5.0.2",
     "express": "~4.16.1",
+    "express-session": "^1.19.0",
     "http-errors": "~1.6.3",
     "jade": "~1.11.0",
     "morgan": "~1.9.1",

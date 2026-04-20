@@ -1,0 +1,28 @@
+<%
+  const currentPage = typeof activePage !== 'undefined' ? activePage : '';
+  const hasAdministrative = typeof showAdministrative !== 'undefined' ? showAdministrative : false;
+  const schoolHref = typeof schoolModerationHref !== 'undefined' ? schoolModerationHref : 'schoolModeration.html';
+  const schoolLabel = typeof schoolModerationLabel !== 'undefined' ? schoolModerationLabel : 'School Moderation';
+%>
+
+<aside class="sidebar">
+  <div class="sidebar-label">Main</div>
+  <a href="/dashboard" class="<%= currentPage === 'dashboard' ? 'active' : '' %>">🏠 Home</a>
+  <a href="/feed" class="<%= currentPage === 'feed' ? 'active' : '' %>">📰 Feed</a>
+  <a href="/communities" class="<%= currentPage === 'communities' ? 'active' : '' %>">👥 Communities</a>
+  <a href="/courses" class="<%= currentPage === 'courses' ? 'active' : '' %>">📚 Courses</a>
+
+  <% if (hasAdministrative) { %>
+    <div class="sidebar-label">Administrative</div>
+    <a href="/adminDashboard" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
+    <a href="/reportDashboard" class="<%= currentPage === 'reportDashboard' ? 'active' : '' %>">🚩 Reports</a>
+    <a href="/accountModeration" class="<%= currentPage === 'accountModeration' ? 'active' : '' %>">👤 Account Moderation</a>
+    <a href="/communityModeration" class="<%= currentPage === 'communityModeration' ? 'active' : '' %>">🏘️ Community Moderation</a>
+    <a href="<%= schoolHref %>" class="<%= currentPage === 'schoolModeration' ? 'active' : '' %>">🏫 <%= schoolLabel %></a>
+  <% } %>
+
+  <div class="sidebar-label">Account</div>
+  <a href="/profile" class="<%= currentPage === 'profile' ? 'active' : '' %>">👤 Profile</a>
+  <a href="/settings" class="<%= currentPage === 'settings' ? 'active' : '' %>">⚙️ Settings</a>
+  <a href="/login">🚪 Log Out</a>
+</aside>
