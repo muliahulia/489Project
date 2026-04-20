@@ -345,6 +345,7 @@
           <% } %>
 
           <form id="createCommunityForm" method="POST" action="/communities/create-community" novalidate>
+            <input type="hidden" name="logoPath" id="logoPath" value="" />
 
             <!-- ── Basic Info ── -->
             <div class="section-divider">Basic Info</div>
@@ -390,7 +391,7 @@
                 <div id="logoPlaceholder">
                   <div class="logo-upload-icon">🖼️</div>
                   <p class="logo-upload-text"><strong>Click to upload</strong> or drag &amp; drop</p>
-                  <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP — max 2 MB</p>
+                  <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP - max 5 MB</p>
                 </div>
                 <div class="logo-preview-wrap" id="logoPreviewWrap">
                   <img class="logo-preview" id="logoPreview" src="" alt="Logo preview"/>
@@ -400,7 +401,7 @@
                   </div>
                 </div>
               </div>
-              <span class="hint">Optional — preview only for now. Upload persistence will be enabled when a DB column is added.</span>
+              <span class="hint" id="logoStatusHint">Optional - shown next to your community name.</span>
             </div>
 
             <!-- ── Topics ── -->
@@ -540,8 +541,95 @@
     wrapper.addEventListener('click', () => topicsInput.focus());
 
     /* ── Form submission ── */
-    document.getElementById('createCommunityForm').addEventListener('submit', (e) => {
+    const submitButton = document.querySelector('#createCommunityForm .btn-submit');
+    const logoPathInput = document.getElementById('logoPath');
+    const logoStatusHint = document.getElementById('logoStatusHint');
+    const SUPABASE_URL = <%- JSON.stringify(supabaseUrl || '') %>;
+    const STORAGE_BUCKET = <%- JSON.stringify(storageBucket || 'media') %>;
+
+    function encodePathForStorageUrl(path) {
+      return path
+        .split('/')
+        .map((part) => encodeURIComponent(part))
+        .join('/');
+    }
+
+    async function requestSignedUpload(fileName) {
+      const response = await fetch('/storage/signed-upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          fileName,
+          folder: 'communities',
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload && payload.error ? payload.error : 'Unable to prepare upload.');
+      }
+
+      return payload;
+    }
+
+    async function uploadLogoToStorage(file) {
+      if (!SUPABASE_URL) {
+        throw new Error('Missing SUPABASE_URL for browser uploads.');
+      }
+
+      const signed = await requestSignedUpload(file.name);
+      if (!signed || !signed.token || !signed.path) {
+        throw new Error('Upload token was not returned by the server.');
+      }
+
+      const encodedPath = encodePathForStorageUrl(signed.path);
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/upload/sign/${encodeURIComponent(STORAGE_BUCKET)}/${encodedPath}?token=${encodeURIComponent(signed.token)}`;
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text();
+        throw new Error(message || 'Upload failed.');
+      }
+
+      return signed.path;
+    }
+
+    async function uploadSelectedLogoIfAny() {
+      const file = logoFile.files && logoFile.files[0] ? logoFile.files[0] : null;
+      if (!file) {
+        return null;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Selected file is not an image.');
+      }
+
+      if (file.size > MAX_LOGO_BYTES) {
+        throw new Error('Please choose an image under 5 MB.');
+      }
+
+      submitButton.disabled = true;
+
+      const path = await uploadLogoToStorage(file);
+      logoPathInput.value = path;
+      submitButton.disabled = false;
+      return path;
+    }
+
+    document.getElementById('createCommunityForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const form = e.currentTarget;
 
       const name       = nameInput.value.trim();
       const visibility = document.querySelector('input[name="visibility"]:checked').value;
@@ -552,8 +640,17 @@
         return;
       }
 
+      try {
+        await uploadSelectedLogoIfAny();
+      } catch (error) {
+        submitButton.disabled = false;
+        logoStatusHint.textContent = 'Unable to upload logo right now. Please try again.';
+        alert('Unable to upload logo right now. Please try again.');
+        return;
+      }
+
       // Submit to server route on success.
-      e.currentTarget.submit();
+      HTMLFormElement.prototype.submit.call(form);
     });
 
     /* Reset error styles on input */
@@ -567,12 +664,12 @@
     const logoPreview     = document.getElementById('logoPreview');
     const logoFileName    = document.getElementById('logoFileName');
     const logoRemove      = document.getElementById('logoRemove');
-    const MAX_LOGO_BYTES  = 2 * 1024 * 1024;
+    const MAX_LOGO_BYTES  = 5 * 1024 * 1024;
 
     function showLogoPreview(file) {
       if (!file || !file.type.startsWith('image/')) return;
       if (file.size > MAX_LOGO_BYTES) {
-        alert('Please choose an image under 2 MB.');
+        alert('Please choose an image under 5 MB.');
         logoFile.value = '';
         return;
       }
@@ -594,6 +691,8 @@
     logoRemove.addEventListener('click', (e) => {
       e.stopPropagation();
       logoFile.value = '';
+      logoPathInput.value = '';
+      logoStatusHint.textContent = 'Optional - shown next to your community name.';
       logoPreview.src = '';
       logoPreviewWrap.classList.remove('visible');
       logoPlaceholder.style.display = '';

@@ -4,6 +4,9 @@ const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 const { buildDisplayName, buildInitials } = require('../lib/utils');
 
+const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'media';
+const SIGNED_IMAGE_TTL_SECONDS = 120;
+
 function buildFirstName(firstName, email) {
   const first = typeof firstName === 'string' ? firstName.trim() : '';
   if (first) {
@@ -37,6 +40,43 @@ function bubbleTextFromName(name) {
   return parts[0].slice(0, 3).toUpperCase();
 }
 
+function normalizeStoragePath(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed || /^https?:\/\//i.test(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+async function buildSignedImageUrl(supabase, bucket, objectPath) {
+  const path = normalizeStoragePath(objectPath);
+  if (!path) {
+    return null;
+  }
+
+  const storageBucket =
+    typeof bucket === 'string' && bucket.trim() ? bucket.trim() : DEFAULT_STORAGE_BUCKET;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(storageBucket)
+      .createSignedUrl(path, SIGNED_IMAGE_TTL_SECONDS);
+
+    if (error || !data || !data.signedUrl) {
+      return null;
+    }
+
+    return data.signedUrl;
+  } catch (_err) {
+    return null;
+  }
+}
+
 function normalizeCourse(row) {
   const name = (row && row.name && String(row.name).trim()) || 'Untitled Course';
 
@@ -55,6 +95,8 @@ function normalizeCommunity(row, index) {
     id: row.id || name,
     name,
     imageUrl: null,
+    logoBucket: row && row.logo_bucket ? row.logo_bucket : DEFAULT_STORAGE_BUCKET,
+    logoPath: normalizeStoragePath(row && row.logo_path),
     bubbleText: bubbleTextFromName(name),
     colorClass: `community-${(index % 5) + 1}`,
   };
@@ -116,7 +158,7 @@ async function fetchAffiliatedCommunities(supabase, userId) {
 
     const communityResult = await supabase
       .from('communities')
-      .select('id,name')
+      .select('id,name,logo_bucket,logo_path')
       .in('id', communityIds)
       .order('name', { ascending: true });
 
@@ -124,7 +166,18 @@ async function fetchAffiliatedCommunities(supabase, userId) {
       return [];
     }
 
-    return communityResult.data.map((row, index) => normalizeCommunity(row, index));
+    const communities = communityResult.data.map((row, index) => normalizeCommunity(row, index));
+    const signedUrls = await Promise.all(
+      communities.map((community) =>
+        buildSignedImageUrl(supabase, community.logoBucket, community.logoPath)
+      )
+    );
+
+    signedUrls.forEach((url, index) => {
+      communities[index].imageUrl = url;
+    });
+
+    return communities;
   } catch (_err) {
     return [];
   }

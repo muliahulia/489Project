@@ -3,6 +3,9 @@ var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 
+const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'media';
+const SIGNED_IMAGE_TTL_SECONDS = 120;
+
 function buildBubbleText(name) {
   if (!name || typeof name !== 'string') {
     return 'N/A';
@@ -25,12 +28,55 @@ function normalizeCreatePayload(body) {
   const communityName = typeof source.communityName === 'string' ? source.communityName.trim() : '';
   const description = typeof source.description === 'string' ? source.description.trim() : '';
   const visibility = typeof source.visibility === 'string' ? source.visibility.trim().toLowerCase() : 'public';
+  const logoPath = normalizeStoragePath(source.logoPath);
 
   return {
     communityName,
     description,
     isPrivate: visibility === 'private',
+    logoPath,
   };
+}
+
+function normalizeStoragePath(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+async function buildSignedImageUrl(supabase, bucket, objectPath) {
+  const path = normalizeStoragePath(objectPath);
+  if (!path) {
+    return null;
+  }
+
+  const storageBucket =
+    typeof bucket === 'string' && bucket.trim() ? bucket.trim() : DEFAULT_STORAGE_BUCKET;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(storageBucket)
+      .createSignedUrl(path, SIGNED_IMAGE_TTL_SECONDS);
+
+    if (error || !data || !data.signedUrl) {
+      return null;
+    }
+
+    return data.signedUrl;
+  } catch (_err) {
+    return null;
+  }
 }
 
 function toPositiveInteger(value) {
@@ -129,7 +175,7 @@ router.get('/', requireAuth, async (req, res) => {
     const [communitiesResult, membershipsResult] = await Promise.all([
       supabase
         .from('communities')
-        .select('id,name,description,creator_id,created_at')
+        .select('id,name,description,creator_id,created_at,logo_bucket,logo_path')
         .order('name', { ascending: true }),
       supabase
         .from('community_members')
@@ -176,7 +222,20 @@ router.get('/', requireAuth, async (req, res) => {
         memberLabel: `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`,
         bubbleText: buildBubbleText(name),
         avatarClass: `v${(index % 8) + 1}`,
+        logoBucket: community.logo_bucket || DEFAULT_STORAGE_BUCKET,
+        logoPath: normalizeStoragePath(community.logo_path),
+        logoUrl: null,
       };
+    });
+
+    const logoUrls = await Promise.all(
+      communityCards.map((community) =>
+        buildSignedImageUrl(supabase, community.logoBucket, community.logoPath)
+      )
+    );
+
+    logoUrls.forEach((logoUrl, index) => {
+      communityCards[index].logoUrl = logoUrl;
     });
 
     return res.render('communities', {
@@ -192,12 +251,14 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/create-community', requireAuth, (req, res) => {
   return res.render('create-community', {
     formError: typeof req.query.error === 'string' ? req.query.error : null,
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    storageBucket: DEFAULT_STORAGE_BUCKET,
   });
 });
 
 router.post('/create-community', requireAuth, async (req, res) => {
   const sessionUser = req.session.auth.user;
-  const { communityName, description, isPrivate } = normalizeCreatePayload(req.body);
+  const { communityName, description, isPrivate, logoPath } = normalizeCreatePayload(req.body);
 
   if (!communityName) {
     return res.redirect(
@@ -214,6 +275,8 @@ router.post('/create-community', requireAuth, async (req, res) => {
         description: description || null,
         creator_id: sessionUser.id,
         is_private: isPrivate,
+        logo_bucket: DEFAULT_STORAGE_BUCKET,
+        logo_path: logoPath,
       })
       .select('id')
       .single();
@@ -252,7 +315,7 @@ router.get('/manage/:id', requireAuth, async (req, res) => {
     const supabase = createSupabaseAdminClient();
     const { data: community, error } = await supabase
       .from('communities')
-      .select('id,name,description,is_private,creator_id')
+      .select('id,name,description,is_private,creator_id,logo_bucket,logo_path')
       .eq('id', communityId)
       .maybeSingle();
 
@@ -264,12 +327,22 @@ router.get('/manage/:id', requireAuth, async (req, res) => {
       return res.redirect(`/communities/${communityId}`);
     }
 
+    const logoSignedUrl = await buildSignedImageUrl(
+      supabase,
+      community.logo_bucket || DEFAULT_STORAGE_BUCKET,
+      community.logo_path
+    );
+
     return res.render('manage-community', {
       communityId: community.id,
       communityName: community.name || 'Community',
       communityDescription:
         typeof community.description === 'string' ? community.description : '',
       communityVisibility: community.is_private ? 'private' : 'public',
+      logoPath: normalizeStoragePath(community.logo_path) || '',
+      logoSignedUrl: logoSignedUrl || '',
+      supabaseUrl: process.env.SUPABASE_URL || '',
+      storageBucket: DEFAULT_STORAGE_BUCKET,
       initialTopics: [],
       formError: typeof req.query.error === 'string' ? req.query.error : null,
       formSuccess: typeof req.query.success === 'string' ? req.query.success : null,
@@ -282,7 +355,7 @@ router.get('/manage/:id', requireAuth, async (req, res) => {
 router.post('/manage/:id', requireAuth, async (req, res) => {
   const sessionUser = req.session.auth.user;
   const communityId = toPositiveInteger(req.params.id);
-  const { communityName, description, isPrivate } = normalizeCreatePayload(req.body);
+  const { communityName, description, isPrivate, logoPath } = normalizeCreatePayload(req.body);
 
   if (!communityId) {
     return res.redirect('/communities');
@@ -303,6 +376,8 @@ router.post('/manage/:id', requireAuth, async (req, res) => {
         name: communityName,
         description: description || null,
         is_private: isPrivate,
+        logo_bucket: DEFAULT_STORAGE_BUCKET,
+        logo_path: logoPath,
       })
       .eq('id', communityId)
       .eq('creator_id', sessionUser.id)

@@ -88,6 +88,13 @@
       border: 2px solid var(--border);
     }
 
+    .club-avatar-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
     .club-avatar.v1 { background: var(--navy); }
     .club-avatar.v2 { background: var(--navy-mid); }
     .club-avatar.v3 { background: var(--navy-light); }
@@ -164,7 +171,13 @@
 
         <% communityList.forEach((community) => { %>
           <a href="/communities/<%= community.id %>" class="community-card">
-            <div class="club-avatar <%= community.avatarClass %>"><%= community.bubbleText %></div>
+            <div class="club-avatar <%= community.logoUrl ? '' : community.avatarClass %>">
+              <% if (community.logoUrl) { %>
+                <img src="<%= community.logoUrl %>" alt="<%= community.name %> logo" class="club-avatar-img" loading="lazy" referrerpolicy="no-referrer"/>
+              <% } else { %>
+                <%= community.bubbleText %>
+              <% } %>
+            </div>
             <div class="club-info">
               <div class="club-name-row">
                 <span class="club-name"><%= community.name %></span>
