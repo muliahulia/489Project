@@ -2,48 +2,14 @@ var express = require('express');
 var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
+const {
+  buildDisplayName,
+  buildInitials,
+  formatCreatedAt: formatPostDate,
+} = require('../lib/utils');
 
 const PREVIEW_MEMBER_COUNT = 5;
 const DEFAULT_DESCRIPTION = 'No description has been added for this community yet.';
-
-function buildDisplayName(firstName, lastName, email) {
-  const first = typeof firstName === 'string' ? firstName.trim() : '';
-  const last = typeof lastName === 'string' ? lastName.trim() : '';
-  const name = [first, last].filter(Boolean).join(' ').trim();
-
-  if (name) {
-    return name;
-  }
-
-  if (email && typeof email === 'string') {
-    return email;
-  }
-
-  return 'Unknown User';
-}
-
-function buildInitials(firstName, lastName, email) {
-  const first = typeof firstName === 'string' ? firstName.trim() : '';
-  const last = typeof lastName === 'string' ? lastName.trim() : '';
-
-  if (first && last) {
-    return `${first[0]}${last[0]}`.toUpperCase();
-  }
-
-  if (first.length >= 2) {
-    return first.slice(0, 2).toUpperCase();
-  }
-
-  if (first.length === 1) {
-    return first[0].toUpperCase();
-  }
-
-  if (email && typeof email === 'string') {
-    return email.slice(0, 2).toUpperCase();
-  }
-
-  return 'UC';
-}
 
 function displayName(profile) {
   if (!profile) {
@@ -51,25 +17,6 @@ function displayName(profile) {
   }
 
   return buildDisplayName(profile.first_name, profile.last_name, profile.email);
-}
-
-function formatPostDate(timestamp) {
-  if (!timestamp) {
-    return 'Unknown date';
-  }
-
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown date';
-  }
-
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
 }
 
 function formatFoundingLabel(timestamp) {

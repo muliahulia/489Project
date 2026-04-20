@@ -2,45 +2,7 @@ var express = require('express');
 var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
-
-function buildDisplayName(firstName, lastName, email) {
-  const first = typeof firstName === 'string' ? firstName.trim() : '';
-  const last = typeof lastName === 'string' ? lastName.trim() : '';
-  const combined = [first, last].filter(Boolean).join(' ').trim();
-
-  if (combined) {
-    return combined;
-  }
-
-  if (email && typeof email === 'string') {
-    return email;
-  }
-
-  return 'there';
-}
-
-function buildInitials(firstName, lastName, email) {
-  const first = typeof firstName === 'string' ? firstName.trim() : '';
-  const last = typeof lastName === 'string' ? lastName.trim() : '';
-
-  if (first && last) {
-    return `${first[0]}${last[0]}`.toUpperCase();
-  }
-
-  if (first.length >= 2) {
-    return first.slice(0, 2).toUpperCase();
-  }
-
-  if (first.length === 1) {
-    return first[0].toUpperCase();
-  }
-
-  if (email && typeof email === 'string') {
-    return email.slice(0, 2).toUpperCase();
-  }
-
-  return '?';
-}
+const { buildDisplayName, buildInitials } = require('../lib/utils');
 
 function buildFirstName(firstName, email) {
   const first = typeof firstName === 'string' ? firstName.trim() : '';
@@ -196,7 +158,7 @@ router.get('/', requireAuth, async (req, res) => {
   const profileLastName =
     (profile && typeof profile.last_name === 'string') ? profile.last_name : sessionUser.lastName || null;
   const email = (profile && profile.email) || sessionUser.email;
-  const fullName = buildDisplayName(profileFirstName, profileLastName, email);
+  const fullName = buildDisplayName(profileFirstName, profileLastName, email, { fallback: 'there' });
 
   const dashboardUser = {
     id: sessionUser.id,
@@ -205,7 +167,7 @@ router.get('/', requireAuth, async (req, res) => {
     firstName: buildFirstName(profileFirstName, email),
     lastName: profileLastName,
     fullName,
-    initials: buildInitials(profileFirstName, profileLastName, email),
+    initials: buildInitials(profileFirstName, profileLastName, email, { fallback: '?' }),
   };
 
   return res.render('dashboard', {
