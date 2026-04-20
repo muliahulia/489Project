@@ -410,13 +410,13 @@
               <% if (activeCommunity.isCreator) { %>
                 <span class="membership-owner">Owner</span>
               <% } else if (activeCommunity.canLeave) { %>
-                <form method="POST" action="/community/<%= activeCommunity.id %>/leave">
-                  <input type="hidden" name="redirectTo" value="/community/<%= activeCommunity.id %>" />
+                <form method="POST" action="/communities/<%= activeCommunity.id %>/leave">
+                  <input type="hidden" name="redirectTo" value="/communities/<%= activeCommunity.id %>" />
                   <button type="submit" class="membership-btn leave">Leave Community</button>
                 </form>
               <% } else { %>
-                <form method="POST" action="/community/<%= activeCommunity.id %>/join">
-                  <input type="hidden" name="redirectTo" value="/community/<%= activeCommunity.id %>" />
+                <form method="POST" action="/communities/<%= activeCommunity.id %>/join">
+                  <input type="hidden" name="redirectTo" value="/communities/<%= activeCommunity.id %>" />
                   <button type="submit" class="membership-btn join">Join Community</button>
                 </form>
               <% } %>
@@ -449,7 +449,7 @@
               <% if (communityFormError) { %>
                 <div class="compose-error"><%= communityFormError %></div>
               <% } %>
-              <form method="POST" action="/community/<%= activeCommunity.id %>/posts">
+              <form method="POST" action="/communities/<%= activeCommunity.id %>/posts">
                 <textarea
                   name="content"
                   class="compose-textarea"

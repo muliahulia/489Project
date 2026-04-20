@@ -38,7 +38,7 @@ function toPositiveInteger(value) {
 }
 
 function fallbackRedirectForCommunity(communityId) {
-  return `/community/${communityId}`;
+  return `/communities/${communityId}`;
 }
 
 async function fetchCommunityById(supabase, communityId) {
@@ -324,7 +324,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
       authorInitials: buildInitials(author && author.first_name, author && author.last_name, author && author.email),
       createdAtLabel: formatPostDate(row.created_at),
       scopeLabel: communityRow.name || 'Community',
-      scopeHref: `/community/${communityRow.id}`,
+      scopeHref: `/communities/${communityRow.id}`,
       content: content || 'No content',
       likeCount: likeState.likeCountByPostId.get(row.id) || 0,
       liked: likeState.likedPostIds.has(row.id),
@@ -514,7 +514,7 @@ router.post('/:id/posts', requireAuth, async (req, res) => {
   const sessionUser = req.session.auth.user;
   const communityId = toPositiveInteger(req.params.id);
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
-  const redirectBase = communityId ? `/community/${communityId}` : '/communities';
+  const redirectBase = communityId ? `/communities/${communityId}` : '/communities';
 
   if (!communityId) {
     return res.redirect('/communities');

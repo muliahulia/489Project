@@ -143,7 +143,7 @@ router.post('/create-community', requireAuth, async (req, res) => {
         { onConflict: 'user_id,community_id' }
       );
 
-    return res.redirect(`/community/${createdCommunity.id}`);
+    return res.redirect(`/communities/${createdCommunity.id}`);
   } catch (_err) {
     return res.redirect(
       '/communities/create-community?error=' + encodeURIComponent('Unable to create community right now.')
