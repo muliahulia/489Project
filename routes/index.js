@@ -16,3 +16,17 @@ router.get('/login', function(req, res) {
 });
 
 module.exports = router;
+const pool = require('../db');
+
+/* DB test */
+router.get('/db-test', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('DB error');
+  }
+});
+
+module.exports = router;
