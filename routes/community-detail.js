@@ -37,6 +37,24 @@ function toPositiveInteger(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function fallbackRedirectForCommunity(communityId) {
+  return `/community/${communityId}`;
+}
+
+async function fetchCommunityById(supabase, communityId) {
+  const { data, error } = await supabase
+    .from('communities')
+    .select('id,creator_id')
+    .eq('id', communityId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
 async function fetchProfilesByIds(supabase, ids) {
   if (!Array.isArray(ids) || ids.length === 0) {
     return [];
@@ -83,7 +101,7 @@ async function resolveCommunityId(supabase, userId, explicitCommunityId) {
   return null;
 }
 
-async function buildCommunityPageModel(supabase, communityId) {
+async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
   if (!communityId) {
     return {
       community: null,
@@ -145,6 +163,8 @@ async function buildCommunityPageModel(supabase, communityId) {
   }
 
   const memberIds = [...memberIdSet];
+  const isCreator = Boolean(viewerUserId && communityRow.creator_id && viewerUserId === communityRow.creator_id);
+  const isMember = Boolean(viewerUserId && memberIdSet.has(viewerUserId));
   const memberProfiles = await fetchProfilesByIds(supabase, memberIds);
   const profileById = new Map(memberProfiles.map((row) => [row.id, row]));
 
@@ -212,6 +232,10 @@ async function buildCommunityPageModel(supabase, communityId) {
       description,
       metaLine: metadataParts.join(' · '),
       isPrivate: Boolean(communityRow.is_private),
+      isCreator,
+      isMember,
+      canJoin: !isMember,
+      canLeave: isMember && !isCreator,
     },
     members,
     memberPreview: members.slice(0, PREVIEW_MEMBER_COUNT),
@@ -269,7 +293,7 @@ async function renderCommunity(req, res, explicitCommunityId) {
       sessionUser.id,
       explicitCommunityId
     );
-    const viewModel = await buildCommunityPageModel(supabase, communityId);
+    const viewModel = await buildCommunityPageModel(supabase, communityId, sessionUser.id);
 
     return res.render('community', {
       user,
@@ -296,6 +320,73 @@ async function renderCommunity(req, res, explicitCommunityId) {
 router.get('/', requireAuth, async (req, res) => {
   const explicitCommunityId = toPositiveInteger(req.query.id);
   return renderCommunity(req, res, explicitCommunityId);
+});
+
+router.post('/:id/join', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const community = await fetchCommunityById(supabase, communityId);
+
+    if (!community) {
+      return res.redirect('/communities');
+    }
+
+    await supabase
+      .from('community_members')
+      .upsert(
+        [{ user_id: sessionUser.id, community_id: communityId, role: 'member' }],
+        { onConflict: 'user_id,community_id' }
+      );
+  } catch (_err) {
+    // Ignore and redirect to destination.
+  }
+
+  const redirectTo = typeof req.body.redirectTo === 'string' && req.body.redirectTo.trim()
+    ? req.body.redirectTo.trim()
+    : fallbackRedirectForCommunity(communityId);
+
+  return res.redirect(redirectTo);
+});
+
+router.post('/:id/leave', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const community = await fetchCommunityById(supabase, communityId);
+
+    if (!community) {
+      return res.redirect('/communities');
+    }
+
+    if (community.creator_id !== sessionUser.id) {
+      await supabase
+        .from('community_members')
+        .delete()
+        .eq('user_id', sessionUser.id)
+        .eq('community_id', communityId);
+    }
+  } catch (_err) {
+    // Ignore and redirect to destination.
+  }
+
+  const redirectTo = typeof req.body.redirectTo === 'string' && req.body.redirectTo.trim()
+    ? req.body.redirectTo.trim()
+    : fallbackRedirectForCommunity(communityId);
+
+  return res.redirect(redirectTo);
 });
 
 router.get('/:id', requireAuth, async (req, res) => {

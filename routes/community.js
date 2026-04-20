@@ -60,6 +60,9 @@ router.get('/', requireAuth, async (req, res) => {
         memberSet.add(community.creator_id);
       }
 
+      const sessionUserId = req.session.auth.user.id;
+      const isCreator = Boolean(community.creator_id && community.creator_id === sessionUserId);
+      const isMember = memberSet.has(sessionUserId);
       const memberCount = memberSet.size;
       const name = (community.name && String(community.name).trim()) || 'Untitled Community';
       const description =
@@ -74,6 +77,8 @@ router.get('/', requireAuth, async (req, res) => {
         memberLabel: `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`,
         bubbleText: buildBubbleText(name),
         avatarClass: `v${(index % 8) + 1}`,
+        isCreator,
+        isMember,
       };
     });
 

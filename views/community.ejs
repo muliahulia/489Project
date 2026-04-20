@@ -28,6 +28,14 @@
       margin-bottom: 1.5rem;
     }
 
+    .course-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
     .course-title {
       font-family: 'Playfair Display', serif;
       font-size: 2rem;
@@ -46,6 +54,36 @@
       font-size: 0.93rem;
       color: var(--text-dark);
       line-height: 1.65;
+    }
+
+    .membership-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text-dark);
+    }
+
+    .membership-btn.join {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--gold);
+    }
+
+    .membership-btn.leave {
+      background: var(--cream);
+    }
+
+    .membership-owner {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
     }
 
     /* ── Members Card ── */
@@ -290,7 +328,7 @@
     const postList = Array.isArray(posts) ? posts : [];
     const hiddenMemberCount = Number.isInteger(remainingMemberCount) ? remainingMemberCount : 0;
     const noCommunityMessage = typeof notFoundMessage === 'string' ? notFoundMessage : '';
-    const communityHref = activeCommunity ? '/community?id=' + activeCommunity.id : '/community';
+    const communityHref = activeCommunity ? '/community/' + activeCommunity.id : '/community';
   %>
 
   <%- include('header', { initials: communityUser.initials || 'UC' }) %>
@@ -306,7 +344,22 @@
 
         <% if (activeCommunity) { %>
           <div class="course-header">
-            <h1 class="course-title"><%= activeCommunity.name %></h1>
+            <div class="course-header-top">
+              <h1 class="course-title"><%= activeCommunity.name %></h1>
+              <% if (activeCommunity.isCreator) { %>
+                <span class="membership-owner">Owner</span>
+              <% } else if (activeCommunity.canLeave) { %>
+                <form method="POST" action="/community/<%= activeCommunity.id %>/leave">
+                  <input type="hidden" name="redirectTo" value="/community/<%= activeCommunity.id %>" />
+                  <button type="submit" class="membership-btn leave">Leave Community</button>
+                </form>
+              <% } else { %>
+                <form method="POST" action="/community/<%= activeCommunity.id %>/join">
+                  <input type="hidden" name="redirectTo" value="/community/<%= activeCommunity.id %>" />
+                  <button type="submit" class="membership-btn join">Join Community</button>
+                </form>
+              <% } %>
+            </div>
             <p class="course-instructor"><%= activeCommunity.metaLine %></p>
             <p class="course-description"><%= activeCommunity.description %></p>
           </div>
