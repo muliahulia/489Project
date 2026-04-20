@@ -1,15 +1,9 @@
 var express = require('express');
 var router = express.Router();
-const { requireAuth } = require('../middleware/auth');
 
 /* Home */
 router.get('/', function(req, res) {
   res.render('index', { title: 'Home' });
-});
-
-/* Dashboard */
-router.get('/dashboard', requireAuth, function(req, res) {
-  res.render('dashboard');
 });
 
 router.get('/login', function(req, res) {
