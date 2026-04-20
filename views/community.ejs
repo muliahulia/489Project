@@ -282,7 +282,18 @@
 </head>
 <body>
 
-  <%- include('header', { initials: 'LG' }) %>
+  <%
+    const communityUser = typeof user !== 'undefined' && user ? user : { initials: 'UC' };
+    const activeCommunity = typeof community !== 'undefined' ? community : null;
+    const communityMembers = Array.isArray(members) ? members : [];
+    const previewMembers = Array.isArray(memberPreview) ? memberPreview : [];
+    const postList = Array.isArray(posts) ? posts : [];
+    const hiddenMemberCount = Number.isInteger(remainingMemberCount) ? remainingMemberCount : 0;
+    const noCommunityMessage = typeof notFoundMessage === 'string' ? notFoundMessage : '';
+    const communityHref = activeCommunity ? '/community?id=' + activeCommunity.id : '/community';
+  %>
+
+  <%- include('header', { initials: communityUser.initials || 'UC' }) %>
 
   <div class="layout">
 
@@ -293,153 +304,98 @@
     <main class="main">
       <div class="course-column">
 
-        <!-- Community Header -->
-        <div class="course-header">
-          <h1 class="course-title">Computer Science Club</h1>
-          <p class="course-instructor">142 members · Founded 2018</p>
-          <p class="course-description">
-            A community for CS students to connect, collaborate, and grow. We host weekly talks, coding challenges, and networking events with industry professionals throughout the semester. Whether you're just getting started or already deep into your studies, there's a place for you here.
-          </p>
-        </div>
-
-        <!-- Members Card -->
-        <div class="members-card">
-          <div class="members-label">Members</div>
-          <div class="members-row">
-            <div class="member-avatar">JB</div>
-            <div class="member-avatar">JS</div>
-            <div class="member-avatar">LGR</div>
-            <div class="member-avatar">AM</div>
-            <div class="member-avatar">TR</div>
-            <button class="members-overflow" onclick="document.getElementById('membersModal').classList.add('open')">… and 137 others.</button>
+        <% if (activeCommunity) { %>
+          <div class="course-header">
+            <h1 class="course-title"><%= activeCommunity.name %></h1>
+            <p class="course-instructor"><%= activeCommunity.metaLine %></p>
+            <p class="course-description"><%= activeCommunity.description %></p>
           </div>
-        </div>
 
-        <!-- Community Feed -->
-        <h2 class="section-title">Feed</h2>
+          <div class="members-card">
+            <div class="members-label">Members</div>
+            <div class="members-row">
+              <% previewMembers.forEach((member) => { %>
+                <div class="member-avatar"><%= member.initials %></div>
+              <% }) %>
 
-        <!-- Post 1 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">KP</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="/profile">Keiko Park</a></span>
-              <span class="post-meta"><a href="/post">March 6, 2026 at 11:20 AM</a></span>
-              <span class="post-community"><a href="/community">Computer Science Club</a></span>
+              <% if (communityMembers.length > 0 && hiddenMemberCount > 0) { %>
+                <button class="members-overflow" onclick="document.getElementById('membersModal').classList.add('open')">... and <%= hiddenMemberCount %> others.</button>
+              <% } else if (communityMembers.length > 0) { %>
+                <button class="members-overflow" onclick="document.getElementById('membersModal').classList.add('open')">View all members</button>
+              <% } else { %>
+                <span class="members-overflow">No members yet.</span>
+              <% } %>
             </div>
           </div>
-          <div class="post-body">
-            <p>Hey everyone! Just a reminder that our speaker event this Thursday at 6 PM in EME 101 is still on. We have a senior engineer from Microsoft coming to talk about career paths in cloud infrastructure.</p>
-            <p>Free pizza will be provided. Please RSVP in the form linked in the bio so we can get a headcount for food. Bring questions — she's happy to do a real Q&amp;A!</p>
-          </div>
-        </div>
 
-        <!-- Post 2 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">DN</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="/profile">Diego Navarro</a></span>
-              <span class="post-meta"><a href="/post">March 5, 2026 at 3:45 PM</a></span>
-              <span class="post-community"><a href="/community">Computer Science Club</a></span>
-            </div>
-          </div>
-          <div class="post-body">
-            <p>Sharing my notes from last week's session on system design patterns — covered monoliths vs. microservices, event-driven architecture, and when to use each.</p>
-            <p>Happy to discuss further or do a follow-up session if there's interest. Drop a 👍 if you'd find that useful and I'll set something up with the officers.</p>
-          </div>
-        </div>
+          <h2 class="section-title">Feed</h2>
 
-        <!-- Post 3 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">JB</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="/profile">Jaden Bryant</a></span>
-              <span class="post-meta"><a href="/post">March 4, 2026 at 9:05 PM</a></span>
-              <span class="post-community"><a href="/community">Computer Science Club</a></span>
+          <% if (postList.length === 0) { %>
+            <div class="post-card">
+              <div class="post-body">
+                <p>No posts have been published in this community yet.</p>
+              </div>
             </div>
+          <% } %>
+
+          <% postList.forEach((post) => { %>
+            <div class="post-card">
+              <div class="post-actions">
+                <button class="post-action-btn" title="Like">👍</button>
+                <button class="post-action-btn" title="Comment">💬</button>
+                <button class="post-action-btn" title="Bookmark">🔖</button>
+              </div>
+              <div class="post-author">
+                <div class="post-avatar-initials"><%= post.authorInitials %></div>
+                <div class="post-author-info">
+                  <span class="post-author-name"><a href="/profile"><%= post.authorName %></a></span>
+                  <span class="post-meta"><a href="/post/<%= post.id %>"><%= post.createdAtLabel %></a></span>
+                  <span class="post-community"><a href="<%= communityHref %>"><%= activeCommunity.name %></a></span>
+                </div>
+              </div>
+              <div class="post-body">
+                <% post.paragraphs.forEach((paragraph) => { %>
+                  <p><%= paragraph %></p>
+                <% }) %>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="course-header">
+            <h1 class="course-title">Community</h1>
+            <p class="course-instructor"><%= noCommunityMessage || 'No community is currently available.' %></p>
           </div>
-          <div class="post-body">
-            <p>Does anyone have experience with Rust? I've been wanting to try it for a side project and curious if anyone here has used it beyond a tutorial.</p>
-            <p>Specifically interested in whether it's worth learning for systems work alongside C++ or if one replaces the other for most practical purposes.</p>
-          </div>
-        </div>
+        <% } %>
 
       </div><!-- /.course-column -->
     </main>
 
   </div><!-- /.layout -->
 
-  <!-- Members Modal -->
-  <div class="modal-backdrop" id="membersModal" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Members — Computer Science Club</span>
-        <button class="modal-close" onclick="document.getElementById('membersModal').classList.remove('open')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="modal-student"><div class="modal-avatar">JB</div><span class="modal-student-name">Jaden Bryant</span></div>
-        <div class="modal-student"><div class="modal-avatar">JS</div><span class="modal-student-name">Julia Smith</span></div>
-        <div class="modal-student"><div class="modal-avatar">LGR</div><span class="modal-student-name">Luis Garcia Rangel</span></div>
-        <div class="modal-student"><div class="modal-avatar">AM</div><span class="modal-student-name">Aisha Mohammed</span></div>
-        <div class="modal-student"><div class="modal-avatar">TR</div><span class="modal-student-name">Tyler Rhodes</span></div>
-        <div class="modal-student"><div class="modal-avatar">KP</div><span class="modal-student-name">Keiko Park</span></div>
-        <div class="modal-student"><div class="modal-avatar">DN</div><span class="modal-student-name">Diego Navarro</span></div>
-        <div class="modal-student"><div class="modal-avatar">SC</div><span class="modal-student-name">Sophia Chen</span></div>
-        <div class="modal-student"><div class="modal-avatar">MO</div><span class="modal-student-name">Marcus Okafor</span></div>
-        <div class="modal-student"><div class="modal-avatar">RV</div><span class="modal-student-name">Rachel Vasquez</span></div>
-        <div class="modal-student"><div class="modal-avatar">BK</div><span class="modal-student-name">Ben Kim</span></div>
-        <div class="modal-student"><div class="modal-avatar">NW</div><span class="modal-student-name">Naomi Watts</span></div>
-        <div class="modal-student"><div class="modal-avatar">PL</div><span class="modal-student-name">Patrick Lin</span></div>
-        <div class="modal-student"><div class="modal-avatar">FO</div><span class="modal-student-name">Fatima Ouedraogo</span></div>
-        <div class="modal-student"><div class="modal-avatar">CH</div><span class="modal-student-name">Caleb Harris</span></div>
-        <div class="modal-student"><div class="modal-avatar">IM</div><span class="modal-student-name">Ingrid Müller</span></div>
-        <div class="modal-student"><div class="modal-avatar">JT</div><span class="modal-student-name">James Torres</span></div>
-        <div class="modal-student"><div class="modal-avatar">AB</div><span class="modal-student-name">Amara Bello</span></div>
-        <div class="modal-student"><div class="modal-avatar">OZ</div><span class="modal-student-name">Olivia Zhang</span></div>
-        <div class="modal-student"><div class="modal-avatar">SR</div><span class="modal-student-name">Samuel Rivera</span></div>
-        <div class="modal-student"><div class="modal-avatar">HN</div><span class="modal-student-name">Hannah Nguyen</span></div>
-        <div class="modal-student"><div class="modal-avatar">EF</div><span class="modal-student-name">Ethan Foster</span></div>
-        <div class="modal-student"><div class="modal-avatar">MP</div><span class="modal-student-name">Mia Patel</span></div>
-        <div class="modal-student"><div class="modal-avatar">AW</div><span class="modal-student-name">Aaron Williams</span></div>
-        <div class="modal-student"><div class="modal-avatar">LC</div><span class="modal-student-name">Layla Carter</span></div>
-        <div class="modal-student"><div class="modal-avatar">DM</div><span class="modal-student-name">David Mensah</span></div>
-        <div class="modal-student"><div class="modal-avatar">ZA</div><span class="modal-student-name">Zainab Al-Farsi</span></div>
-        <div class="modal-student"><div class="modal-avatar">CJ</div><span class="modal-student-name">Carlos Jiménez</span></div>
-        <div class="modal-student"><div class="modal-avatar">VS</div><span class="modal-student-name">Vera Sokolova</span></div>
-        <div class="modal-student"><div class="modal-avatar">TG</div><span class="modal-student-name">Thomas Grant</span></div>
-        <div class="modal-student"><div class="modal-avatar">RN</div><span class="modal-student-name">Riya Nair</span></div>
-        <div class="modal-student"><div class="modal-avatar">JM</div><span class="modal-student-name">Jordan Mills</span></div>
-        <div class="modal-student"><div class="modal-avatar">YW</div><span class="modal-student-name">Yuki Watanabe</span></div>
-        <div class="modal-student"><div class="modal-avatar">CB</div><span class="modal-student-name">Charlotte Brooks</span></div>
-        <div class="modal-student"><div class="modal-avatar">IA</div><span class="modal-student-name">Ibrahim Adeyemi</span></div>
-        <div class="modal-student"><div class="modal-avatar">PK</div><span class="modal-student-name">Priya Kumar</span></div>
-        <div class="modal-student"><div class="modal-avatar">NO</div><span class="modal-student-name">Nico Oliveira</span></div>
-        <div class="modal-student"><div class="modal-avatar">EL</div><span class="modal-student-name">Elena Larsson</span></div>
-        <div class="modal-student"><div class="modal-avatar">KD</div><span class="modal-student-name">Kofi Danso</span></div>
-        <div class="modal-student"><div class="modal-avatar">MW</div><span class="modal-student-name">Maya Wilson</span></div>
-        <div class="modal-student"><div class="modal-avatar">AT</div><span class="modal-student-name">Alex Thompson</span></div>
-        <div class="modal-student"><div class="modal-avatar">SB</div><span class="modal-student-name">Sara Bergström</span></div>
-        <div class="modal-student"><div class="modal-avatar">OM</div><span class="modal-student-name">Omar Malik</span></div>
+  <% if (activeCommunity) { %>
+    <div class="modal-backdrop" id="membersModal" onclick="if(event.target===this)this.classList.remove('open')">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">Members - <%= activeCommunity.name %></span>
+          <button class="modal-close" onclick="document.getElementById('membersModal').classList.remove('open')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <% if (communityMembers.length === 0) { %>
+            <div class="modal-student">
+              <span class="modal-student-name">No members yet.</span>
+            </div>
+          <% } %>
+
+          <% communityMembers.forEach((member) => { %>
+            <div class="modal-student">
+              <div class="modal-avatar"><%= member.initials %></div>
+              <span class="modal-student-name"><%= member.name %></span>
+            </div>
+          <% }) %>
+        </div>
       </div>
     </div>
-  </div>
+  <% } %>
 
   <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
 
