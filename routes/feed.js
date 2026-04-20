@@ -96,6 +96,115 @@ async function fetchAffiliations(supabase, userId) {
   };
 }
 
+async function buildFeedViewModel(supabase, sessionUser) {
+  const affiliations = await fetchAffiliations(supabase, sessionUser.id);
+
+  const postFilter = buildPostScopeFilter(
+    affiliations.courseIds,
+    affiliations.communityIds,
+    sessionUser.id
+  );
+
+  const { data: rawPosts, error: postsError } = await supabase
+    .from('posts')
+    .select('id,author_id,content,is_official,community_id,course_id,created_at,is_deleted')
+    .eq('is_deleted', false)
+    .or(postFilter)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (postsError) {
+    return {
+      posts: [],
+      courses: affiliations.courses,
+      communities: affiliations.communities,
+      user: {
+        id: sessionUser.id,
+        fullName: sessionUser.fullName || sessionUser.email,
+        email: sessionUser.email,
+        initials: buildInitials(sessionUser.fullName, sessionUser.email),
+      },
+    };
+  }
+
+  const posts = rawPosts || [];
+  const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))];
+  const courseIdsInPosts = [...new Set(posts.map((post) => post.course_id).filter(Boolean))];
+  const communityIdsInPosts = [...new Set(posts.map((post) => post.community_id).filter(Boolean))];
+
+  const [profilesResult, coursesResult, communitiesResult, currentProfileResult] = await Promise.all([
+    authorIds.length > 0
+      ? supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
+      : Promise.resolve({ data: [], error: null }),
+    courseIdsInPosts.length > 0
+      ? supabase.from('courses').select('id,name').in('id', courseIdsInPosts)
+      : Promise.resolve({ data: [], error: null }),
+    communityIdsInPosts.length > 0
+      ? supabase.from('communities').select('id,name').in('id', communityIdsInPosts)
+      : Promise.resolve({ data: [], error: null }),
+    supabase.from('profiles').select('id,full_name,email').eq('id', sessionUser.id).maybeSingle(),
+  ]);
+
+  const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
+  const courseById = new Map((coursesResult.data || []).map((row) => [row.id, row]));
+  const communityById = new Map((communitiesResult.data || []).map((row) => [row.id, row]));
+
+  const currentProfile = currentProfileResult.data || null;
+  const currentUser = {
+    id: sessionUser.id,
+    fullName:
+      (currentProfile && currentProfile.full_name) ||
+      sessionUser.fullName ||
+      sessionUser.email,
+    email: (currentProfile && currentProfile.email) || sessionUser.email,
+    initials: buildInitials(
+      currentProfile && currentProfile.full_name,
+      (currentProfile && currentProfile.email) || sessionUser.email
+    ),
+  };
+
+  const feedPosts = posts.map((post) => {
+    const author = profileById.get(post.author_id);
+    const course = courseById.get(post.course_id);
+    const community = communityById.get(post.community_id);
+    const authorName =
+      (author && author.full_name) ||
+      (author && author.email) ||
+      'Unknown User';
+    const authorEmail = (author && author.email) || '';
+
+    let scopeLabel = 'General';
+    let scopeHref = '#';
+
+    if (community) {
+      scopeLabel = community.name;
+      scopeHref = '/communities';
+    } else if (course) {
+      scopeLabel = course.name;
+      scopeHref = '/courses';
+    }
+
+    return {
+      id: post.id,
+      authorName,
+      authorInitials: buildInitials(authorName, authorEmail),
+      createdAtLabel: formatCreatedAt(post.created_at),
+      scopeLabel,
+      scopeHref,
+      content: post.content,
+    };
+  });
+
+  return {
+    posts: feedPosts,
+    courses: affiliations.courses,
+    communities: affiliations.communities,
+    courseIds: affiliations.courseIds,
+    communityIds: affiliations.communityIds,
+    user: currentUser,
+  };
+}
+
 router.get('/', requireAuth, async (req, res) => {
   const sessionUser = req.session.auth.user;
 
@@ -108,104 +217,14 @@ router.get('/', requireAuth, async (req, res) => {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const affiliations = await fetchAffiliations(supabase, sessionUser.id);
-
-    const postFilter = buildPostScopeFilter(
-      affiliations.courseIds,
-      affiliations.communityIds,
-      sessionUser.id
-    );
-
-    const { data: rawPosts, error: postsError } = await supabase
-      .from('posts')
-      .select('id,author_id,content,is_official,community_id,course_id,created_at,is_deleted')
-      .eq('is_deleted', false)
-      .or(postFilter)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (postsError) {
-      return res.render('feed', {
-        user: fallbackUser,
-        posts: [],
-        courses: affiliations.courses,
-        communities: affiliations.communities,
-      });
-    }
-
-    const posts = rawPosts || [];
-    const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))];
-    const courseIdsInPosts = [...new Set(posts.map((post) => post.course_id).filter(Boolean))];
-    const communityIdsInPosts = [...new Set(posts.map((post) => post.community_id).filter(Boolean))];
-
-    const [profilesResult, coursesResult, communitiesResult, currentProfileResult] = await Promise.all([
-      authorIds.length > 0
-        ? supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
-        : Promise.resolve({ data: [], error: null }),
-      courseIdsInPosts.length > 0
-        ? supabase.from('courses').select('id,name').in('id', courseIdsInPosts)
-        : Promise.resolve({ data: [], error: null }),
-      communityIdsInPosts.length > 0
-        ? supabase.from('communities').select('id,name').in('id', communityIdsInPosts)
-        : Promise.resolve({ data: [], error: null }),
-      supabase.from('profiles').select('id,full_name,email').eq('id', sessionUser.id).maybeSingle(),
-    ]);
-
-    const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
-    const courseById = new Map((coursesResult.data || []).map((row) => [row.id, row]));
-    const communityById = new Map((communitiesResult.data || []).map((row) => [row.id, row]));
-
-    const currentProfile = currentProfileResult.data || null;
-    const currentUser = {
-      id: sessionUser.id,
-      fullName:
-        (currentProfile && currentProfile.full_name) ||
-        sessionUser.fullName ||
-        sessionUser.email,
-      email: (currentProfile && currentProfile.email) || sessionUser.email,
-      initials: buildInitials(
-        currentProfile && currentProfile.full_name,
-        (currentProfile && currentProfile.email) || sessionUser.email
-      ),
-    };
-
-    const feedPosts = posts.map((post) => {
-      const author = profileById.get(post.author_id);
-      const course = courseById.get(post.course_id);
-      const community = communityById.get(post.community_id);
-      const authorName =
-        (author && author.full_name) ||
-        (author && author.email) ||
-        'Unknown User';
-      const authorEmail = (author && author.email) || '';
-
-      let scopeLabel = 'General';
-      let scopeHref = '#';
-
-      if (community) {
-        scopeLabel = community.name;
-        scopeHref = '/communities';
-      } else if (course) {
-        scopeLabel = course.name;
-        scopeHref = '/courses';
-      }
-
-      return {
-        id: post.id,
-        authorName,
-        authorInitials: buildInitials(authorName, authorEmail),
-        createdAtLabel: formatCreatedAt(post.created_at),
-        scopeLabel,
-        scopeHref,
-        content: post.content,
-      };
-    });
+    const viewModel = await buildFeedViewModel(supabase, sessionUser);
 
     return res.render('feed', {
-      user: currentUser,
-      posts: feedPosts,
-      courses: affiliations.courses,
-      communities: affiliations.communities,
+      user: viewModel.user,
+      posts: viewModel.posts,
+      courses: viewModel.courses,
+      communities: viewModel.communities,
+      formError: req.query.error || null,
     });
   } catch (_err) {
     return res.render('feed', {
@@ -213,7 +232,42 @@ router.get('/', requireAuth, async (req, res) => {
       posts: [],
       courses: [],
       communities: [],
+      formError: req.query.error || null,
     });
+  }
+});
+
+router.post('/posts', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+
+  if (!content) {
+    return res.redirect('/feed?error=' + encodeURIComponent('Post content cannot be empty.'));
+  }
+
+  if (content.length > 4000) {
+    return res.redirect('/feed?error=' + encodeURIComponent('Post content is too long (max 4000 characters).'));
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase
+      .from('posts')
+      .insert({
+        author_id: sessionUser.id,
+        content,
+        is_official: false,
+        course_id: null,
+        community_id: null,
+      });
+
+    if (error) {
+      return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post right now.'));
+    }
+
+    return res.redirect('/feed');
+  } catch (_err) {
+    return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post right now.'));
   }
 });
 
