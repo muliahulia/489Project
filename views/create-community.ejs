@@ -309,11 +309,23 @@
       text-align: right;
     }
     .char-counter.warn { color: #c0392b; }
+
+    .error-banner {
+      display: block;
+      margin-bottom: 1rem;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid rgba(192,57,43,0.35);
+      border-radius: 8px;
+      background: rgba(192,57,43,0.08);
+      color: #b03a2e;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
 
-  <%- include('header', { initials: 'LG' }) %>
+  <%- include('header') %>
 
   <div class="layout">
 
@@ -328,7 +340,11 @@
         <p class="page-subtitle">Set up a new space for students to connect around a shared interest or topic.</p>
 
         <div class="form-card">
-          <form id="createCommunityForm" novalidate>
+          <% if (typeof formError === 'string' && formError) { %>
+            <div class="error-banner"><%= formError %></div>
+          <% } %>
+
+          <form id="createCommunityForm" method="POST" action="/communities/create-community" novalidate>
 
             <!-- ── Basic Info ── -->
             <div class="section-divider">Basic Info</div>
@@ -384,7 +400,7 @@
                   </div>
                 </div>
               </div>
-              <span class="hint">Optional — shown next to your community name.</span>
+              <span class="hint">Optional — preview only for now. Upload persistence will be enabled when a DB column is added.</span>
             </div>
 
             <!-- ── Topics ── -->
@@ -536,8 +552,8 @@
         return;
       }
 
-      // Redirect to the community page on success
-      window.location.href = '/community';
+      // Submit to server route on success.
+      e.currentTarget.submit();
     });
 
     /* Reset error styles on input */
