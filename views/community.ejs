@@ -240,6 +240,67 @@
       margin-bottom: 1rem;
     }
 
+    .compose-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+    }
+
+    .compose-textarea {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      outline: none;
+    }
+
+    .compose-textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    }
+
+    .compose-footer {
+      margin-top: 0.65rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .compose-submit {
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--navy);
+      color: var(--gold);
+    }
+
+    .compose-locked {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+
+    .compose-error {
+      margin-bottom: 0.7rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid rgba(192,57,43,0.35);
+      border-radius: 8px;
+      background: rgba(192,57,43,0.08);
+      color: #b03a2e;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
     /* ── Post Cards ── */
     .post-card {
       background: #fff;
@@ -328,7 +389,7 @@
     const postList = Array.isArray(posts) ? posts : [];
     const hiddenMemberCount = Number.isInteger(remainingMemberCount) ? remainingMemberCount : 0;
     const noCommunityMessage = typeof notFoundMessage === 'string' ? notFoundMessage : '';
-    const communityHref = activeCommunity ? '/community/' + activeCommunity.id : '/community';
+    const communityFormError = typeof formError === 'string' ? formError : '';
   %>
 
   <%- include('header', { initials: communityUser.initials || 'UC' }) %>
@@ -383,6 +444,30 @@
 
           <h2 class="section-title">Feed</h2>
 
+          <% if (activeCommunity.canPost) { %>
+            <div class="compose-card">
+              <% if (communityFormError) { %>
+                <div class="compose-error"><%= communityFormError %></div>
+              <% } %>
+              <form method="POST" action="/community/<%= activeCommunity.id %>/posts">
+                <textarea
+                  name="content"
+                  class="compose-textarea"
+                  maxlength="4000"
+                  placeholder="Share something with this community..."
+                  required
+                ></textarea>
+                <div class="compose-footer">
+                  <button type="submit" class="compose-submit">Post</button>
+                </div>
+              </form>
+            </div>
+          <% } else { %>
+            <div class="compose-card">
+              <p class="compose-locked">Join this community to publish posts in this feed.</p>
+            </div>
+          <% } %>
+
           <% if (postList.length === 0) { %>
             <div class="post-card">
               <div class="post-body">
@@ -392,26 +477,7 @@
           <% } %>
 
           <% postList.forEach((post) => { %>
-            <div class="post-card">
-              <div class="post-actions">
-                <button class="post-action-btn" title="Like">👍</button>
-                <button class="post-action-btn" title="Comment">💬</button>
-                <button class="post-action-btn" title="Bookmark">🔖</button>
-              </div>
-              <div class="post-author">
-                <div class="post-avatar-initials"><%= post.authorInitials %></div>
-                <div class="post-author-info">
-                  <span class="post-author-name"><a href="/profile"><%= post.authorName %></a></span>
-                  <span class="post-meta"><a href="/post/<%= post.id %>"><%= post.createdAtLabel %></a></span>
-                  <span class="post-community"><a href="<%= communityHref %>"><%= activeCommunity.name %></a></span>
-                </div>
-              </div>
-              <div class="post-body">
-                <% post.paragraphs.forEach((paragraph) => { %>
-                  <p><%= paragraph %></p>
-                <% }) %>
-              </div>
-            </div>
+            <%- include('partials/post-card', { post }) %>
           <% }) %>
         <% } else { %>
           <div class="course-header">
@@ -451,6 +517,310 @@
   <% } %>
 
   <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
+
+  <script>
+    const latestCommentTimers = new WeakMap();
+
+    function buildCommentHtml(comment) {
+      return `
+        <div class="post-comment">
+          <div class="post-comment-avatar">${comment.authorInitials || 'UC'}</div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong>${comment.authorName || 'Unknown User'}</strong>
+              <span>${comment.createdAtLabel || ''}</span>
+            </div>
+            <div class="post-comment-text">${(comment.content || '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateCommentBadge(postCard, count) {
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      if (!toggleButton) {
+        return;
+      }
+
+      let countNode = toggleButton.querySelector('.comment-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'comment-count';
+        toggleButton.appendChild(document.createTextNode(' '));
+        toggleButton.appendChild(countNode);
+      }
+
+      countNode.textContent = String(count || 0);
+      countNode.classList.toggle('is-hidden', !(count > 0));
+    }
+
+    function clearLatestCommentHighlight(postCard) {
+      const highlightedComment = postCard.querySelector('.post-comment.focused');
+      if (highlightedComment) {
+        highlightedComment.classList.remove('focused');
+      }
+    }
+
+    function flashLatestComment(postCard) {
+      clearLatestCommentHighlight(postCard);
+
+      const latestComment = postCard.querySelector('.post-comment[data-comment-id]:last-child');
+      if (!latestComment) {
+        return;
+      }
+
+      latestComment.classList.add('focused');
+
+      const existingTimer = latestCommentTimers.get(postCard);
+      if (existingTimer) {
+        window.clearTimeout(existingTimer);
+      }
+
+      const timerId = window.setTimeout(() => {
+        latestComment.classList.remove('focused');
+        latestCommentTimers.delete(postCard);
+      }, 1200);
+
+      latestCommentTimers.set(postCard, timerId);
+      latestComment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function openComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) {
+        return;
+      }
+
+      commentsPanel.hidden = false;
+      toggleButton.classList.add('active');
+      toggleButton.setAttribute('aria-expanded', 'true');
+
+      if (preview) {
+        preview.hidden = true;
+      }
+
+      const input = commentsPanel.querySelector('.post-comment-input');
+      if (input) {
+        input.focus();
+      }
+    }
+
+    function collapseComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+
+      if (!commentsPanel || !toggleButton) {
+        return;
+      }
+
+      commentsPanel.hidden = true;
+      toggleButton.classList.remove('active');
+      toggleButton.setAttribute('aria-expanded', 'false');
+
+      clearLatestCommentHighlight(postCard);
+
+      const timerId = latestCommentTimers.get(postCard);
+      if (timerId) {
+        window.clearTimeout(timerId);
+        latestCommentTimers.delete(postCard);
+      }
+
+      if (preview) {
+        preview.hidden = false;
+      }
+    }
+
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = likeButton.dataset.postId;
+      if (!postId) {
+        return;
+      }
+
+      if (likeButton.dataset.pending === 'true') {
+        return;
+      }
+
+      const countNode = likeButton.querySelector('.like-count');
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
+
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      if (countNode) {
+        countNode.textContent = String(optimisticCount);
+      }
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        if (countNode) {
+          countNode.textContent = String(payload.likeCount || 0);
+        }
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        if (countNode) {
+          countNode.textContent = String(previousCount);
+        }
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const commentTrigger = event.target.closest('.js-comment-toggle, .js-comment-expand');
+      if (!commentTrigger) {
+        return;
+      }
+
+      const postCard = commentTrigger.closest('.post-card');
+      if (!postCard) {
+        return;
+      }
+
+      const isToggleButton = commentTrigger.classList.contains('js-comment-toggle');
+      const isExpandButton = commentTrigger.classList.contains('js-comment-expand');
+      const commentsPanel = postCard.querySelector('.post-comments');
+
+      if (!commentsPanel) {
+        return;
+      }
+
+      if (isToggleButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        } else {
+          collapseComments(postCard);
+        }
+        return;
+      }
+
+      if (isExpandButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        }
+
+        flashLatestComment(postCard);
+      }
+    });
+
+    document.addEventListener('submit', async (event) => {
+      const commentForm = event.target.closest('.js-comment-form');
+      if (!commentForm) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = commentForm.dataset.postId;
+      const input = commentForm.querySelector('.post-comment-input');
+      const submitButton = commentForm.querySelector('.post-comment-submit');
+      const commentList = commentForm.parentElement.querySelector('.post-comment-list');
+      const postCard = commentForm.closest('.post-card');
+      const commentsPanel = postCard ? postCard.querySelector('.post-comments') : null;
+      const content = input ? input.value.trim() : '';
+
+      if (!postId || !input || !submitButton || !commentList) {
+        return;
+      }
+
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Posting...';
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ content }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to save comment.');
+        }
+
+        const comments = Array.isArray(payload.comments) ? payload.comments : [];
+        commentList.innerHTML = comments.map(buildCommentHtml).join('');
+
+        if (commentsPanel) {
+          commentsPanel.hidden = false;
+        }
+
+        const preview = postCard ? postCard.querySelector('.post-comment-preview') : null;
+        if (preview) {
+          preview.hidden = true;
+        }
+
+        if (postCard) {
+          const toggleButton = postCard.querySelector('.js-comment-toggle');
+          if (toggleButton) {
+            toggleButton.classList.add('active');
+            toggleButton.setAttribute('aria-expanded', 'true');
+          }
+        }
+
+        if (postCard && typeof payload.commentCount === 'number') {
+          updateCommentBadge(postCard, payload.commentCount);
+        }
+
+        if (postCard) {
+          const nextCommentsPanel = postCard.querySelector('.post-comments');
+          if (nextCommentsPanel && nextCommentsPanel.hidden) {
+            openComments(postCard);
+          }
+        }
+
+        input.value = '';
+      } catch (_err) {
+        // Keep UI fallback silent, matching feed behavior.
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Comment';
+      }
+    });
+  </script>
 
 </body>
 </html>
