@@ -3,20 +3,36 @@ var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 
-function buildInitials(fullName, email) {
-  if (fullName && typeof fullName === 'string') {
-    const parts = fullName
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+function buildDisplayName(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+  const name = [first, last].filter(Boolean).join(' ').trim();
 
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
+  if (name) {
+    return name;
+  }
 
-    if (parts.length === 1 && parts[0].length >= 2) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
+  if (email && typeof email === 'string') {
+    return email;
+  }
+
+  return 'Unknown User';
+}
+
+function buildInitials(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+
+  if (first && last) {
+    return `${first[0]}${last[0]}`.toUpperCase();
+  }
+
+  if (first.length >= 2) {
+    return first.slice(0, 2).toUpperCase();
+  }
+
+  if (first.length === 1) {
+    return first[0].toUpperCase();
   }
 
   if (email && typeof email === 'string') {
@@ -106,9 +122,11 @@ router.get('/:id', requireAuth, async (req, res) => {
 
   const fallbackUser = {
     id: sessionUser.id,
-    fullName: sessionUser.fullName || sessionUser.email,
+    firstName: sessionUser.firstName || null,
+    lastName: sessionUser.lastName || null,
+    fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
     email: sessionUser.email,
-    initials: buildInitials(sessionUser.fullName, sessionUser.email),
+    initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
   };
 
   if (!Number.isInteger(postId) || postId <= 0) {
@@ -149,14 +167,14 @@ router.get('/:id', requireAuth, async (req, res) => {
     }
 
     const [authorProfileResult, courseResult, communityResult, currentProfileResult, likesResult, userLikeResult, commentsResult] = await Promise.all([
-      supabase.from('profiles').select('id,full_name,email').eq('id', rawPost.author_id).maybeSingle(),
+      supabase.from('profiles').select('id,first_name,last_name,email').eq('id', rawPost.author_id).maybeSingle(),
       rawPost.course_id
         ? supabase.from('courses').select('id,name').eq('id', rawPost.course_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       rawPost.community_id
         ? supabase.from('communities').select('id,name').eq('id', rawPost.community_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
-      supabase.from('profiles').select('id,full_name,email').eq('id', sessionUser.id).maybeSingle(),
+      supabase.from('profiles').select('id,first_name,last_name,email').eq('id', sessionUser.id).maybeSingle(),
       supabase.from('reactions').select('post_id').eq('type', 'like').eq('post_id', postId),
       supabase
         .from('reactions')
@@ -176,16 +194,17 @@ router.get('/:id', requireAuth, async (req, res) => {
     const comments = commentsResult.data || [];
     const commentAuthorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
     const commentProfilesResult = commentAuthorIds.length > 0
-      ? await supabase.from('profiles').select('id,full_name,email').in('id', commentAuthorIds)
+      ? await supabase.from('profiles').select('id,first_name,last_name,email').in('id', commentAuthorIds)
       : { data: [], error: null };
 
     const commentProfileById = new Map((commentProfilesResult.data || []).map((row) => [row.id, row]));
 
     const author = authorProfileResult.data;
-    const authorName =
-      (author && author.full_name) ||
-      (author && author.email) ||
-      'Unknown User';
+    const authorName = buildDisplayName(
+      author && author.first_name,
+      author && author.last_name,
+      author && author.email
+    );
     const authorEmail = (author && author.email) || '';
 
     let scopeLabel = 'General';
@@ -202,7 +221,11 @@ router.get('/:id', requireAuth, async (req, res) => {
     const post = {
       id: rawPost.id,
       authorName,
-      authorInitials: buildInitials(authorName, authorEmail),
+      authorInitials: buildInitials(
+        author && author.first_name,
+        author && author.last_name,
+        authorEmail
+      ),
       createdAtLabel: formatCreatedAt(rawPost.created_at),
       scopeLabel,
       scopeHref,
@@ -212,16 +235,21 @@ router.get('/:id', requireAuth, async (req, res) => {
       commentCount: comments.length,
       comments: comments.map((comment) => {
         const commentAuthor = commentProfileById.get(comment.author_id);
-        const commentAuthorName =
-          (commentAuthor && commentAuthor.full_name) ||
-          (commentAuthor && commentAuthor.email) ||
-          'Unknown User';
+        const commentAuthorName = buildDisplayName(
+          commentAuthor && commentAuthor.first_name,
+          commentAuthor && commentAuthor.last_name,
+          commentAuthor && commentAuthor.email
+        );
         const commentAuthorEmail = (commentAuthor && commentAuthor.email) || '';
 
         return {
           id: comment.id,
           authorName: commentAuthorName,
-          authorInitials: buildInitials(commentAuthorName, commentAuthorEmail),
+          authorInitials: buildInitials(
+            commentAuthor && commentAuthor.first_name,
+            commentAuthor && commentAuthor.last_name,
+            commentAuthorEmail
+          ),
           createdAtLabel: formatCreatedAt(comment.created_at),
           content: comment.content,
         };
@@ -229,15 +257,24 @@ router.get('/:id', requireAuth, async (req, res) => {
     };
 
     const currentProfile = currentProfileResult.data || null;
+    const currentFirstName = (currentProfile && currentProfile.first_name) || sessionUser.firstName || null;
+    const currentLastName =
+      (currentProfile && typeof currentProfile.last_name === 'string')
+        ? currentProfile.last_name
+        : sessionUser.lastName || null;
     const user = {
       id: sessionUser.id,
-      fullName:
-        (currentProfile && currentProfile.full_name) ||
-        sessionUser.fullName ||
-        sessionUser.email,
+      firstName: currentFirstName,
+      lastName: currentLastName,
+      fullName: buildDisplayName(
+        currentFirstName,
+        currentLastName,
+        (currentProfile && currentProfile.email) || sessionUser.email
+      ),
       email: (currentProfile && currentProfile.email) || sessionUser.email,
       initials: buildInitials(
-        currentProfile && currentProfile.full_name,
+        currentFirstName,
+        currentLastName,
         (currentProfile && currentProfile.email) || sessionUser.email
       ),
     };

@@ -3,20 +3,36 @@ var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 
-function buildInitials(fullName, email) {
-  if (fullName && typeof fullName === 'string') {
-    const parts = fullName
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+function buildDisplayName(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+  const name = [first, last].filter(Boolean).join(' ').trim();
 
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
+  if (name) {
+    return name;
+  }
 
-    if (parts.length === 1 && parts[0].length >= 2) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
+  if (email && typeof email === 'string') {
+    return email;
+  }
+
+  return 'Unknown User';
+}
+
+function buildInitials(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+
+  if (first && last) {
+    return `${first[0]}${last[0]}`.toUpperCase();
+  }
+
+  if (first.length >= 2) {
+    return first.slice(0, 2).toUpperCase();
+  }
+
+  if (first.length === 1) {
+    return first[0].toUpperCase();
   }
 
   if (email && typeof email === 'string') {
@@ -121,7 +137,7 @@ async function buildCommentState(supabase, postIds, userId) {
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
 
   const profilesResult = authorIds.length > 0
-    ? await supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
+    ? await supabase.from('profiles').select('id,first_name,last_name,email').in('id', authorIds)
     : { data: [], error: null };
 
   const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
@@ -133,14 +149,22 @@ async function buildCommentState(supabase, postIds, userId) {
     commentCountByPostId.set(postId, (commentCountByPostId.get(postId) || 0) + 1);
 
     const author = profileById.get(comment.author_id);
-    const authorName = (author && author.full_name) || (author && author.email) || 'Unknown User';
+    const authorName = buildDisplayName(
+      author && author.first_name,
+      author && author.last_name,
+      author && author.email
+    );
     const authorEmail = (author && author.email) || '';
     const list = commentsByPostId.get(postId) || [];
 
     list.push({
       id: comment.id,
       authorName,
-      authorInitials: buildInitials(authorName, authorEmail),
+      authorInitials: buildInitials(
+        author && author.first_name,
+        author && author.last_name,
+        authorEmail
+      ),
       createdAtLabel: formatCreatedAt(comment.created_at),
       content: comment.content,
     });
@@ -215,9 +239,11 @@ async function buildFeedViewModel(supabase, sessionUser) {
       communities: affiliations.communities,
       user: {
         id: sessionUser.id,
-        fullName: sessionUser.fullName || sessionUser.email,
+        firstName: sessionUser.firstName || null,
+        lastName: sessionUser.lastName || null,
+        fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
         email: sessionUser.email,
-        initials: buildInitials(sessionUser.fullName, sessionUser.email),
+        initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
       },
     };
   }
@@ -232,7 +258,7 @@ async function buildFeedViewModel(supabase, sessionUser) {
 
   const [profilesResult, coursesResult, communitiesResult, currentProfileResult] = await Promise.all([
     authorIds.length > 0
-      ? supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
+      ? supabase.from('profiles').select('id,first_name,last_name,email').in('id', authorIds)
       : Promise.resolve({ data: [], error: null }),
     courseIdsInPosts.length > 0
       ? supabase.from('courses').select('id,name').in('id', courseIdsInPosts)
@@ -240,7 +266,7 @@ async function buildFeedViewModel(supabase, sessionUser) {
     communityIdsInPosts.length > 0
       ? supabase.from('communities').select('id,name').in('id', communityIdsInPosts)
       : Promise.resolve({ data: [], error: null }),
-    supabase.from('profiles').select('id,full_name,email').eq('id', sessionUser.id).maybeSingle(),
+    supabase.from('profiles').select('id,first_name,last_name,email').eq('id', sessionUser.id).maybeSingle(),
   ]);
 
   const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
@@ -250,13 +276,20 @@ async function buildFeedViewModel(supabase, sessionUser) {
   const currentProfile = currentProfileResult.data || null;
   const currentUser = {
     id: sessionUser.id,
-    fullName:
-      (currentProfile && currentProfile.full_name) ||
-      sessionUser.fullName ||
-      sessionUser.email,
+    firstName: (currentProfile && currentProfile.first_name) || sessionUser.firstName || null,
+    lastName:
+      (currentProfile && typeof currentProfile.last_name === 'string')
+        ? currentProfile.last_name
+        : sessionUser.lastName || null,
+    fullName: buildDisplayName(
+      (currentProfile && currentProfile.first_name) || sessionUser.firstName,
+      (currentProfile && currentProfile.last_name) || sessionUser.lastName,
+      (currentProfile && currentProfile.email) || sessionUser.email
+    ),
     email: (currentProfile && currentProfile.email) || sessionUser.email,
     initials: buildInitials(
-      currentProfile && currentProfile.full_name,
+      (currentProfile && currentProfile.first_name) || sessionUser.firstName,
+      (currentProfile && currentProfile.last_name) || sessionUser.lastName,
       (currentProfile && currentProfile.email) || sessionUser.email
     ),
   };
@@ -265,10 +298,11 @@ async function buildFeedViewModel(supabase, sessionUser) {
     const author = profileById.get(post.author_id);
     const course = courseById.get(post.course_id);
     const community = communityById.get(post.community_id);
-    const authorName =
-      (author && author.full_name) ||
-      (author && author.email) ||
-      'Unknown User';
+    const authorName = buildDisplayName(
+      author && author.first_name,
+      author && author.last_name,
+      author && author.email
+    );
     const authorEmail = (author && author.email) || '';
 
     let scopeLabel = 'General';
@@ -285,7 +319,11 @@ async function buildFeedViewModel(supabase, sessionUser) {
     return {
       id: post.id,
       authorName,
-      authorInitials: buildInitials(authorName, authorEmail),
+      authorInitials: buildInitials(
+        author && author.first_name,
+        author && author.last_name,
+        authorEmail
+      ),
       createdAtLabel: formatCreatedAt(post.created_at),
       scopeLabel,
       scopeHref,
@@ -312,9 +350,11 @@ router.get('/', requireAuth, async (req, res) => {
 
   const fallbackUser = {
     id: sessionUser.id,
-    fullName: sessionUser.fullName || sessionUser.email,
+    firstName: sessionUser.firstName || null,
+    lastName: sessionUser.lastName || null,
+    fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
     email: sessionUser.email,
-    initials: buildInitials(sessionUser.fullName, sessionUser.email),
+    initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
   };
 
   try {
@@ -548,19 +588,27 @@ router.post('/posts/:postId/comments', requireAuth, async (req, res) => {
 
     const authorIds = [...new Set((commentsResult || []).map((comment) => comment.author_id).filter(Boolean))];
     const profilesResult = authorIds.length > 0
-      ? await supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
+      ? await supabase.from('profiles').select('id,first_name,last_name,email').in('id', authorIds)
       : { data: [], error: null };
 
     const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
     const comments = (commentsResult || []).map((comment) => {
       const author = profileById.get(comment.author_id);
-      const authorName = (author && author.full_name) || (author && author.email) || 'Unknown User';
+      const authorName = buildDisplayName(
+        author && author.first_name,
+        author && author.last_name,
+        author && author.email
+      );
       const authorEmail = (author && author.email) || '';
 
       return {
         id: comment.id,
         authorName,
-        authorInitials: buildInitials(authorName, authorEmail),
+        authorInitials: buildInitials(
+          author && author.first_name,
+          author && author.last_name,
+          authorEmail
+        ),
         createdAtLabel: formatCreatedAt(comment.created_at),
         content: comment.content,
       };

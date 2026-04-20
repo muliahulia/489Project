@@ -3,20 +3,36 @@ var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 
-function buildInitials(fullName, email) {
-  if (fullName && typeof fullName === 'string') {
-    const parts = fullName
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+function buildDisplayName(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+  const combined = [first, last].filter(Boolean).join(' ').trim();
 
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
+  if (combined) {
+    return combined;
+  }
 
-    if (parts.length === 1 && parts[0].length >= 2) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
+  if (email && typeof email === 'string') {
+    return email;
+  }
+
+  return 'there';
+}
+
+function buildInitials(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+
+  if (first && last) {
+    return `${first[0]}${last[0]}`.toUpperCase();
+  }
+
+  if (first.length >= 2) {
+    return first.slice(0, 2).toUpperCase();
+  }
+
+  if (first.length === 1) {
+    return first[0].toUpperCase();
   }
 
   if (email && typeof email === 'string') {
@@ -26,12 +42,10 @@ function buildInitials(fullName, email) {
   return '?';
 }
 
-function buildFirstName(fullName, email) {
-  if (fullName && typeof fullName === 'string') {
-    const trimmed = fullName.trim();
-    if (trimmed) {
-      return trimmed.split(/\s+/)[0];
-    }
+function buildFirstName(firstName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  if (first) {
+    return first;
   }
 
   if (email && typeof email === 'string') {
@@ -164,7 +178,7 @@ router.get('/', requireAuth, async (req, res) => {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from('profiles')
-      .select('id,full_name,email,role')
+      .select('id,first_name,last_name,email,role')
       .eq('id', sessionUser.id)
       .maybeSingle();
 
@@ -178,19 +192,20 @@ router.get('/', requireAuth, async (req, res) => {
     // If profile lookup fails, keep rendering from session data.
   }
 
-  const fullName =
-    (profile && profile.full_name) ||
-    sessionUser.fullName ||
-    (profile && profile.email) ||
-    sessionUser.email;
+  const profileFirstName = (profile && profile.first_name) || sessionUser.firstName || null;
+  const profileLastName =
+    (profile && typeof profile.last_name === 'string') ? profile.last_name : sessionUser.lastName || null;
+  const email = (profile && profile.email) || sessionUser.email;
+  const fullName = buildDisplayName(profileFirstName, profileLastName, email);
 
   const dashboardUser = {
     id: sessionUser.id,
-    email: (profile && profile.email) || sessionUser.email,
+    email,
     role: (profile && profile.role) || sessionUser.role || 'student',
+    firstName: buildFirstName(profileFirstName, email),
+    lastName: profileLastName,
     fullName,
-    firstName: buildFirstName(fullName, sessionUser.email),
-    initials: buildInitials(fullName, sessionUser.email),
+    initials: buildInitials(profileFirstName, profileLastName, email),
   };
 
   return res.render('dashboard', {

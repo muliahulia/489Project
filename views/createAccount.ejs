@@ -117,7 +117,7 @@
         <input type="firstName" id="firstName" placeholder="John" autocomplete="name"/>
       </div>
       <div class="field">
-        <label>Last Name</label>
+        <label>Last Name (Optional)</label>
         <input type="lastName" id="lastName" placeholder="Smith" autocomplete="family-name"/>
       </div>
       <div class="field">
@@ -175,12 +175,6 @@
         ul.appendChild(li1);
     }
 
-    if (!lastName) {
-        const li2 = document.createElement("li");
-        li2.textContent = "Last name is required.";
-        ul.appendChild(li2);
-    }
-
     if (!schoolName) {
         const li3 = document.createElement("li");
         li3.textContent = "School name is required.";
@@ -206,7 +200,7 @@
         ul.appendChild(li6);
     }
 
-    if (!firstName || !lastName || !schoolName || !emailRegex.test(email) || password.length < 8|| password != confirmPassword) {
+    if (!firstName || !schoolName || !emailRegex.test(email) || password.length < 8|| password != confirmPassword) {
         errorMessage.appendChild(ul);
         errorBanner.style.display= "block";
         return;

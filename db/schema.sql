@@ -4,7 +4,8 @@ CREATE TYPE user_role AS ENUM ('student', 'official', 'admin');
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     school_id INT,

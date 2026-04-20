@@ -32,6 +32,12 @@ function sendFailure(req, res, status, message) {
   return res.redirect(`/login?error=${encodeURIComponent(message)}`);
 }
 
+function joinName(firstName, lastName) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+  return [first, last].filter(Boolean).join(' ').trim() || null;
+}
+
 router.get('/login', (req, res) => {
   res.render('login', {
     error: req.query.error || null,
@@ -77,7 +83,18 @@ router.post('/login', async (req, res) => {
       id: data.user.id,
       email: data.user.email,
       role: data.user.user_metadata && data.user.user_metadata.role ? data.user.user_metadata.role : 'student',
-      fullName: data.user.user_metadata && data.user.user_metadata.full_name ? data.user.user_metadata.full_name : null,
+      firstName:
+        data.user.user_metadata && data.user.user_metadata.first_name
+          ? data.user.user_metadata.first_name
+          : null,
+      lastName:
+        data.user.user_metadata && typeof data.user.user_metadata.last_name === 'string'
+          ? data.user.user_metadata.last_name
+          : null,
+      fullName: joinName(
+        data.user.user_metadata && data.user.user_metadata.first_name,
+        data.user.user_metadata && data.user.user_metadata.last_name
+      ),
     },
   };
 
@@ -98,18 +115,18 @@ router.post('/signup', async (req, res) => {
     schoolName,
   } = getRequestBody(req, ['firstName', 'lastName', 'email', 'password', 'role', 'schoolName']);
 
-  if (!firstName || !lastName || !email || !password) {
+  if (!firstName || !email || !password) {
     return sendFailure(req, res, 400, 'Missing required signup fields.');
   }
-
-  const fullName = `${firstName} ${lastName}`.trim();
+  const normalizedLastName = typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null;
   const supabase = createSupabaseAnonClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        full_name: fullName,
+        first_name: firstName,
+        last_name: normalizedLastName,
         role: role || 'student',
         school_name: schoolName || null,
       },

@@ -6,20 +6,36 @@ const { createSupabaseAdminClient } = require('../lib/supabase');
 const PREVIEW_MEMBER_COUNT = 5;
 const DEFAULT_DESCRIPTION = 'No description has been added for this community yet.';
 
-function buildInitials(fullName, email) {
-  if (fullName && typeof fullName === 'string') {
-    const parts = fullName
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+function buildDisplayName(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+  const name = [first, last].filter(Boolean).join(' ').trim();
 
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
+  if (name) {
+    return name;
+  }
 
-    if (parts.length === 1 && parts[0].length >= 2) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
+  if (email && typeof email === 'string') {
+    return email;
+  }
+
+  return 'Unknown User';
+}
+
+function buildInitials(firstName, lastName, email) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+
+  if (first && last) {
+    return `${first[0]}${last[0]}`.toUpperCase();
+  }
+
+  if (first.length >= 2) {
+    return first.slice(0, 2).toUpperCase();
+  }
+
+  if (first.length === 1) {
+    return first[0].toUpperCase();
   }
 
   if (email && typeof email === 'string') {
@@ -34,15 +50,7 @@ function displayName(profile) {
     return 'Unknown User';
   }
 
-  if (profile.full_name && String(profile.full_name).trim()) {
-    return String(profile.full_name).trim();
-  }
-
-  if (profile.email && String(profile.email).trim()) {
-    return String(profile.email).trim();
-  }
-
-  return 'Unknown User';
+  return buildDisplayName(profile.first_name, profile.last_name, profile.email);
 }
 
 function formatPostDate(timestamp) {
@@ -89,7 +97,7 @@ async function fetchProfilesByIds(supabase, ids) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id,full_name,email')
+    .select('id,first_name,last_name,email')
     .in('id', ids);
 
   if (error || !data) {
@@ -162,7 +170,7 @@ async function buildCommunityPageModel(supabase, communityId) {
     communityRow.creator_id
       ? supabase
         .from('profiles')
-        .select('id,full_name,email')
+        .select('id,first_name,last_name,email')
         .eq('id', communityRow.creator_id)
         .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -200,14 +208,14 @@ async function buildCommunityPageModel(supabase, communityId) {
         return {
           id: memberId,
           name: displayName(creatorProfile),
-          initials: buildInitials(creatorProfile.full_name, creatorProfile.email),
+          initials: buildInitials(creatorProfile.first_name, creatorProfile.last_name, creatorProfile.email),
         };
       }
 
       return {
         id: memberId,
         name: displayName(profile),
-        initials: buildInitials(profile && profile.full_name, profile && profile.email),
+        initials: buildInitials(profile && profile.first_name, profile && profile.last_name, profile && profile.email),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
@@ -231,7 +239,7 @@ async function buildCommunityPageModel(supabase, communityId) {
     return {
       id: row.id,
       authorName,
-      authorInitials: buildInitials(author && author.full_name, author && author.email),
+      authorInitials: buildInitials(author && author.first_name, author && author.last_name, author && author.email),
       createdAtLabel: formatPostDate(row.created_at),
       paragraphs,
     };
@@ -270,9 +278,11 @@ async function renderCommunity(req, res, explicitCommunityId) {
   const sessionUser = req.session.auth.user;
   const fallbackUser = {
     id: sessionUser.id,
-    fullName: sessionUser.fullName || sessionUser.email,
+    firstName: sessionUser.firstName || null,
+    lastName: sessionUser.lastName || null,
+    fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
     email: sessionUser.email,
-    initials: buildInitials(sessionUser.fullName, sessionUser.email),
+    initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
   };
 
   try {
@@ -280,20 +290,29 @@ async function renderCommunity(req, res, explicitCommunityId) {
 
     const currentProfileResult = await supabase
       .from('profiles')
-      .select('id,full_name,email')
+      .select('id,first_name,last_name,email')
       .eq('id', sessionUser.id)
       .maybeSingle();
 
     const currentProfile = currentProfileResult.data || null;
+    const currentFirstName = (currentProfile && currentProfile.first_name) || sessionUser.firstName || null;
+    const currentLastName =
+      (currentProfile && typeof currentProfile.last_name === 'string')
+        ? currentProfile.last_name
+        : sessionUser.lastName || null;
     const user = {
       id: sessionUser.id,
-      fullName:
-        (currentProfile && currentProfile.full_name) ||
-        sessionUser.fullName ||
-        sessionUser.email,
+      firstName: currentFirstName,
+      lastName: currentLastName,
+      fullName: buildDisplayName(
+        currentFirstName,
+        currentLastName,
+        (currentProfile && currentProfile.email) || sessionUser.email
+      ),
       email: (currentProfile && currentProfile.email) || sessionUser.email,
       initials: buildInitials(
-        currentProfile && currentProfile.full_name,
+        currentFirstName,
+        currentLastName,
         (currentProfile && currentProfile.email) || sessionUser.email
       ),
     };
@@ -333,11 +352,17 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 router.get('/:id', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
   const explicitCommunityId = toPositiveInteger(req.params.id);
   if (!explicitCommunityId) {
     return res.status(404).render('community', {
       user: {
-        initials: 'UC',
+        id: sessionUser.id,
+        firstName: sessionUser.firstName || null,
+        lastName: sessionUser.lastName || null,
+        fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
+        email: sessionUser.email,
+        initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
       },
       community: null,
       members: [],

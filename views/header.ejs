@@ -1,8 +1,41 @@
 <%
+  function deriveInitialsFromUser(sourceUser) {
+    if (!sourceUser || typeof sourceUser !== 'object') {
+      return '';
+    }
+
+    if (typeof sourceUser.initials === 'string' && sourceUser.initials.trim()) {
+      return sourceUser.initials.trim().slice(0, 3).toUpperCase();
+    }
+
+    const firstName = sourceUser.firstName || sourceUser.first_name;
+    const lastName = sourceUser.lastName || sourceUser.last_name;
+
+    if (typeof firstName === 'string' && firstName.trim()) {
+      const first = firstName.trim();
+      if (typeof lastName === 'string' && lastName.trim()) {
+        return `${first[0]}${lastName.trim()[0]}`.toUpperCase();
+      }
+
+      if (first.length >= 2) {
+        return first.slice(0, 2).toUpperCase();
+      }
+    }
+
+    if (typeof sourceUser.email === 'string' && sourceUser.email.trim()) {
+      return sourceUser.email.trim().slice(0, 2).toUpperCase();
+    }
+
+    return '';
+  }
+
   const headerSearchPlaceholder = typeof searchPlaceholder !== 'undefined' ? searchPlaceholder : 'Search...';
   const headerSearchId = typeof searchId !== 'undefined' ? searchId : '';
   const headerSearchOnInput = typeof searchOnInput !== 'undefined' ? searchOnInput : '';
-  const headerInitials = typeof initials !== 'undefined' ? initials : 'JS';
+  const routeUserInitials = deriveInitialsFromUser(typeof user !== 'undefined' ? user : null);
+  const sessionUserInitials = deriveInitialsFromUser(typeof currentUser !== 'undefined' ? currentUser : null);
+  const explicitInitials = typeof initials === 'string' ? initials.trim() : '';
+  const headerInitials = routeUserInitials || sessionUserInitials || explicitInitials || 'UC';
 %>
 <nav class="topbar">
   <div class="topbar-brand">UniConnect</div>
