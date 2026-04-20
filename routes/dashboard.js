@@ -1,7 +1,8 @@
 var express = require('express');
 var router = express.Router();
+const { requireAuth } = require('../middleware/auth');
 
-router.get('/', (req, res) => {
+router.get('/', requireAuth, (req, res) => {
   res.render('dashboard');
 });
 

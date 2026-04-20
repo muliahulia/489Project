@@ -3,6 +3,7 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var session = require('express-session');
+require('dotenv').config();
 
 var indexRouter = require('./routes/index');
 var authRouter = require('./routes/auth');
@@ -15,6 +16,8 @@ var profileRouter = require('./routes/profile');
 var settingsRouter = require('./routes/settings');
 var coursesRouter = require('./routes/courses');
 var createCommunityRouter = require('./routes/create-community');
+var storageRouter = require('./routes/storage');
+const { attachSessionUser } = require('./middleware/auth');
 
 var app = express();
 
@@ -31,10 +34,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // session FIRST
 app.use(session({
-  secret: 'uniconnect-secret',
+  secret: process.env.SESSION_SECRET || 'uniconnect-secret',
   resave: false,
   saveUninitialized: false
 }));
+
+app.use(attachSessionUser);
 
 // routes
 app.use('/', indexRouter);
@@ -48,6 +53,7 @@ app.use('/profile', profileRouter);
 app.use('/settings', settingsRouter);
 app.use('/courses', coursesRouter);
 app.use('/create-community', createCommunityRouter);
+app.use('/storage', storageRouter);
 
 
 // 404

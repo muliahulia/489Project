@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+const { requireAuth } = require('../middleware/auth');
 
 /* Home */
 router.get('/', function(req, res) {
@@ -7,12 +8,14 @@ router.get('/', function(req, res) {
 });
 
 /* Dashboard */
-router.get('/dashboard', function(req, res) {
+router.get('/dashboard', requireAuth, function(req, res) {
   res.render('dashboard');
 });
 
 router.get('/login', function(req, res) {
-  res.render('login'); // NOT login.html
+  res.render('login', {
+    error: req.query.error || null,
+  });
 });
 
 module.exports = router;

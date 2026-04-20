@@ -488,6 +488,11 @@
 
   <script>
     let currentRole = 'student';
+    const initialServerError = <%- JSON.stringify(error || null) %>;
+
+    if (initialServerError) {
+      window.addEventListener('DOMContentLoaded', () => showError(initialServerError));
+    }
 
     function setRole(btn, role) {
       currentRole = role;
@@ -524,7 +529,7 @@
       document.getElementById('error-banner').classList.remove('visible');
     }
 
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
       e.preventDefault();
       hideError();
 
@@ -542,15 +547,35 @@
         return;
       }
 
-      // Simulate loading
       btn.textContent = 'Signing in…';
       btn.disabled = true;
 
-      setTimeout(() => {
-        showError('Invalid email or password. Please check your credentials.');
+      try {
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            role: currentRole,
+          }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to sign in right now.');
+        }
+
+        window.location.assign(payload.redirectTo || '/dashboard');
+      } catch (err) {
+        showError(err.message || 'Unable to sign in right now.');
+      } finally {
         btn.textContent = 'Sign In';
         btn.disabled = false;
-      }, 1400);
+      }
     }
   </script>
 </body>
