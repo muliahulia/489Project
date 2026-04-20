@@ -1,6 +1,14 @@
 <div class="post-card">
   <div class="post-actions">
-    <button class="post-action-btn" title="Like">👍</button>
+    <button
+      class="post-action-btn like-btn js-like-btn <%= post.liked ? 'active' : '' %>"
+      title="Like"
+      data-post-id="<%= post.id %>"
+      data-liked="<%= post.liked ? 'true' : 'false' %>"
+      aria-pressed="<%= post.liked ? 'true' : 'false' %>"
+    >
+      👍 <span class="like-count"><%= post.likeCount || 0 %></span>
+    </button>
     <button class="post-action-btn" title="Comment">💬</button>
     <button class="post-action-btn" title="Bookmark">🔖</button>
   </div>

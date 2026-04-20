@@ -234,5 +234,72 @@
 
   <%- include('footer', { footerLayout: 'sidebarBoth' }) %>
 
+  <script>
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = likeButton.dataset.postId;
+      if (!postId) {
+        return;
+      }
+
+      if (likeButton.dataset.pending === 'true') {
+        return;
+      }
+
+      const countNode = likeButton.querySelector('.like-count');
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
+
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      if (countNode) {
+        countNode.textContent = String(optimisticCount);
+      }
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        if (countNode) {
+          countNode.textContent = String(payload.likeCount || 0);
+        }
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        if (countNode) {
+          countNode.textContent = String(previousCount);
+        }
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+  </script>
+
 </body>
 </html>

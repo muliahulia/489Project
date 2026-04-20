@@ -59,6 +59,42 @@ function buildPostScopeFilter(courseIds, communityIds, userId) {
   return clauses.join(',');
 }
 
+async function buildLikeState(supabase, postIds, userId) {
+  if (!postIds || postIds.length === 0) {
+    return {
+      likeCountByPostId: new Map(),
+      likedPostIds: new Set(),
+    };
+  }
+
+  const [likesResult, userLikesResult] = await Promise.all([
+    supabase
+      .from('reactions')
+      .select('post_id')
+      .eq('type', 'like')
+      .in('post_id', postIds),
+    supabase
+      .from('reactions')
+      .select('post_id')
+      .eq('type', 'like')
+      .eq('user_id', userId)
+      .in('post_id', postIds),
+  ]);
+
+  const likeCountByPostId = new Map();
+  (likesResult.data || []).forEach((row) => {
+    const count = likeCountByPostId.get(row.post_id) || 0;
+    likeCountByPostId.set(row.post_id, count + 1);
+  });
+
+  const likedPostIds = new Set((userLikesResult.data || []).map((row) => row.post_id));
+
+  return {
+    likeCountByPostId,
+    likedPostIds,
+  };
+}
+
 async function fetchAffiliations(supabase, userId) {
   const [courseMembershipResult, communityMembershipResult] = await Promise.all([
     supabase
@@ -128,9 +164,11 @@ async function buildFeedViewModel(supabase, sessionUser) {
   }
 
   const posts = rawPosts || [];
+  const postIds = posts.map((post) => post.id).filter(Boolean);
   const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))];
   const courseIdsInPosts = [...new Set(posts.map((post) => post.course_id).filter(Boolean))];
   const communityIdsInPosts = [...new Set(posts.map((post) => post.community_id).filter(Boolean))];
+  const likeState = await buildLikeState(supabase, postIds, sessionUser.id);
 
   const [profilesResult, coursesResult, communitiesResult, currentProfileResult] = await Promise.all([
     authorIds.length > 0
@@ -192,6 +230,8 @@ async function buildFeedViewModel(supabase, sessionUser) {
       scopeLabel,
       scopeHref,
       content: post.content,
+      likeCount: likeState.likeCountByPostId.get(post.id) || 0,
+      liked: likeState.likedPostIds.has(post.id),
     };
   });
 
@@ -268,6 +308,95 @@ router.post('/posts', requireAuth, async (req, res) => {
     return res.redirect('/feed');
   } catch (_err) {
     return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post right now.'));
+  }
+});
+
+router.post('/posts/:postId/like', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+  const postId = Number.parseInt(req.params.postId, 10);
+
+  if (!Number.isInteger(postId) || postId <= 0) {
+    return res.status(400).json({ error: 'Invalid post id.' });
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const affiliations = await fetchAffiliations(supabase, sessionUser.id);
+    const visibilityFilter = buildPostScopeFilter(
+      affiliations.courseIds,
+      affiliations.communityIds,
+      sessionUser.id
+    );
+
+    const { data: visiblePost, error: visiblePostError } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('id', postId)
+      .eq('is_deleted', false)
+      .or(visibilityFilter)
+      .maybeSingle();
+
+    if (visiblePostError || !visiblePost) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+
+    const { data: existingReaction, error: existingReactionError } = await supabase
+      .from('reactions')
+      .select('user_id,post_id,type')
+      .eq('user_id', sessionUser.id)
+      .eq('post_id', postId)
+      .maybeSingle();
+
+    if (existingReactionError) {
+      return res.status(500).json({ error: 'Unable to update like.' });
+    }
+
+    let liked;
+
+    if (existingReaction && existingReaction.type === 'like') {
+      const { error: deleteError } = await supabase
+        .from('reactions')
+        .delete()
+        .eq('user_id', sessionUser.id)
+        .eq('post_id', postId);
+
+      if (deleteError) {
+        return res.status(500).json({ error: 'Unable to update like.' });
+      }
+
+      liked = false;
+    } else {
+      const { error: upsertError } = await supabase
+        .from('reactions')
+        .upsert(
+          [{ user_id: sessionUser.id, post_id: postId, type: 'like' }],
+          { onConflict: 'user_id,post_id' }
+        );
+
+      if (upsertError) {
+        return res.status(500).json({ error: 'Unable to update like.' });
+      }
+
+      liked = true;
+    }
+
+    const { count, error: countError } = await supabase
+      .from('reactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', postId)
+      .eq('type', 'like');
+
+    if (countError) {
+      return res.status(500).json({ error: 'Unable to update like.' });
+    }
+
+    return res.json({
+      ok: true,
+      liked,
+      likeCount: count || 0,
+    });
+  } catch (_err) {
+    return res.status(500).json({ error: 'Unable to update like.' });
   }
 });
 
