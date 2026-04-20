@@ -19,12 +19,8 @@
     "express": "~4.16.1",
     "express-session": "^1.19.0",
     "http-errors": "~1.6.3",
-<<<<<<< HEAD
     "jade": "~1.11.0",
     "morgan": "~1.9.1",
     "pg": "^8.20.0"
-=======
-    "morgan": "~1.9.1"
->>>>>>> origin/js-working
   }
 }
