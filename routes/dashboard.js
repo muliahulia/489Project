@@ -44,17 +44,6 @@ function buildFirstName(fullName, email) {
   return 'there';
 }
 
-function pickFirstString(source, keys) {
-  for (const key of keys) {
-    const value = source && source[key];
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return null;
-}
-
 function bubbleTextFromName(name) {
   if (!name) {
     return 'N/A';
@@ -73,27 +62,23 @@ function bubbleTextFromName(name) {
 }
 
 function normalizeCourse(row) {
-  const name = pickFirstString(row, ['name', 'title', 'course_name']) || 'Untitled Course';
-  const code = pickFirstString(row, ['code', 'course_code', 'short_code']);
-  const imageUrl = pickFirstString(row, ['logo_url', 'image_url', 'icon_url', 'avatar_url']);
+  const name = (row && row.name && String(row.name).trim()) || 'Untitled Course';
 
   return {
-    id: row.id || row.course_id || name,
+    id: row.id || name,
     name,
-    code,
-    imageUrl,
-    bubbleText: (code || bubbleTextFromName(name)).slice(0, 10).toUpperCase(),
+    imageUrl: null,
+    bubbleText: bubbleTextFromName(name),
   };
 }
 
 function normalizeCommunity(row, index) {
-  const name = pickFirstString(row, ['name', 'title', 'community_name']) || 'Untitled Community';
-  const imageUrl = pickFirstString(row, ['logo_url', 'image_url', 'icon_url', 'avatar_url']);
+  const name = (row && row.name && String(row.name).trim()) || 'Untitled Community';
 
   return {
-    id: row.id || row.community_id || name,
+    id: row.id || name,
     name,
-    imageUrl,
+    imageUrl: null,
     bubbleText: bubbleTextFromName(name),
     colorClass: `community-${(index % 5) + 1}`,
   };
@@ -120,8 +105,9 @@ async function fetchAffiliatedCourses(supabase, userId) {
 
     const courseResult = await supabase
       .from('courses')
-      .select('*')
-      .in('id', courseIds);
+      .select('id,name')
+      .in('id', courseIds)
+      .order('name', { ascending: true });
 
     if (courseResult.error || !courseResult.data) {
       return [];
@@ -154,8 +140,9 @@ async function fetchAffiliatedCommunities(supabase, userId) {
 
     const communityResult = await supabase
       .from('communities')
-      .select('*')
-      .in('id', communityIds);
+      .select('id,name')
+      .in('id', communityIds)
+      .order('name', { ascending: true });
 
     if (communityResult.error || !communityResult.data) {
       return [];
@@ -177,7 +164,7 @@ router.get('/', requireAuth, async (req, res) => {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id,full_name,email,role')
       .eq('id', sessionUser.id)
       .maybeSingle();
 
@@ -192,13 +179,14 @@ router.get('/', requireAuth, async (req, res) => {
   }
 
   const fullName =
-    (profile && (profile.full_name || profile.display_name || profile.username)) ||
+    (profile && profile.full_name) ||
     sessionUser.fullName ||
+    (profile && profile.email) ||
     sessionUser.email;
 
   const dashboardUser = {
     id: sessionUser.id,
-    email: sessionUser.email,
+    email: (profile && profile.email) || sessionUser.email,
     role: (profile && profile.role) || sessionUser.role || 'student',
     fullName,
     firstName: buildFirstName(fullName, sessionUser.email),
