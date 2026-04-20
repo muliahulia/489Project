@@ -1,0 +1,220 @@
+var express = require('express');
+var router = express.Router();
+const { requireAuth } = require('../middleware/auth');
+const { createSupabaseAdminClient } = require('../lib/supabase');
+
+function buildInitials(fullName, email) {
+  if (fullName && typeof fullName === 'string') {
+    const parts = fullName
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+
+    if (parts.length === 1 && parts[0].length >= 2) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+  }
+
+  if (email && typeof email === 'string') {
+    return email.slice(0, 2).toUpperCase();
+  }
+
+  return 'UC';
+}
+
+function formatCreatedAt(timestamp) {
+  if (!timestamp) {
+    return 'Unknown date';
+  }
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown date';
+  }
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function buildPostScopeFilter(courseIds, communityIds, userId) {
+  const clauses = [`author_id.eq.${userId}`];
+
+  if (courseIds.length > 0) {
+    clauses.push(`course_id.in.(${courseIds.join(',')})`);
+  }
+
+  if (communityIds.length > 0) {
+    clauses.push(`community_id.in.(${communityIds.join(',')})`);
+  }
+
+  return clauses.join(',');
+}
+
+async function fetchAffiliations(supabase, userId) {
+  const [courseMembershipResult, communityMembershipResult] = await Promise.all([
+    supabase
+      .from('course_enrollments')
+      .select('course_id')
+      .eq('user_id', userId),
+    supabase
+      .from('community_members')
+      .select('community_id')
+      .eq('user_id', userId),
+  ]);
+
+  const courseIds = (courseMembershipResult.data || [])
+    .map((row) => row.course_id)
+    .filter(Boolean);
+
+  const communityIds = (communityMembershipResult.data || [])
+    .map((row) => row.community_id)
+    .filter(Boolean);
+
+  const [coursesResult, communitiesResult] = await Promise.all([
+    courseIds.length > 0
+      ? supabase.from('courses').select('id,name').in('id', courseIds).order('name', { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+    communityIds.length > 0
+      ? supabase.from('communities').select('id,name').in('id', communityIds).order('name', { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  return {
+    courseIds,
+    communityIds,
+    courses: coursesResult.data || [],
+    communities: communitiesResult.data || [],
+  };
+}
+
+router.get('/', requireAuth, async (req, res) => {
+  const sessionUser = req.session.auth.user;
+
+  const fallbackUser = {
+    id: sessionUser.id,
+    fullName: sessionUser.fullName || sessionUser.email,
+    email: sessionUser.email,
+    initials: buildInitials(sessionUser.fullName, sessionUser.email),
+  };
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const affiliations = await fetchAffiliations(supabase, sessionUser.id);
+
+    const postFilter = buildPostScopeFilter(
+      affiliations.courseIds,
+      affiliations.communityIds,
+      sessionUser.id
+    );
+
+    const { data: rawPosts, error: postsError } = await supabase
+      .from('posts')
+      .select('id,author_id,content,is_official,community_id,course_id,created_at,is_deleted')
+      .eq('is_deleted', false)
+      .or(postFilter)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (postsError) {
+      return res.render('feed', {
+        user: fallbackUser,
+        posts: [],
+        courses: affiliations.courses,
+        communities: affiliations.communities,
+      });
+    }
+
+    const posts = rawPosts || [];
+    const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))];
+    const courseIdsInPosts = [...new Set(posts.map((post) => post.course_id).filter(Boolean))];
+    const communityIdsInPosts = [...new Set(posts.map((post) => post.community_id).filter(Boolean))];
+
+    const [profilesResult, coursesResult, communitiesResult, currentProfileResult] = await Promise.all([
+      authorIds.length > 0
+        ? supabase.from('profiles').select('id,full_name,email').in('id', authorIds)
+        : Promise.resolve({ data: [], error: null }),
+      courseIdsInPosts.length > 0
+        ? supabase.from('courses').select('id,name').in('id', courseIdsInPosts)
+        : Promise.resolve({ data: [], error: null }),
+      communityIdsInPosts.length > 0
+        ? supabase.from('communities').select('id,name').in('id', communityIdsInPosts)
+        : Promise.resolve({ data: [], error: null }),
+      supabase.from('profiles').select('id,full_name,email').eq('id', sessionUser.id).maybeSingle(),
+    ]);
+
+    const profileById = new Map((profilesResult.data || []).map((row) => [row.id, row]));
+    const courseById = new Map((coursesResult.data || []).map((row) => [row.id, row]));
+    const communityById = new Map((communitiesResult.data || []).map((row) => [row.id, row]));
+
+    const currentProfile = currentProfileResult.data || null;
+    const currentUser = {
+      id: sessionUser.id,
+      fullName:
+        (currentProfile && currentProfile.full_name) ||
+        sessionUser.fullName ||
+        sessionUser.email,
+      email: (currentProfile && currentProfile.email) || sessionUser.email,
+      initials: buildInitials(
+        currentProfile && currentProfile.full_name,
+        (currentProfile && currentProfile.email) || sessionUser.email
+      ),
+    };
+
+    const feedPosts = posts.map((post) => {
+      const author = profileById.get(post.author_id);
+      const course = courseById.get(post.course_id);
+      const community = communityById.get(post.community_id);
+      const authorName =
+        (author && author.full_name) ||
+        (author && author.email) ||
+        'Unknown User';
+      const authorEmail = (author && author.email) || '';
+
+      let scopeLabel = 'General';
+      let scopeHref = '#';
+
+      if (community) {
+        scopeLabel = community.name;
+        scopeHref = '/communities';
+      } else if (course) {
+        scopeLabel = course.name;
+        scopeHref = '/courses';
+      }
+
+      return {
+        id: post.id,
+        authorName,
+        authorInitials: buildInitials(authorName, authorEmail),
+        createdAtLabel: formatCreatedAt(post.created_at),
+        scopeLabel,
+        scopeHref,
+        content: post.content,
+      };
+    });
+
+    return res.render('feed', {
+      user: currentUser,
+      posts: feedPosts,
+      courses: affiliations.courses,
+      communities: affiliations.communities,
+    });
+  } catch (_err) {
+    return res.render('feed', {
+      user: fallbackUser,
+      posts: [],
+      courses: [],
+      communities: [],
+    });
+  }
+});
+
+module.exports = router;

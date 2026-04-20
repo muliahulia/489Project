@@ -4,24 +4,19 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UniConnect — Feed</title>
+  <title>UniConnect - Feed</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
-  <!-- Tailwind required for footer -->
   <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
   <style>
-    /* ── Topbar ── */
-
-    /* ── Main content ── */
     .main {
-      margin-right: 260px; /* right sidebar width */
+      margin-right: 260px;
       padding: 2rem;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
-    /* Constrain feed to a readable fixed width */
     .feed-column {
       width: 100%;
       max-width: 620px;
@@ -29,7 +24,6 @@
 
     .page-header { margin-bottom: 1.75rem; }
 
-    /* ── Create Post Box ── */
     .create-post {
       background: #fff;
       border: 1px solid var(--border);
@@ -63,13 +57,8 @@
       border-radius: 999px;
       border: 1.5px solid var(--border);
       background: var(--cream);
-      transition: border-color 0.15s, background 0.15s;
       overflow: hidden;
       padding-right: 0.25rem;
-    }
-    .create-post-input-wrap:focus-within {
-      border-color: var(--navy-light);
-      background: #fff;
     }
 
     .create-post-input {
@@ -81,10 +70,7 @@
       font-size: 0.9rem;
       color: var(--text-dark);
       outline: none;
-      cursor: pointer;
     }
-    .create-post-input:focus { cursor: text; }
-    .create-post-input::placeholder { color: #b0b8c4; }
 
     .create-post-attach {
       width: 32px; height: 32px;
@@ -96,14 +82,8 @@
       color: var(--text-muted);
       cursor: pointer;
       flex-shrink: 0;
-      transition: background 0.15s, color 0.15s;
-    }
-    .create-post-attach:hover {
-      background: var(--cream-dark);
-      color: var(--navy);
     }
 
-    /* ── Right Sidebar ── */
     .right-sidebar {
       position: fixed; top: var(--topbar-h); right: 0; bottom: 0;
       width: 260px;
@@ -130,10 +110,10 @@
       text-decoration: none;
       transition: color 0.15s;
     }
+
     .right-sidebar-item:last-child { border-bottom: none; }
     .right-sidebar-item:hover { color: var(--navy); }
 
-    /* ── Post Card (from post.html) ── */
     .post-card {
       background: #fff;
       border: 1px solid var(--border);
@@ -162,11 +142,6 @@
       cursor: pointer;
       font-size: 1rem;
       color: var(--text-muted);
-      transition: background 0.15s, color 0.15s;
-    }
-    .post-action-btn:hover {
-      background: var(--cream-dark);
-      color: var(--navy);
     }
 
     .post-author {
@@ -175,15 +150,6 @@
       gap: 1rem;
       margin-bottom: 1.25rem;
       padding-right: 8rem;
-    }
-
-    .post-avatar {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--border);
-      flex-shrink: 0;
-      background: var(--cream-dark);
     }
 
     .post-avatar-initials {
@@ -205,15 +171,11 @@
 
     .post-author-name { font-weight: 600; font-size: 1rem; color: var(--text-dark); }
     .post-author-name a { color: var(--text-dark); text-decoration: none; }
-    .post-author-name a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
     .post-meta { font-size: 0.8rem; color: var(--text-muted); }
-    .post-meta a { color: var(--text-muted); text-decoration: none; }
-    .post-meta a:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
 
     .post-community { font-size: 0.8rem; color: var(--navy); font-weight: 500; }
     .post-community a { color: var(--navy); text-decoration: none; }
-    .post-community a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
     .post-body {
       display: flex;
@@ -222,31 +184,41 @@
       font-size: 0.93rem;
       color: var(--text-dark);
       line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .empty-state {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
     }
   </style>
 </head>
 <body>
 
-  <%- include('header', { initials: 'JB' }) %>
+  <%- include('header', { initials: user && user.initials ? user.initials : 'UC' }) %>
 
   <div class="layout">
 
-    <!-- Left Sidebar -->
     <%- include('sidebar', { activePage: 'feed' }) %>
 
-    <!-- Feed -->
     <main class="main">
       <div class="feed-column">
+      <% const feedPosts = Array.isArray(posts) ? posts : []; %>
+      <% const affiliatedCourses = Array.isArray(courses) ? courses : []; %>
+      <% const affiliatedCommunities = Array.isArray(communities) ? communities : []; %>
 
       <div class="page-header">
         <h1 class="page-title">Feed</h1>
         <p class="page-subtitle">Recent posts from your courses and communities.</p>
       </div>
 
-      <!-- Create Post -->
       <div class="create-post">
         <div class="create-post-top">
-          <div class="create-post-avatar">JS</div>
+          <div class="create-post-avatar"><%= user && user.initials ? user.initials : 'UC' %></div>
           <div class="create-post-input-wrap">
             <input class="create-post-input" type="text" placeholder="What's on your mind?"/>
             <button class="create-post-attach" title="Attach media">📎</button>
@@ -254,94 +226,54 @@
         </div>
       </div>
 
-      <!-- Post 1 -->
-      <div class="post-card">
-        <div class="post-actions">
-          <button class="post-action-btn" title="Like">👍</button>
-          <button class="post-action-btn" title="Comment">💬</button>
-          <button class="post-action-btn" title="Bookmark">🔖</button>
-        </div>
-        <div class="post-author">
-          <div class="post-avatar-initials">JB</div>
-          <div class="post-author-info">
-            <span class="post-author-name"><a href="profile.ejs">Jaden Bryant</a></span>
-            <span class="post-meta"><a href="post.ejs">March 6, 2026 at 9:14 AM</a></span>
-            <span class="post-community"><a href="courses.ejs">Software Engineering</a></span>
+      <% if (feedPosts.length === 0) { %>
+        <p class="empty-state">No posts found.</p>
+      <% } else { %>
+        <% feedPosts.forEach((post) => { %>
+          <div class="post-card">
+            <div class="post-actions">
+              <button class="post-action-btn" title="Like">👍</button>
+              <button class="post-action-btn" title="Comment">💬</button>
+              <button class="post-action-btn" title="Bookmark">🔖</button>
+            </div>
+            <div class="post-author">
+              <div class="post-avatar-initials"><%= post.authorInitials %></div>
+              <div class="post-author-info">
+                <span class="post-author-name"><a href="/profile"><%= post.authorName %></a></span>
+                <span class="post-meta"><a href="/posts/post"><%= post.createdAtLabel %></a></span>
+                <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
+              </div>
+            </div>
+            <div class="post-body"><%= post.content %></div>
           </div>
-        </div>
-        <div class="post-body">
-          <p>Does anyone have notes from Tuesday's lecture on REST API design? I had to leave early and missed the last 20 minutes.</p>
-          <p>Specifically looking for the part where Prof. Henderson talked about versioning strategies — I think it was either URI-based or header-based but I'm not sure which he recommended.</p>
-          <p>Would really appreciate it, midterm is next week and I want to make sure I have everything covered!</p>
-        </div>
-      </div>
+        <% }) %>
+      <% } %>
 
-      <!-- Post 2 -->
-      <div class="post-card">
-        <div class="post-actions">
-          <button class="post-action-btn" title="Like">👍</button>
-          <button class="post-action-btn" title="Comment">💬</button>
-          <button class="post-action-btn" title="Bookmark">🔖</button>
-        </div>
-        <div class="post-author">
-          <div class="post-avatar-initials">JS</div>
-          <div class="post-author-info">
-            <span class="post-author-name"><a href="profile.ejs">Julia Smith</a></span>
-            <span class="post-meta"><a href="post.ejs">March 6, 2026 at 8:45 AM</a></span>
-            <span class="post-community"><a href="courses.ejs">Data Structures &amp; Algorithms</a></span>
-          </div>
-        </div>
-        <div class="post-body">
-          <p>Reminder that the study group for the graph algorithms unit is meeting tonight at 7 PM in the library, room 204.</p>
-          <p>We'll be going through Dijkstra's and Bellman-Ford — bring your notes and any practice problems you've been stuck on.</p>
-          <p>There's space for a few more people if anyone wants to join. Just reply here or message me directly!</p>
-        </div>
       </div>
-
-      <!-- Post 3 -->
-      <div class="post-card">
-        <div class="post-actions">
-          <button class="post-action-btn" title="Like">👍</button>
-          <button class="post-action-btn" title="Comment">💬</button>
-          <button class="post-action-btn" title="Bookmark">🔖</button>
-        </div>
-        <div class="post-author">
-          <div class="post-avatar-initials">LGR</div>
-          <div class="post-author-info">
-            <span class="post-author-name"><a href="profile.ejs">Luis Garcia Rangel</a></span>
-            <span class="post-meta"><a href="post.ejs">March 5, 2026 at 11:30 PM</a></span>
-            <span class="post-community"><a href="community.ejs">Computer Science Club</a></span>
-          </div>
-        </div>
-        <div class="post-body">
-          <p>Just finished my submission for the spring hackathon — super glad that's done. Built a course scheduler that uses a constraint-satisfaction algorithm to avoid time conflicts.</p>
-          <p>Ended up being way more complex than I expected once I added support for professor preferences and room capacity limits.</p>
-          <p>If anyone wants to collaborate on cleaning it up and maybe open-sourcing it, let me know. Could be a solid portfolio piece for all of us.</p>
-        </div>
-      </div>
-
-      </div><!-- /.feed-column -->
     </main>
 
-    <!-- Right Sidebar -->
     <aside class="right-sidebar">
-
       <div class="right-sidebar-section">
         <h2 class="right-sidebar-title">Courses</h2>
-        <a href="courses.ejs" class="right-sidebar-item">Intro to Computer Science</a>
-        <a href="courses.ejs" class="right-sidebar-item">Data Structures &amp; Algorithms</a>
-        <a href="courses.ejs" class="right-sidebar-item">Software Engineering</a>
-        <a href="courses.ejs" class="right-sidebar-item">Database Systems</a>
-        <a href="courses.ejs" class="right-sidebar-item">Web Development</a>
+        <% if (affiliatedCourses.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% affiliatedCourses.forEach((course) => { %>
+            <a href="/courses" class="right-sidebar-item"><%= course.name %></a>
+          <% }) %>
+        <% } %>
       </div>
 
       <div class="right-sidebar-section">
         <h2 class="right-sidebar-title">Communities</h2>
-        <a href="community.ejs" class="right-sidebar-item">Computer Science Club</a>
-        <a href="#" class="right-sidebar-item">Study Groups</a>
-        <a href="#" class="right-sidebar-item">Campus Events</a>
+        <% if (affiliatedCommunities.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% affiliatedCommunities.forEach((community) => { %>
+            <a href="/communities" class="right-sidebar-item"><%= community.name %></a>
+          <% }) %>
+        <% } %>
       </div>
-
     </aside>
 
   </div>
@@ -350,4 +282,3 @@
 
 </body>
 </html>
->>>>>>> origin/page/feed
