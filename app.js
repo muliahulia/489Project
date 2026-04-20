@@ -51,6 +51,7 @@ app.use('/communities', communityRouter);
 app.use('/admin', adminRouter);
 app.use('/moderation', moderationRouter);
 app.use('/posts', postsRouter);
+app.use('/post', postsRouter);
 app.use('/profile', profileRouter);
 app.use('/settings', settingsRouter);
 app.use('/courses', coursesRouter);

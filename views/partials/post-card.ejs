@@ -1,6 +1,7 @@
 <div class="post-card">
   <% const postComments = Array.isArray(post.comments) ? post.comments : []; %>
   <% const latestComment = postComments.length > 0 ? postComments[postComments.length - 1] : null; %>
+  <% const showExpandedComments = Boolean(typeof expandComments !== 'undefined' ? expandComments : false); %>
   <div class="post-actions">
     <button
       class="post-action-btn like-btn js-like-btn <%= post.liked ? 'active' : '' %>"
@@ -19,13 +20,13 @@
     <div class="post-avatar-initials"><%= post.authorInitials %></div>
     <div class="post-author-info">
       <span class="post-author-name"><a href="/profile"><%= post.authorName %></a></span>
-      <span class="post-meta"><a href="/posts/post"><%= post.createdAtLabel %></a></span>
+      <span class="post-meta"><a href="/post/<%= post.id %>"><%= post.createdAtLabel %></a></span>
       <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
     </div>
   </div>
   <div class="post-body"><%= post.content %></div>
 
-  <% if (latestComment) { %>
+  <% if (latestComment && !showExpandedComments) { %>
     <div class="post-comment-preview" data-post-id="<%= post.id %>">
       <div class="post-comment post-comment-preview-item">
         <div class="post-comment-avatar"><%= latestComment.authorInitials %></div>
@@ -42,7 +43,7 @@
     </div>
   <% } %>
 
-  <div class="post-comments" data-post-id="<%= post.id %>" hidden>
+  <div class="post-comments" data-post-id="<%= post.id %>" <%= showExpandedComments ? '' : 'hidden' %>>
     <div class="post-comment-list">
       <% postComments.forEach((comment) => { %>
         <div class="post-comment" data-comment-id="<%= comment.id %>">

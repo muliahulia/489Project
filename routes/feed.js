@@ -466,17 +466,35 @@ router.post('/posts/:postId/comments', requireAuth, async (req, res) => {
   const sessionUser = req.session.auth.user;
   const postId = Number.parseInt(req.params.postId, 10);
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+  const acceptsHeader = req.get('Accept') || '';
+  const wantsJson = acceptsHeader.includes('application/json') || req.xhr;
+
+  function jsonOrRedirect(statusCode, payload, redirectPath) {
+    if (wantsJson) {
+      return res.status(statusCode).json(payload);
+    }
+
+    return res.redirect(redirectPath);
+  }
 
   if (!Number.isInteger(postId) || postId <= 0) {
-    return res.status(400).json({ error: 'Invalid post id.' });
+    return jsonOrRedirect(400, { error: 'Invalid post id.' }, '/feed');
   }
 
   if (!content) {
-    return res.status(400).json({ error: 'Comment cannot be empty.' });
+    return jsonOrRedirect(
+      400,
+      { error: 'Comment cannot be empty.' },
+      `/post/${postId}`
+    );
   }
 
   if (content.length > 2000) {
-    return res.status(400).json({ error: 'Comment is too long (max 2000 characters).' });
+    return jsonOrRedirect(
+      400,
+      { error: 'Comment is too long (max 2000 characters).' },
+      `/post/${postId}`
+    );
   }
 
   try {
@@ -497,7 +515,7 @@ router.post('/posts/:postId/comments', requireAuth, async (req, res) => {
       .maybeSingle();
 
     if (visiblePostError || !visiblePost) {
-      return res.status(404).json({ error: 'Post not found.' });
+      return jsonOrRedirect(404, { error: 'Post not found.' }, `/post/${postId}`);
     }
 
     const { error } = await supabase
@@ -510,7 +528,7 @@ router.post('/posts/:postId/comments', requireAuth, async (req, res) => {
       });
 
     if (error) {
-      return res.status(500).json({ error: 'Unable to save comment.' });
+      return jsonOrRedirect(500, { error: 'Unable to save comment.' }, `/post/${postId}`);
     }
 
     const { data: commentsResult, error: commentsError } = await supabase
@@ -521,7 +539,11 @@ router.post('/posts/:postId/comments', requireAuth, async (req, res) => {
       .order('created_at', { ascending: true });
 
     if (commentsError) {
-      return res.json({ ok: true, commentCount: null, comments: [] });
+      if (wantsJson) {
+        return res.json({ ok: true, commentCount: null, comments: [] });
+      }
+
+      return res.redirect(`/post/${postId}`);
     }
 
     const authorIds = [...new Set((commentsResult || []).map((comment) => comment.author_id).filter(Boolean))];
@@ -544,13 +566,17 @@ router.post('/posts/:postId/comments', requireAuth, async (req, res) => {
       };
     });
 
-    return res.json({
-      ok: true,
-      commentCount: comments.length,
-      comments,
-    });
+    if (wantsJson) {
+      return res.json({
+        ok: true,
+        commentCount: comments.length,
+        comments,
+      });
+    }
+
+    return res.redirect(`/post/${postId}`);
   } catch (_err) {
-    return res.status(500).json({ error: 'Unable to save comment.' });
+    return jsonOrRedirect(500, { error: 'Unable to save comment.' }, `/post/${postId}`);
   }
 });
 
