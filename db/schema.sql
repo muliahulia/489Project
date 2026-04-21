@@ -162,6 +162,7 @@ CREATE TABLE admin_actions (
     action_type TEXT NOT NULL,
     target_type TEXT,
     target_id INT,
+    target_user_id UUID REFERENCES profiles(id),
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
