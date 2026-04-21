@@ -41,8 +41,15 @@
   <div class="post-body"><%= post.content %></div>
 
   <% if (post.imageUrl) { %>
-    <div class="post-image" style="margin-top: 0.75rem;">
-      <img src="<%= post.imageUrl %>" alt="Post image" style="max-width:100%; border-radius:8px; border:1px solid var(--border);"/>
+    <div class="post-image">
+      <button
+        class="post-image-button js-post-image-trigger"
+        type="button"
+        data-image-url="<%= post.imageUrl %>"
+        aria-label="View image larger"
+      >
+        <img class="post-image-media" src="<%= post.imageUrl %>" alt="Post image" loading="lazy"/>
+      </button>
     </div>
   <% } %>
 
@@ -101,59 +108,126 @@
 </div>
 
 <script>
-  function closeReport(postId) {
-    const modal = document.getElementById('report-modal-' + postId);
-    if (modal) modal.style.display = 'none';
-  }
+  if (!window.__postCardSharedBindings) {
+    window.__postCardSharedBindings = true;
 
-  async function submitReport(postId) {
-    const reason = document.getElementById('report-reason-' + postId).value.trim();
-    if (!reason) { alert('Please enter a reason.'); return; }
+    function ensureImageLightbox() {
+      let lightbox = document.getElementById('post-image-lightbox');
+      if (lightbox) return lightbox;
 
-    try {
-      const res = await fetch('/feed/posts/' + postId + '/report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
-      });
-      if (res.ok) {
-        closeReport(postId);
-        alert('Report submitted.');
-      } else {
-        alert('Unable to submit report.');
-      }
-    } catch (_) {
-      alert('Unable to submit report.');
+      lightbox = document.createElement('div');
+      lightbox.id = 'post-image-lightbox';
+      lightbox.className = 'post-image-lightbox';
+      lightbox.hidden = true;
+      lightbox.innerHTML = `
+        <div class="post-image-lightbox-dialog" role="dialog" aria-modal="true" aria-label="Image preview">
+          <button type="button" class="post-image-lightbox-close js-post-image-close" aria-label="Close image preview">×</button>
+          <img class="post-image-lightbox-image" alt="Expanded post image" />
+        </div>
+      `;
+      document.body.appendChild(lightbox);
+      return lightbox;
     }
-  }
 
-  document.addEventListener('click', async (e) => {
-    const reportBtn = e.target.closest('.js-report-btn');
-    if (reportBtn) {
-      const postId = reportBtn.dataset.postId;
+    window.openPostImage = function openPostImage(imageUrl) {
+      if (!imageUrl) return;
+
+      const lightbox = ensureImageLightbox();
+      const img = lightbox.querySelector('.post-image-lightbox-image');
+      if (!img) return;
+
+      img.src = imageUrl;
+      lightbox.hidden = false;
+      document.body.style.overflow = 'hidden';
+    };
+
+    window.closePostImage = function closePostImage() {
+      const lightbox = document.getElementById('post-image-lightbox');
+      if (!lightbox) return;
+
+      const img = lightbox.querySelector('.post-image-lightbox-image');
+      if (img) img.src = '';
+      lightbox.hidden = true;
+      document.body.style.overflow = '';
+    };
+
+    window.closeReport = function closeReport(postId) {
       const modal = document.getElementById('report-modal-' + postId);
-      if (modal) modal.style.display = 'flex';
-    }
+      if (modal) modal.style.display = 'none';
+    };
 
-    const deleteBtn = e.target.closest('.js-delete-btn');
-    if (deleteBtn) {
-      const postId = deleteBtn.dataset.postId;
-      if (!confirm('Delete this post?')) return;
+    window.submitReport = async function submitReport(postId) {
+      const reasonNode = document.getElementById('report-reason-' + postId);
+      const reason = reasonNode ? reasonNode.value.trim() : '';
+      if (!reason) { alert('Please enter a reason.'); return; }
 
       try {
-        const res = await fetch('/feed/posts/' + postId, {
-          method: 'DELETE',
-          headers: { Accept: 'application/json' },
+        const res = await fetch('/feed/posts/' + postId + '/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
         });
         if (res.ok) {
-          const card = deleteBtn.closest('.post-card');
-          if (card) card.remove();
+          window.closeReport(postId);
+          if (reasonNode) reasonNode.value = '';
+          alert('Report submitted.');
         } else {
-          alert('Unable to delete post.');
+          alert('Unable to submit report.');
         }
       } catch (_) {
-        alert('Unable to delete post.');
+        alert('Unable to submit report.');
       }
-    }
-  });
+    };
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        window.closePostImage();
+      }
+    });
+
+    document.addEventListener('click', async (e) => {
+      const imageTrigger = e.target.closest('.js-post-image-trigger');
+      if (imageTrigger) {
+        const imageUrl = imageTrigger.dataset.imageUrl || '';
+        window.openPostImage(imageUrl);
+        return;
+      }
+
+      const lightbox = e.target.closest('#post-image-lightbox');
+      if (lightbox) {
+        if (e.target === lightbox || e.target.closest('.js-post-image-close')) {
+          window.closePostImage();
+        }
+        return;
+      }
+
+      const reportBtn = e.target.closest('.js-report-btn');
+      if (reportBtn) {
+        const postId = reportBtn.dataset.postId;
+        const modal = document.getElementById('report-modal-' + postId);
+        if (modal) modal.style.display = 'flex';
+      }
+
+      const deleteBtn = e.target.closest('.js-delete-btn');
+      if (deleteBtn) {
+        const postId = deleteBtn.dataset.postId;
+        if (!confirm('Delete this post?')) return;
+
+        try {
+          const res = await fetch('/feed/posts/' + postId, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json' },
+          });
+          if (res.ok) {
+            const card = deleteBtn.closest('.post-card');
+            if (card) card.remove();
+          } else {
+            alert('Unable to delete post.');
+          }
+        } catch (_) {
+          alert('Unable to delete post.');
+        }
+      }
+    });
+  }
 </script>

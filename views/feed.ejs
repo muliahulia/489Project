@@ -434,8 +434,15 @@
       const likeCount = Number.isInteger(post && post.likeCount) ? post.likeCount : 0;
       const liked = Boolean(post && post.liked);
       const imageHtml = post && post.imageUrl
-        ? `<div class="post-image" style="margin-top: 0.75rem;">
-            <img src="${escapeHtml(post.imageUrl)}" alt="Post image" style="max-width:100%; border-radius:8px; border:1px solid var(--border);"/>
+        ? `<div class="post-image">
+            <button
+              class="post-image-button js-post-image-trigger"
+              type="button"
+              data-image-url="${escapeHtml(post.imageUrl)}"
+              aria-label="View image larger"
+            >
+              <img class="post-image-media" src="${escapeHtml(post.imageUrl)}" alt="Post image" loading="lazy"/>
+            </button>
           </div>`
         : '';
       const latestCommentHtml = latestComment
@@ -482,8 +489,8 @@
             <button class="post-action-btn comment-btn js-comment-toggle" title="Comment" type="button" data-post-id="${escapeHtml(postId)}">
               💬 <span class="comment-count ${commentCount ? '' : 'is-hidden'}">${commentCount || 0}</span>
             </button>
-            <button class="post-action-btn js-report-btn" title="Report" type="button" data-post-id="${escapeHtml(postId)}" onclick="openReport('${escapeHtml(postId)}')">🚩</button>
-            ${canDelete ? `<button class="post-action-btn js-delete-btn" title="Delete" type="button" data-post-id="${escapeHtml(postId)}" onclick="deletePostById('${escapeHtml(postId)}', this)" style="color: var(--error);">🗑️</button>` : ''}
+            <button class="post-action-btn js-report-btn" title="Report" type="button" data-post-id="${escapeHtml(postId)}">🚩</button>
+            ${canDelete ? `<button class="post-action-btn js-delete-btn" title="Delete" type="button" data-post-id="${escapeHtml(postId)}" style="color: var(--error);">🗑️</button>` : ''}
           </div>
 
           <div class="post-author">
