@@ -15,7 +15,7 @@ var profileRouter = require('./routes/profile');
 var settingsRouter = require('./routes/settings');
 var coursesRouter = require('./routes/courses');
 var createCommunityRouter = require('./routes/create-community');
-
+var feedRouter = require('./routes/feed');
 var app = express();
 
 // view engine
@@ -48,8 +48,9 @@ app.use('/profile', profileRouter);
 app.use('/settings', settingsRouter);
 app.use('/courses', coursesRouter);
 app.use('/create-community', createCommunityRouter);
-
-
+app.use('/feed', feedRouter);
+app.use('/communities', communitiesRouter);
+app.use('/reportsDashboard', moderationRouter);
 // 404
 app.use(function(req, res, next) {
   const err = new Error("Page Not Found");
