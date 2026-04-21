@@ -23,6 +23,14 @@
       margin-bottom: 1.5rem;
     }
 
+    .page-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
     .page-title {
       color: var(--text-dark);
       margin-bottom: 0.35rem;
@@ -46,6 +54,31 @@
       margin-bottom: 1rem;
     }
 
+    .info-banner.error {
+      border-color: rgba(176, 58, 46, 0.25);
+      background: rgba(176, 58, 46, 0.05);
+      color: #8f2f25;
+    }
+
+    .cta-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.7rem 1rem;
+      border-radius: 10px;
+      background: var(--navy);
+      color: var(--gold);
+      font-size: 0.86rem;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }
+
+    .cta-link:hover {
+      background: var(--navy-mid);
+    }
+
     .course-card {
       background: #fff;
       border: 1px solid var(--border);
@@ -57,6 +90,23 @@
       gap: 1.25rem;
       margin-bottom: 1rem;
       transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .course-section {
+      margin-top: 1.75rem;
+    }
+
+    .course-section:first-of-type {
+      margin-top: 0;
+    }
+
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #8da0b3;
+      margin: 0 0 0.8rem;
     }
 
     .course-card:hover {
@@ -222,56 +272,103 @@
 
     <main class="main">
       <div class="courses-column">
-        <% const courseList = Array.isArray(courses) ? courses : []; %>
+        <% const ownedCourseList = Array.isArray(myCourses) ? myCourses : []; %>
+        <% const availableCourseList = Array.isArray(availableCourses) ? availableCourses : []; %>
         <% const subtitle = schoolName ? `Browse courses for ${schoolName}. Join a course to unlock its discussion feed.` : 'Browse your courses and manage your enrollment.'; %>
 
         <div class="page-header">
-          <h1 class="page-title">Courses</h1>
-          <p class="page-subtitle"><%= subtitle %></p>
+          <div class="page-header-row">
+            <div>
+              <h1 class="page-title">Courses</h1>
+              <p class="page-subtitle"><%= subtitle %></p>
+            </div>
+
+            <% if (canCreateCourse) { %>
+              <a class="cta-link" href="/courses/create">Create course</a>
+            <% } %>
+          </div>
         </div>
+
+        <% if (pageError) { %>
+          <div class="info-banner error"><%= pageError %></div>
+        <% } %>
 
         <% if (directoryMessage) { %>
           <div class="info-banner"><%= directoryMessage %></div>
         <% } %>
 
-        <% if (courseList.length === 0) { %>
-          <div class="empty-card">No courses are available yet.</div>
-        <% } %>
+        <section class="course-section">
+          <h2 class="section-title">My Courses</h2>
 
-        <% courseList.forEach((course) => { %>
-          <div class="course-card">
-            <div class="course-avatar <%= course.avatarClass %>"><%= course.bubbleText %></div>
-            <div class="course-info">
-              <div class="course-name-row">
-                <a href="<%= course.detailHref %>" class="course-name-link">
-                  <span class="course-name"><%= course.name %></span>
-                </a>
-                <span class="course-badge <%= course.isInstructor ? 'instructor' : course.isEnrolled ? 'enrolled' : '' %>">
-                  <%= course.membershipLabel %>
-                </span>
+          <% if (ownedCourseList.length === 0) { %>
+            <div class="empty-card">You have not joined or created any courses yet.</div>
+          <% } %>
+
+          <% ownedCourseList.forEach((course) => { %>
+            <div class="course-card">
+              <div class="course-avatar <%= course.avatarClass %>"><%= course.bubbleText %></div>
+              <div class="course-info">
+                <div class="course-name-row">
+                  <a href="<%= course.detailHref %>" class="course-name-link">
+                    <span class="course-name"><%= course.name %></span>
+                  </a>
+                  <span class="course-badge <%= course.isInstructor ? 'instructor' : course.isEnrolled ? 'enrolled' : '' %>">
+                    <%= course.membershipLabel %>
+                  </span>
+                </div>
+                <span class="course-meta"><%= course.instructorName %> · <%= course.memberLabel %></span>
+                <p class="course-description"><%= course.description %></p>
+                <div class="course-actions">
+                  <a href="<%= course.detailHref %>" class="btn-link">View course</a>
+                  <% if (course.canManage) { %>
+                    <a href="<%= course.manageHref %>" class="btn-link">Manage course</a>
+                  <% } %>
+
+                  <% if (!course.isInstructor && course.isEnrolled) { %>
+                    <form method="post" action="/courses/<%= course.id %>/leave">
+                      <input type="hidden" name="redirectTo" value="/courses" />
+                      <button class="btn-submit secondary" type="submit">Leave course</button>
+                    </form>
+                  <% } %>
+                </div>
               </div>
-              <span class="course-meta"><%= course.creatorName %> · <%= course.memberLabel %></span>
-              <p class="course-description"><%= course.description %></p>
-              <div class="course-actions">
-                <a href="<%= course.detailHref %>" class="btn-link">View course</a>
+            </div>
+          <% }) %>
+        </section>
 
-                <% if (!course.isInstructor && !course.isEnrolled) { %>
+        <section class="course-section">
+          <h2 class="section-title">Courses on UniConnect</h2>
+
+          <% if (availableCourseList.length === 0) { %>
+            <div class="empty-card">No additional courses are available to join right now.</div>
+          <% } %>
+
+          <% availableCourseList.forEach((course) => { %>
+            <div class="course-card">
+              <div class="course-avatar <%= course.avatarClass %>"><%= course.bubbleText %></div>
+              <div class="course-info">
+                <div class="course-name-row">
+                  <a href="<%= course.detailHref %>" class="course-name-link">
+                    <span class="course-name"><%= course.name %></span>
+                  </a>
+                  <span class="course-badge"><%= course.membershipLabel %></span>
+                </div>
+                <span class="course-meta"><%= course.instructorName %> · <%= course.memberLabel %></span>
+                <p class="course-description"><%= course.description %></p>
+                <div class="course-actions">
+                  <a href="<%= course.detailHref %>" class="btn-link">View course</a>
+                  <% if (course.canManage) { %>
+                    <a href="<%= course.manageHref %>" class="btn-link">Manage course</a>
+                  <% } %>
                   <form method="post" action="/courses/<%= course.id %>/join">
                     <input type="hidden" name="redirectTo" value="/courses" />
                     <button class="btn-submit" type="submit">Join course</button>
                   </form>
-                <% } %>
-
-                <% if (!course.isInstructor && course.isEnrolled) { %>
-                  <form method="post" action="/courses/<%= course.id %>/leave">
-                    <input type="hidden" name="redirectTo" value="/courses" />
-                    <button class="btn-submit secondary" type="submit">Leave course</button>
-                  </form>
-                <% } %>
+                </div>
               </div>
             </div>
-          </div>
-        <% }) %>
+          <% }) %>
+        </section>
       </div>
     </main>
 

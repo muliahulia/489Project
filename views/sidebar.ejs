@@ -2,7 +2,10 @@
   const currentPage = typeof activePage !== 'undefined' ? activePage : '';
   const userRole = currentUser && typeof currentUser.role === 'string' ? currentUser.role.trim().toLowerCase() : '';
   const roleAllowsAdministrative = userRole === 'admin';
-  const hasAdministrative = typeof showAdministrative !== 'undefined' ? showAdministrative : roleAllowsAdministrative;
+  const canCreateCourses = userRole === 'official';
+  const hasAdministrative = typeof showAdministrative !== 'undefined'
+    ? showAdministrative
+    : roleAllowsAdministrative || canCreateCourses;
   const schoolHref = typeof schoolModerationHref !== 'undefined' ? schoolModerationHref : '/moderation/school';
   const schoolLabel = typeof schoolModerationLabel !== 'undefined' ? schoolModerationLabel : 'Schools';
   const canViewSchoolsOption = roleAllowsAdministrative;
@@ -17,11 +20,16 @@
 
   <% if (hasAdministrative) { %>
     <div class="sidebar-label">Administrative</div>
-    <a href="/admin/dashboard" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
-    <a href="/admin/users" class="<%= currentPage === 'adminUsers' ? 'active' : '' %>">👥 Users</a>
-    <a href="/admin/reports" class="<%= currentPage === 'reportDashboard' ? 'active' : '' %>">🚩 Reports</a>
-    <% if (canViewSchoolsOption) { %>
-      <a href="<%= schoolHref %>" class="<%= currentPage === 'schoolModeration' ? 'active' : '' %>">🏫 <%= schoolLabel %></a>
+    <% if (canCreateCourses) { %>
+      <a href="/courses/create" class="<%= currentPage === 'createCourse' ? 'active' : '' %>">➕ Create Course</a>
+    <% } %>
+    <% if (roleAllowsAdministrative) { %>
+      <a href="/admin/dashboard" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
+      <a href="/admin/users" class="<%= currentPage === 'adminUsers' ? 'active' : '' %>">👥 Users</a>
+      <a href="/admin/reports" class="<%= currentPage === 'reportDashboard' ? 'active' : '' %>">🚩 Reports</a>
+      <% if (canViewSchoolsOption) { %>
+        <a href="<%= schoolHref %>" class="<%= currentPage === 'schoolModeration' ? 'active' : '' %>">🏫 <%= schoolLabel %></a>
+      <% } %>
     <% } %>
   <% } %>
 

@@ -1,7 +1,7 @@
 async function fetchProfileById(supabase, userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id,first_name,last_name,email,school_id')
+    .select('id,first_name,last_name,email,school_id,role')
     .eq('id', userId)
     .maybeSingle();
 
@@ -19,7 +19,7 @@ async function fetchProfilesByIds(supabase, ids) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id,first_name,last_name,email,school_id')
+    .select('id,first_name,last_name,email,school_id,role')
     .in('id', ids);
 
   if (error || !data) {
@@ -67,7 +67,7 @@ async function fetchCoursesForSchool(supabase, schoolId) {
 
   const { data, error } = await supabase
     .from('courses')
-    .select('id,school_id,name,description,created_by')
+    .select('id,school_id,name,description,course_prefix,course_number,instructor_name,created_by')
     .eq('school_id', schoolId)
     .order('name', { ascending: true });
 
@@ -85,7 +85,7 @@ async function fetchCoursesByIds(supabase, ids) {
 
   const { data, error } = await supabase
     .from('courses')
-    .select('id,school_id,name,description,created_by')
+    .select('id,school_id,name,description,course_prefix,course_number,instructor_name,created_by')
     .in('id', ids)
     .order('name', { ascending: true });
 
@@ -99,7 +99,7 @@ async function fetchCoursesByIds(supabase, ids) {
 async function fetchCourseById(supabase, courseId) {
   const { data, error } = await supabase
     .from('courses')
-    .select('id,school_id,name,description,created_by')
+    .select('id,school_id,name,description,course_prefix,course_number,instructor_name,created_by')
     .eq('id', courseId)
     .maybeSingle();
 
@@ -197,6 +197,49 @@ async function createCoursePost(supabase, payload) {
   return !error;
 }
 
+async function createCourseRecord(supabase, payload) {
+  const { data, error } = await supabase
+    .from('courses')
+    .insert({
+      school_id: payload.schoolId,
+      name: payload.name,
+      description: payload.description,
+      course_prefix: payload.coursePrefix,
+      course_number: payload.courseNumber,
+      instructor_name: payload.instructorName,
+      created_by: payload.creatorId,
+    })
+    .select('id,school_id,name,description,course_prefix,course_number,instructor_name,created_by')
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+async function updateCourseRecord(supabase, payload) {
+  const { data, error } = await supabase
+    .from('courses')
+    .update({
+      name: payload.name,
+      description: payload.description,
+      course_prefix: payload.coursePrefix,
+      course_number: payload.courseNumber,
+      instructor_name: payload.instructorName,
+    })
+    .eq('id', payload.courseId)
+    .select('id,school_id,name,description,course_prefix,course_number,instructor_name,created_by')
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
 async function fetchLikeRowsByPostIds(supabase, postIds) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
     return [];
@@ -286,6 +329,8 @@ module.exports = {
   deleteCourseEnrollment,
   fetchCoursePosts,
   createCoursePost,
+  createCourseRecord,
+  updateCourseRecord,
   fetchLikeRowsByPostIds,
   fetchUserLikeRowsByPostIds,
   fetchCommentsByPostIds,
