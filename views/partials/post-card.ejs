@@ -1,7 +1,11 @@
-<div class="post-card">
+<div class="post-card" data-post-id="<%= post.id %>">
   <% const postComments = Array.isArray(post.comments) ? post.comments : []; %>
   <% const latestComment = postComments.length > 0 ? postComments[postComments.length - 1] : null; %>
   <% const showExpandedComments = Boolean(typeof expandComments !== 'undefined' ? expandComments : false); %>
+  <% const currentUser = locals.user || {}; %>
+  <% const isOwner = currentUser.id && post.authorId === currentUser.id; %>
+  <% const isAdmin = currentUser.role === 'admin'; %>
+
   <div class="post-actions">
     <button
       class="post-action-btn like-btn js-like-btn <%= post.liked ? 'active' : '' %>"
@@ -15,7 +19,16 @@
     <button class="post-action-btn comment-btn js-comment-toggle" title="Comment" type="button" data-post-id="<%= post.id %>">
       💬 <span class="comment-count <%= post.commentCount ? '' : 'is-hidden' %>"><%= post.commentCount || 0 %></span>
     </button>
+    <button class="post-action-btn js-report-btn" title="Report" type="button" data-post-id="<%= post.id %>">
+      🚩
+    </button>
+    <% if (isOwner || isAdmin) { %>
+      <button class="post-action-btn js-delete-btn" title="Delete" type="button" data-post-id="<%= post.id %>" style="color: var(--error);">
+        🗑️
+      </button>
+    <% } %>
   </div>
+
   <div class="post-author">
     <div class="post-avatar-initials"><%= post.authorInitials %></div>
     <div class="post-author-info">
@@ -24,7 +37,14 @@
       <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
     </div>
   </div>
+
   <div class="post-body"><%= post.content %></div>
+
+  <% if (post.imageUrl) { %>
+    <div class="post-image" style="margin-top: 0.75rem;">
+      <img src="<%= post.imageUrl %>" alt="Post image" style="max-width:100%; border-radius:8px; border:1px solid var(--border);"/>
+    </div>
+  <% } %>
 
   <% if (latestComment && !showExpandedComments) { %>
     <div class="post-comment-preview" data-post-id="<%= post.id %>">
@@ -66,4 +86,74 @@
       </div>
     </form>
   </div>
+
+  <!-- Report modal -->
+  <div class="report-modal" id="report-modal-<%= post.id %>" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:14px; padding:1.5rem; max-width:420px; width:90%;">
+      <h3 style="margin-bottom:1rem;">Report Post</h3>
+      <textarea id="report-reason-<%= post.id %>" maxlength="250" rows="3" placeholder="Describe the reason for reporting..." style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid var(--border); margin-bottom:1rem;"></textarea>
+      <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+        <button onclick="closeReport('<%= post.id %>')" style="padding:0.5rem 1rem; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer;">Cancel</button>
+        <button onclick="submitReport('<%= post.id %>')" style="padding:0.5rem 1rem; border-radius:8px; border:none; background:var(--navy); color:white; cursor:pointer;">Submit</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+  function closeReport(postId) {
+    const modal = document.getElementById('report-modal-' + postId);
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function submitReport(postId) {
+    const reason = document.getElementById('report-reason-' + postId).value.trim();
+    if (!reason) { alert('Please enter a reason.'); return; }
+
+    try {
+      const res = await fetch('/feed/posts/' + postId + '/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      if (res.ok) {
+        closeReport(postId);
+        alert('Report submitted.');
+      } else {
+        alert('Unable to submit report.');
+      }
+    } catch (_) {
+      alert('Unable to submit report.');
+    }
+  }
+
+  document.addEventListener('click', async (e) => {
+    const reportBtn = e.target.closest('.js-report-btn');
+    if (reportBtn) {
+      const postId = reportBtn.dataset.postId;
+      const modal = document.getElementById('report-modal-' + postId);
+      if (modal) modal.style.display = 'flex';
+    }
+
+    const deleteBtn = e.target.closest('.js-delete-btn');
+    if (deleteBtn) {
+      const postId = deleteBtn.dataset.postId;
+      if (!confirm('Delete this post?')) return;
+
+      try {
+        const res = await fetch('/feed/posts/' + postId, {
+          method: 'DELETE',
+          headers: { Accept: 'application/json' },
+        });
+        if (res.ok) {
+          const card = deleteBtn.closest('.post-card');
+          if (card) card.remove();
+        } else {
+          alert('Unable to delete post.');
+        }
+      } catch (_) {
+        alert('Unable to delete post.');
+      }
+    }
+  });
+</script>
