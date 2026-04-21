@@ -23,7 +23,16 @@ router.post('/signed-upload-url', requireAuth, async (req, res) => {
 
   const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const user = req.session?.auth?.user;
-    const baseFolder = typeof folder === 'string' && folder.trim() ? folder.trim() : 'uploads';
+  const userId = user && typeof user.id === 'string' ? user.id.trim() : '';
+  if (!userId) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const rawFolder = typeof folder === 'string' && folder.trim() ? folder.trim() : 'uploads';
+  const baseFolder = rawFolder
+    .replace(/[^a-zA-Z0-9/_-]/g, '')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '') || 'uploads';
   const objectPath = `${baseFolder}/${userId}/${Date.now()}-${safeFileName}`;
 
   const supabase = createSupabaseAdminClient();

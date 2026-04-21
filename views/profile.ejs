@@ -25,6 +25,8 @@
     .profile-banner {
       height: 120px;
       background: linear-gradient(135deg, var(--navy), var(--navy-light));
+      background-size: cover;
+      background-position: center;
     }
 
     .profile-hero-body { padding: 0 1.75rem 1.5rem; }
@@ -42,6 +44,14 @@
       font-size: 1.3rem;
       border: 4px solid white;
       margin-top: -44px;
+      overflow: hidden;
+    }
+
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .profile-name {
@@ -85,12 +95,16 @@
       <!-- PROFILE CARD -->
       <div class="card">
 
-        <div class="profile-banner"></div>
+        <div class="profile-banner" <% if (profileBannerUrl) { %>style="background-image: url('<%= profileBannerUrl %>');"<% } %>></div>
 
         <div class="profile-hero-body">
 
           <div class="profile-avatar">
-            <%= initials.toUpperCase() %>
+            <% if (profileAvatarUrl) { %>
+              <img src="<%= profileAvatarUrl %>" alt="Profile photo" />
+            <% } else { %>
+              <%= initials.toUpperCase() %>
+            <% } %>
           </div>
 
           <div class="profile-name">

@@ -3,62 +3,422 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Settings</title>
+  <title>UniConnect - Settings</title>
 
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
   <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
 
   <style>
-    .main { padding: 2rem; max-width: 900px; margin: auto; }
+    .main {
+      padding: 2rem;
+    }
 
-    .card {
+    .settings-column {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .settings-page-header {
+      margin-bottom: 1.2rem;
+    }
+
+    .settings-page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .settings-page-subtitle {
+      margin-top: 0.3rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .settings-card {
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
+      box-shadow: 0 1px 4px rgba(13, 27, 42, 0.07);
+      margin-bottom: 1.25rem;
+      overflow: hidden;
     }
 
-    .field { margin-bottom: 1rem; }
-
-    label {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      display: block;
-      margin-bottom: 5px;
-    }
-
-    input, textarea {
+    .settings-banner-trigger {
       width: 100%;
-      padding: 0.6rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
+      height: 108px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, var(--navy), var(--navy-light));
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      cursor: pointer;
+      display: block;
+      padding: 0;
     }
 
-    textarea { min-height: 100px; }
+    .settings-media-pill {
+      position: absolute;
+      right: 0.85rem;
+      bottom: 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      background: rgba(13, 27, 42, 0.62);
+      color: #fff;
+      font-size: 0.73rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 0.24rem 0.52rem;
+      pointer-events: none;
+    }
 
-    .avatar {
-      width: 70px;
-      height: 70px;
+    .settings-profile-shell {
+      padding: 0 1.5rem 1.2rem;
+      position: relative;
+    }
+
+    .settings-avatar-trigger {
+      width: 86px;
+      height: 86px;
       border-radius: 50%;
       background: var(--navy);
       color: var(--gold);
+      border: 4px solid #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-top: -42px;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      overflow: hidden;
+      padding: 0;
+      position: relative;
+    }
+
+    .settings-avatar-trigger img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .settings-avatar-edit {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(13, 27, 42, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
+      font-size: 0.72rem;
+      pointer-events: none;
     }
 
-    .btn {
-      padding: 0.6rem 1rem;
+    .settings-name {
+      margin-top: 0.65rem;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .settings-email {
+      margin-top: 0.2rem;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+    }
+
+    .settings-form {
+      padding: 1.35rem 1.5rem 1.5rem;
+    }
+
+    .settings-form-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text-dark);
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.9rem 1rem;
+    }
+
+    .settings-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .settings-field-full {
+      grid-column: 1 / -1;
+    }
+
+    .settings-label {
+      font-size: 0.74rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #8fa0b2;
+    }
+
+    .settings-input,
+    .settings-textarea,
+    .settings-readonly {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text-dark);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.92rem;
+      padding: 0.65rem 0.75rem;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .settings-input:focus,
+    .settings-textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.13);
+    }
+
+    .settings-textarea {
+      min-height: 115px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .settings-readonly {
+      background: var(--cream);
+      color: var(--text-muted);
+    }
+
+    .settings-actions {
+      margin-top: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .settings-save-btn {
+      border: none;
+      border-radius: 9px;
+      padding: 0.58rem 0.95rem;
+      font-size: 0.84rem;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      background: var(--navy);
+      color: var(--gold);
+    }
+
+    .settings-save-btn:hover {
+      background: var(--navy-mid);
+    }
+
+    .settings-profile-link {
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.85rem;
+      background: #fff;
+      color: var(--navy);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .settings-profile-link:hover {
+      background: var(--cream);
+    }
+
+    .settings-upload-status {
+      margin-top: 0.45rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 27, 42, 0.45);
+      z-index: 220;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      padding: 1.2rem 1.2rem 1.25rem;
+      box-shadow: 0 8px 32px rgba(13, 27, 42, 0.2);
+      margin: 1rem;
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.22rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .modal-subtitle {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      margin-bottom: 0.9rem;
+    }
+
+    .logo-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: #fff;
+      text-align: center;
+    }
+
+    .logo-upload-area:hover,
+    .logo-upload-area.dragover {
+      border-color: var(--gold);
+      background: rgba(201, 168, 76, 0.04);
+    }
+
+    .logo-upload-area input[type="file"] {
+      display: none;
+    }
+
+    .logo-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-preview-wrap.visible {
+      display: flex;
+    }
+
+    .logo-preview {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      background: var(--cream);
+    }
+
+    .logo-preview-name {
+      font-size: 0.85rem;
+      color: var(--text-dark);
+      font-weight: 500;
+    }
+
+    .logo-preview-remove {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .logo-preview-remove:hover {
+      color: var(--error);
+    }
+
+    .logo-upload-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .logo-upload-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .logo-upload-text strong {
+      color: var(--navy);
+    }
+
+    .modal-actions {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+
+    .btn-cancel-sm {
+      padding: 0.55rem 1rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-cancel-sm:hover {
+      border-color: var(--text-muted);
+      color: var(--text-dark);
+    }
+
+    .btn-apply {
+      padding: 0.55rem 1rem;
       border-radius: 8px;
       border: none;
+      background: var(--navy);
+      color: var(--gold);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
       cursor: pointer;
     }
 
-    .btn-primary { background: var(--navy); color: white; }
+    .btn-apply:disabled {
+      opacity: 0.7;
+      cursor: default;
+    }
+
+    @media (max-width: 760px) {
+      .main {
+        padding: 1.1rem;
+      }
+
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
@@ -66,56 +426,367 @@
 
 <%
   const p = profile || {};
-  const initials = (p.first_name?.[0] || user?.email?.[0] || 'U').toUpperCase();
+  const firstInitial = p.first_name?.[0] || user?.firstName?.[0] || user?.email?.[0] || 'U';
+  const lastInitial = p.last_name?.[0] || user?.lastName?.[0] || '';
+  const initials = `${firstInitial}${lastInitial}`.toUpperCase();
+  const fullName = [p.first_name || user?.firstName || '', p.last_name || user?.lastName || '']
+    .filter(Boolean)
+    .join(' ')
+    .trim();
 %>
 
-<%- include('header', { initials }) %>
+<%- include('header', { initials: initials || 'UC' }) %>
 
 <div class="layout">
   <%- include('sidebar', { activePage: 'settings' }) %>
 
   <main class="main">
-
-    <h2>Settings</h2>
-
-    <form method="POST" action="/settings/update">
-
-      <div class="card">
-
-        <div class="avatar">
-          <%= initials %>
-        </div>
-
-        <div class="field">
-          <label>First Name</label>
-          <input name="first_name" value="<%= p.first_name || '' %>"/>
-        </div>
-
-        <div class="field">
-          <label>Last Name</label>
-          <input name="last_name" value="<%= p.last_name || '' %>"/>
-        </div>
-
-        <div class="field">
-          <label>Bio</label>
-          <textarea name="bio"><%= p.bio || '' %></textarea>
-        </div>
-
-        <div class="field">
-          <label>Email</label>
-          <input value="<%= user?.email || '' %>" readonly />
-        </div>
-
-        <button class="btn btn-primary" type="submit">
-          Save Changes
-        </button>
-
+    <div class="settings-column">
+      <div class="settings-page-header">
+        <h1 class="settings-page-title">Account Settings</h1>
+        <p class="settings-page-subtitle">Update your profile details and public information.</p>
       </div>
 
-    </form>
+      <div class="settings-card">
+        <button
+          type="button"
+          class="settings-banner-trigger"
+          id="bannerTrigger"
+          aria-label="Upload banner image"
+          <% if (profileBannerUrl) { %>style="background-image: url('<%= profileBannerUrl %>');"<% } %>
+        >
+          <span class="settings-media-pill">Change banner</span>
+        </button>
+        <div class="settings-profile-shell">
+          <button type="button" class="settings-avatar-trigger" id="avatarTrigger" aria-label="Upload profile photo">
+            <% if (profileAvatarUrl) { %>
+              <img id="avatarPreviewImage" src="<%= profileAvatarUrl %>" alt="Profile photo" />
+            <% } else { %>
+              <span id="avatarPreviewInitials"><%= initials || 'U' %></span>
+            <% } %>
+            <span class="settings-avatar-edit">✎</span>
+          </button>
+          <div class="settings-name"><%= fullName || 'Unnamed User' %></div>
+          <div class="settings-email"><%= user?.email || 'No email on file' %></div>
+          <div class="settings-upload-status" id="uploadStatus">
+            Click the banner or profile photo to upload a new image.
+          </div>
+        </div>
+      </div>
 
+      <form method="POST" action="/settings/update" class="settings-card settings-form" id="settingsForm">
+        <h2 class="settings-form-title">Profile Details</h2>
+        <input type="hidden" name="avatarPath" id="avatarPath" value="<%= profileAvatarPath || '' %>" />
+        <input type="hidden" name="bannerPath" id="bannerPath" value="<%= profileBannerPath || '' %>" />
+
+        <div class="settings-grid">
+          <div class="settings-field">
+            <label class="settings-label" for="first_name">First Name</label>
+            <input id="first_name" class="settings-input" name="first_name" value="<%= p.first_name || '' %>" />
+          </div>
+
+          <div class="settings-field">
+            <label class="settings-label" for="last_name">Last Name</label>
+            <input id="last_name" class="settings-input" name="last_name" value="<%= p.last_name || '' %>" />
+          </div>
+
+          <div class="settings-field settings-field-full">
+            <label class="settings-label" for="bio">Bio</label>
+            <textarea id="bio" class="settings-textarea" name="bio"><%= p.bio || '' %></textarea>
+          </div>
+
+          <div class="settings-field settings-field-full">
+            <label class="settings-label">Email</label>
+            <div class="settings-readonly"><%= user?.email || '' %></div>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button class="settings-save-btn" type="submit">Save Changes</button>
+          <a href="/profile" class="settings-profile-link">View Profile</a>
+        </div>
+      </form>
+    </div>
   </main>
 </div>
+
+<div class="modal-backdrop" id="mediaUploadModal">
+  <div class="modal">
+    <h2 class="modal-title" id="mediaUploadTitle">Upload image</h2>
+    <p class="modal-subtitle">Use the same image upload dialog as communities.</p>
+
+    <div class="logo-upload-area" id="mediaUploadArea">
+      <input type="file" id="mediaFile" accept="image/png, image/jpeg, image/gif, image/webp" />
+      <div id="mediaPlaceholder">
+        <div class="logo-upload-icon">🖼️</div>
+        <p class="logo-upload-text"><strong>Click to upload</strong> or drag &amp; drop</p>
+        <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP - max 5 MB</p>
+      </div>
+      <div class="logo-preview-wrap" id="mediaPreviewWrap">
+        <img class="logo-preview" id="mediaPreviewImage" src="" alt="Selected image preview" />
+        <div>
+          <p class="logo-preview-name" id="mediaFileName"></p>
+          <button type="button" class="logo-preview-remove" id="mediaRemove">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel-sm" id="mediaCancel">Cancel</button>
+      <button type="button" class="btn-apply" id="mediaApply">Upload &amp; Use</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = <%- JSON.stringify(supabaseUrl || '') %>;
+  const STORAGE_BUCKET = <%- JSON.stringify(storageBucket || 'media') %>;
+  const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
+
+  const modal = document.getElementById('mediaUploadModal');
+  const modalTitle = document.getElementById('mediaUploadTitle');
+  const uploadArea = document.getElementById('mediaUploadArea');
+  const fileInput = document.getElementById('mediaFile');
+  const placeholder = document.getElementById('mediaPlaceholder');
+  const previewWrap = document.getElementById('mediaPreviewWrap');
+  const previewImage = document.getElementById('mediaPreviewImage');
+  const fileNameNode = document.getElementById('mediaFileName');
+  const removeButton = document.getElementById('mediaRemove');
+  const cancelButton = document.getElementById('mediaCancel');
+  const applyButton = document.getElementById('mediaApply');
+
+  const bannerTrigger = document.getElementById('bannerTrigger');
+  const avatarTrigger = document.getElementById('avatarTrigger');
+  const avatarPathInput = document.getElementById('avatarPath');
+  const bannerPathInput = document.getElementById('bannerPath');
+  const uploadStatus = document.getElementById('uploadStatus');
+
+  let activeTarget = null;
+  let currentObjectUrl = '';
+
+  function encodePathForStorageUrl(path) {
+    return path
+      .split('/')
+      .map((part) => encodeURIComponent(part))
+      .join('/');
+  }
+
+  function setUploadStatus(text, isError) {
+    uploadStatus.textContent = text;
+    uploadStatus.style.color = isError ? 'var(--error)' : 'var(--text-muted)';
+  }
+
+  function clearPreview(options = {}) {
+    const shouldReleaseObjectUrl = !options.keepObjectUrl;
+    if (currentObjectUrl && shouldReleaseObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+    }
+    currentObjectUrl = '';
+    fileInput.value = '';
+    previewImage.src = '';
+    fileNameNode.textContent = '';
+    previewWrap.classList.remove('visible');
+    placeholder.style.display = '';
+  }
+
+  function closeModal(options = {}) {
+    modal.classList.remove('open');
+    clearPreview(options);
+    activeTarget = null;
+    applyButton.disabled = false;
+    applyButton.textContent = 'Upload & Use';
+  }
+
+  function openModal(target) {
+    activeTarget = target;
+    modalTitle.textContent = target === 'banner' ? 'Upload Banner Image' : 'Upload Profile Photo';
+    modal.classList.add('open');
+  }
+
+  function showPreview(file) {
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setUploadStatus('Please choose an image file.', true);
+      return;
+    }
+
+    if (file.size > MAX_MEDIA_BYTES) {
+      setUploadStatus('Please choose an image under 5 MB.', true);
+      return;
+    }
+
+    if (currentObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+    }
+    currentObjectUrl = URL.createObjectURL(file);
+    previewImage.src = currentObjectUrl;
+    fileNameNode.textContent = file.name;
+    placeholder.style.display = 'none';
+    previewWrap.classList.add('visible');
+  }
+
+  async function requestSignedUpload(fileName, folder) {
+    const response = await fetch('/storage/signed-upload-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ fileName, folder }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload && payload.error ? payload.error : 'Unable to prepare upload.');
+    }
+
+    return payload;
+  }
+
+  async function uploadImageToStorage(file, target) {
+    if (!SUPABASE_URL) {
+      throw new Error('Missing SUPABASE_URL for browser uploads.');
+    }
+
+    const folder = target === 'banner' ? 'profiles/banner' : 'profiles/avatar';
+    const signed = await requestSignedUpload(file.name, folder);
+    if (!signed || !signed.token || !signed.path) {
+      throw new Error('Upload token was not returned by the server.');
+    }
+
+    const encodedPath = encodePathForStorageUrl(signed.path);
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/upload/sign/${encodeURIComponent(STORAGE_BUCKET)}/${encodedPath}?token=${encodeURIComponent(signed.token)}`;
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'true',
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      const message = await uploadResponse.text();
+      throw new Error(message || 'Upload failed.');
+    }
+
+    return signed.path;
+  }
+
+  function applyPreviewToCard(target, objectUrl) {
+    if (!objectUrl) {
+      return;
+    }
+
+    if (target === 'banner') {
+      bannerTrigger.style.backgroundImage = `url('${objectUrl}')`;
+      return;
+    }
+
+    const currentImage = avatarTrigger.querySelector('img');
+    if (currentImage) {
+      currentImage.src = objectUrl;
+      return;
+    }
+
+    const initialsNode = document.getElementById('avatarPreviewInitials');
+    if (initialsNode) {
+      initialsNode.remove();
+    }
+
+    const nextImage = document.createElement('img');
+    nextImage.alt = 'Profile photo';
+    nextImage.src = objectUrl;
+    avatarTrigger.insertBefore(nextImage, avatarTrigger.firstChild);
+  }
+
+  bannerTrigger.addEventListener('click', () => openModal('banner'));
+  avatarTrigger.addEventListener('click', () => openModal('avatar'));
+
+  uploadArea.addEventListener('click', (event) => {
+    if (event.target !== removeButton) {
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+    showPreview(file);
+  });
+
+  removeButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    clearPreview();
+  });
+
+  uploadArea.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    uploadArea.classList.add('dragover');
+  });
+
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+  });
+
+  uploadArea.addEventListener('drop', (event) => {
+    event.preventDefault();
+    uploadArea.classList.remove('dragover');
+
+    const file = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files[0] : null;
+    if (!file) {
+      return;
+    }
+
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    showPreview(file);
+  });
+
+  cancelButton.addEventListener('click', closeModal);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  applyButton.addEventListener('click', async () => {
+    const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+    if (!file || !activeTarget) {
+      closeModal();
+      return;
+    }
+
+    if (!file.type.startsWith('image/') || file.size > MAX_MEDIA_BYTES) {
+      setUploadStatus('Please choose a valid image under 5 MB.', true);
+      return;
+    }
+
+    applyButton.disabled = true;
+    applyButton.textContent = 'Uploading...';
+
+    try {
+      const path = await uploadImageToStorage(file, activeTarget);
+      if (activeTarget === 'banner') {
+        bannerPathInput.value = path;
+      } else {
+        avatarPathInput.value = path;
+      }
+
+      applyPreviewToCard(activeTarget, currentObjectUrl);
+      setUploadStatus('Image uploaded. Click "Save Changes" to persist it.', false);
+      closeModal({ keepObjectUrl: true });
+    } catch (_err) {
+      applyButton.disabled = false;
+      applyButton.textContent = 'Upload & Use';
+      setUploadStatus('Unable to upload image right now. Please try again.', true);
+    }
+  });
+</script>
 
 </body>
 </html>

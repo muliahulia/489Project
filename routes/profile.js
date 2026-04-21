@@ -3,8 +3,7 @@ var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 const { buildProfilePath, buildProfileSlug } = require('../lib/utils');
-
-const PROFILE_SELECT_COLUMNS = 'id,first_name,last_name,email,role,bio,created_at';
+const { resolveProfileMedia } = require('../lib/profileMedia');
 
 async function fetchProfileById(supabase, userId) {
   if (!userId) {
@@ -13,7 +12,7 @@ async function fetchProfileById(supabase, userId) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select(PROFILE_SELECT_COLUMNS)
+    .select('*')
     .eq('id', userId)
     .maybeSingle();
 
@@ -68,10 +67,13 @@ async function renderProfileByUserId(req, res, userId, options = {}) {
   if (profile.id === sessionUser.id && !profileWithFallbacks.email) {
     profileWithFallbacks.email = sessionUser.email || null;
   }
+  const media = await resolveProfileMedia(supabase, profileWithFallbacks);
 
   res.render('profile', {
     user: { ...sessionUser, ...profileWithFallbacks },
     profile: profileWithFallbacks,
+    profileAvatarUrl: media.avatarUrl,
+    profileBannerUrl: media.bannerUrl,
     posts: [],
   });
 }
