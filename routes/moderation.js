@@ -125,11 +125,11 @@ async function logAdminAction(supabase, payload) {
   }
 }
 
-router.get('/account', (req, res) => {
-  res.render('accountmoderation');
-});
+router.get('/', (req, res) => {
+    res.render('accountmoderation');
+  });
 
-router.get('/community', (req, res) => {
+router.get('/', (req, res) => {
   res.render('communitymoderator');
 });
 
@@ -303,8 +303,5 @@ router.get('/reports', (req, res) => {
   res.redirect('/admin/reports');
 });
 
-router.get('/', (req, res) => {
-  res.render('report');
-});
 
 module.exports = router;

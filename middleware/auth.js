@@ -21,20 +21,13 @@ async function attachSessionUser(req, res, next) {
   }
 
   res.locals.currentUser = authSession ? authSession.user : null;
+  res.locals.user = authSession ? authSession.user : null;
   next();
 }
 
 function requireAuth(req, res, next) {
-  const isLoggedIn = Boolean(req.session && req.session.auth && req.session.auth.user);
-
-  if (isLoggedIn) {
-    return next();
-  }
-
+  if (req.session?.auth?.user) return next();
   return res.redirect('/login');
 }
 
-module.exports = {
-  attachSessionUser,
-  requireAuth,
-};
+module.exports = { attachSessionUser, requireAuth };

@@ -22,8 +22,8 @@ router.post('/signed-upload-url', requireAuth, async (req, res) => {
   }
 
   const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const userId = req.session.auth.user.id;
-  const baseFolder = typeof folder === 'string' && folder.trim() ? folder.trim() : 'uploads';
+  const user = req.session?.auth?.user;
+    const baseFolder = typeof folder === 'string' && folder.trim() ? folder.trim() : 'uploads';
   const objectPath = `${baseFolder}/${userId}/${Date.now()}-${safeFileName}`;
 
   const supabase = createSupabaseAdminClient();

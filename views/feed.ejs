@@ -77,7 +77,8 @@
 
     .create-post-row {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .create-post-submit {
@@ -94,6 +95,31 @@
     }
 
     .create-post-submit:hover { background: var(--navy-mid); }
+
+    .file-attach-label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+
+    .file-attach-label:hover { border-color: var(--navy); color: var(--navy); }
+
+    .file-name-display {
+      font-size: 0.78rem;
+      color: var(--navy);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .form-banner {
       border-radius: 10px;
@@ -180,7 +206,7 @@
         <% } %>
         <div class="create-post-top">
           <div class="create-post-avatar"><%= user && user.initials ? user.initials : 'UC' %></div>
-          <form class="create-post-input-wrap" method="post" action="/feed/posts">
+          <form class="create-post-input-wrap" method="post" action="/feed/posts" enctype="multipart/form-data">
             <textarea
               class="create-post-input"
               name="content"
@@ -189,6 +215,17 @@
               placeholder="What's on your mind?"
             ></textarea>
             <div class="create-post-row">
+              <label class="file-attach-label">
+                📎 Attach image
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  style="display:none;"
+                  onchange="document.getElementById('file-name-display').textContent = this.files[0]?.name || ''"
+                />
+              </label>
+              <span id="file-name-display" class="file-name-display"></span>
               <button class="create-post-submit" type="submit">Post</button>
             </div>
           </form>
@@ -257,9 +294,7 @@
 
     function updateCommentBadge(postCard, count) {
       const toggleButton = postCard.querySelector('.js-comment-toggle');
-      if (!toggleButton) {
-        return;
-      }
+      if (!toggleButton) return;
 
       let countNode = toggleButton.querySelector('.comment-count');
       if (!countNode) {
@@ -275,25 +310,17 @@
 
     function clearLatestCommentHighlight(postCard) {
       const highlightedComment = postCard.querySelector('.post-comment.focused');
-      if (highlightedComment) {
-        highlightedComment.classList.remove('focused');
-      }
+      if (highlightedComment) highlightedComment.classList.remove('focused');
     }
 
     function flashLatestComment(postCard) {
       clearLatestCommentHighlight(postCard);
-
       const latestComment = postCard.querySelector('.post-comment[data-comment-id]:last-child');
-      if (!latestComment) {
-        return;
-      }
+      if (!latestComment) return;
 
       latestComment.classList.add('focused');
-
       const existingTimer = latestCommentTimers.get(postCard);
-      if (existingTimer) {
-        window.clearTimeout(existingTimer);
-      }
+      if (existingTimer) window.clearTimeout(existingTimer);
 
       const timerId = window.setTimeout(() => {
         latestComment.classList.remove('focused');
@@ -308,37 +335,26 @@
       const commentsPanel = postCard.querySelector('.post-comments');
       const toggleButton = postCard.querySelector('.js-comment-toggle');
       const preview = postCard.querySelector('.post-comment-preview');
-      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) {
-        return;
-      }
+      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) return;
 
       commentsPanel.hidden = false;
       toggleButton.classList.add('active');
       toggleButton.setAttribute('aria-expanded', 'true');
-
-      if (preview) {
-        preview.hidden = true;
-      }
+      if (preview) preview.hidden = true;
 
       const input = commentsPanel.querySelector('.post-comment-input');
-      if (input) {
-        input.focus();
-      }
+      if (input) input.focus();
     }
 
     function collapseComments(postCard) {
       const commentsPanel = postCard.querySelector('.post-comments');
       const toggleButton = postCard.querySelector('.js-comment-toggle');
       const preview = postCard.querySelector('.post-comment-preview');
-
-      if (!commentsPanel || !toggleButton) {
-        return;
-      }
+      if (!commentsPanel || !toggleButton) return;
 
       commentsPanel.hidden = true;
       toggleButton.classList.remove('active');
       toggleButton.setAttribute('aria-expanded', 'false');
-
       clearLatestCommentHighlight(postCard);
 
       const timerId = latestCommentTimers.get(postCard);
@@ -347,32 +363,20 @@
         latestCommentTimers.delete(postCard);
       }
 
-      if (preview) {
-        preview.hidden = false;
-      }
+      if (preview) preview.hidden = false;
     }
 
     document.addEventListener('click', async (event) => {
       const likeButton = event.target.closest('.js-like-btn');
-      if (!likeButton) {
-        return;
-      }
+      if (!likeButton) return;
 
       event.preventDefault();
-
       const postId = likeButton.dataset.postId;
-      if (!postId) {
-        return;
-      }
-
-      if (likeButton.dataset.pending === 'true') {
-        return;
-      }
+      if (!postId || likeButton.dataset.pending === 'true') return;
 
       const countNode = likeButton.querySelector('.like-count');
       const previousLiked = likeButton.dataset.liked === 'true';
       const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
-
       const optimisticLiked = !previousLiked;
       const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
 
@@ -381,36 +385,26 @@
       likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
       likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
       likeButton.classList.toggle('active', optimisticLiked);
-      if (countNode) {
-        countNode.textContent = String(optimisticCount);
-      }
+      if (countNode) countNode.textContent = String(optimisticCount);
 
       try {
         const response = await fetch(`/feed/posts/${postId}/like`, {
           method: 'POST',
-          headers: {
-            Accept: 'application/json',
-          },
+          headers: { Accept: 'application/json' },
         });
 
         const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload.error || 'Unable to update like.');
-        }
+        if (!response.ok) throw new Error(payload.error || 'Unable to update like.');
 
         likeButton.dataset.liked = payload.liked ? 'true' : 'false';
         likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
         likeButton.classList.toggle('active', Boolean(payload.liked));
-        if (countNode) {
-          countNode.textContent = String(payload.likeCount || 0);
-        }
+        if (countNode) countNode.textContent = String(payload.likeCount || 0);
       } catch (_err) {
         likeButton.dataset.liked = previousLiked ? 'true' : 'false';
         likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
         likeButton.classList.toggle('active', previousLiked);
-        if (countNode) {
-          countNode.textContent = String(previousCount);
-        }
+        if (countNode) countNode.textContent = String(previousCount);
       } finally {
         likeButton.dataset.pending = 'false';
         likeButton.classList.remove('pending');
@@ -419,22 +413,15 @@
 
     document.addEventListener('click', (event) => {
       const commentTrigger = event.target.closest('.js-comment-toggle, .js-comment-expand');
-      if (!commentTrigger) {
-        return;
-      }
+      if (!commentTrigger) return;
 
       const postCard = commentTrigger.closest('.post-card');
-      if (!postCard) {
-        return;
-      }
+      if (!postCard) return;
 
       const isToggleButton = commentTrigger.classList.contains('js-comment-toggle');
       const isExpandButton = commentTrigger.classList.contains('js-comment-expand');
       const commentsPanel = postCard.querySelector('.post-comments');
-
-      if (!commentsPanel) {
-        return;
-      }
+      if (!commentsPanel) return;
 
       if (isToggleButton) {
         if (commentsPanel.hidden) {
@@ -446,19 +433,14 @@
       }
 
       if (isExpandButton) {
-        if (commentsPanel.hidden) {
-          openComments(postCard);
-        }
-
+        if (commentsPanel.hidden) openComments(postCard);
         flashLatestComment(postCard);
       }
     });
 
     document.addEventListener('submit', async (event) => {
       const commentForm = event.target.closest('.js-comment-form');
-      if (!commentForm) {
-        return;
-      }
+      if (!commentForm) return;
 
       event.preventDefault();
 
@@ -466,19 +448,12 @@
       const input = commentForm.querySelector('.post-comment-input');
       const submitButton = commentForm.querySelector('.post-comment-submit');
       const commentList = commentForm.parentElement.querySelector('.post-comment-list');
-      const commentCountNode = commentForm.closest('.post-card')?.querySelector('.comment-count');
       const postCard = commentForm.closest('.post-card');
       const commentsPanel = postCard ? postCard.querySelector('.post-comments') : null;
       const content = input ? input.value.trim() : '';
 
-      if (!postId || !input || !submitButton || !commentList) {
-        return;
-      }
-
-      if (!content) {
-        input.focus();
-        return;
-      }
+      if (!postId || !input || !submitButton || !commentList) return;
+      if (!content) { input.focus(); return; }
 
       submitButton.disabled = true;
       submitButton.textContent = 'Posting...';
@@ -486,29 +461,20 @@
       try {
         const response = await fetch(`/feed/posts/${postId}/comments`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({ content }),
         });
 
         const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload.error || 'Unable to save comment.');
-        }
+        if (!response.ok) throw new Error(payload.error || 'Unable to save comment.');
 
         const comments = Array.isArray(payload.comments) ? payload.comments : [];
         commentList.innerHTML = comments.map(buildCommentHtml).join('');
 
-        if (commentsPanel) {
-          commentsPanel.hidden = false;
-        }
+        if (commentsPanel) commentsPanel.hidden = false;
 
         const preview = postCard ? postCard.querySelector('.post-comment-preview') : null;
-        if (preview) {
-          preview.hidden = true;
-        }
+        if (preview) preview.hidden = true;
 
         if (postCard) {
           const toggleButton = postCard.querySelector('.js-comment-toggle');
@@ -523,15 +489,13 @@
         }
 
         if (postCard) {
-          const commentsPanel = postCard.querySelector('.post-comments');
-          if (commentsPanel && commentsPanel.hidden) {
-            openComments(postCard);
-          }
+          const panel = postCard.querySelector('.post-comments');
+          if (panel && panel.hidden) openComments(postCard);
         }
 
         input.value = '';
       } catch (_err) {
-        // Intentionally silent for now to keep the UI lightweight.
+        // silent
       } finally {
         submitButton.disabled = false;
         submitButton.textContent = 'Comment';

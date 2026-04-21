@@ -28,7 +28,6 @@ function displayName(profile) {
   if (!profile) {
     return 'Unknown User';
   }
-
   return buildDisplayName(profile.first_name, profile.last_name, profile.email);
 }
 
@@ -168,6 +167,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
 
     return {
       id: post.id,
+      authorId: post.author_id,
       authorName: displayName(author),
       authorInitials: buildInitials(
         author && author.first_name,
@@ -178,6 +178,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
       scopeLabel,
       scopeHref,
       content: post.content,
+      imageUrl: post.image_url || null,
       likeCount: likeState.likeCountByPostId.get(post.id) || 0,
       liked: likeState.likedPostIds.has(post.id),
       commentCount: commentState.commentCountByPostId.get(post.id) || 0,
@@ -234,6 +235,7 @@ async function showFeed(req, res) {
       formError: req.query.error || null,
     });
   } catch (_err) {
+    console.error('SHOW FEED ERROR:', _err);
     return res.render('feed', {
       user: fallbackUser,
       posts: [],
@@ -253,23 +255,59 @@ async function createFeedPost(req, res) {
   }
 
   if (content.length > 4000) {
-    return res.redirect('/feed?error=' + encodeURIComponent('Post content is too long (max 4000 characters).'));
+    return res.redirect('/feed?error=' + encodeURIComponent('Post content is too long.'));
   }
 
   try {
     const supabase = createSupabaseAdminClient();
-    const created = await postModel.createFeedPost(supabase, {
+    let imageUrl = null;
+
+    if (req.file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+       return res.redirect('/feed?error=' + encodeURIComponent('Only JPEG, PNG, GIF and WebP images are supported.'));
+      }
+      const ext = req.file.originalname.split('.').pop();
+      const fileName = `${sessionUser.id}-${Date.now()}.${ext}`;
+      
+      console.log('UPLOADING FILE:', fileName, req.file.mimetype, req.file.size);
+
+      
+      
+      const { error: uploadError } = await supabase.storage
+        .from(process.env.SUPABASE_STORAGE_BUCKET || 'media')
+        .upload(`posts/${fileName}`, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
+    
+      console.log('UPLOAD ERROR:', uploadError);
+    
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from(process.env.SUPABASE_STORAGE_BUCKET || 'media')
+          .getPublicUrl(`posts/${fileName}`);
+        imageUrl = urlData?.publicUrl || null;
+        console.log('IMAGE URL:', imageUrl);
+      }
+    }
+    
+    console.log('FINAL IMAGE URL:', imageUrl);
+
+    const created = await postModel.createFeedPostWithImage(supabase, {
       authorId: sessionUser.id,
       content,
+      imageUrl,
     });
 
     if (!created) {
-      return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post right now.'));
+      return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post.'));
     }
 
     return res.redirect('/feed');
   } catch (_err) {
-    return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post right now.'));
+    console.error('CREATE POST ERROR:', _err);
+    return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post.'));
   }
 }
 
@@ -334,11 +372,7 @@ async function togglePostLike(req, res) {
       return res.status(500).json({ error: 'Unable to update like.' });
     }
 
-    return res.json({
-      ok: true,
-      liked,
-      likeCount,
-    });
+    return res.json({ ok: true, liked, likeCount });
   } catch (_err) {
     return res.status(500).json({ error: 'Unable to update like.' });
   }
@@ -359,9 +393,7 @@ async function createPostComment(req, res) {
 
   if (content.length > 2000) {
     return jsonOrRedirect(
-      req,
-      res,
-      400,
+      req, res, 400,
       { error: 'Comment is too long (max 2000 characters).' },
       `/post/${postId}`
     );
@@ -398,12 +430,7 @@ async function createPostComment(req, res) {
       if (commentState.hasError) {
         return res.json({ ok: true, commentCount: null, comments: [] });
       }
-
-      return res.json({
-        ok: true,
-        commentCount: comments.length,
-        comments,
-      });
+      return res.json({ ok: true, commentCount: comments.length, comments });
     }
 
     return res.redirect(`/post/${postId}`);
@@ -471,6 +498,61 @@ async function showPostById(req, res) {
   }
 }
 
+async function reportPost(req, res) {
+  const sessionUser = req.session.auth.user;
+  const postId = toPositiveInteger(req.params.postId);
+  const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+
+  if (!postId) return res.status(400).json({ error: 'Invalid post id.' });
+  if (!reason) return res.status(400).json({ error: 'Reason is required.' });
+  if (reason.length > 250) return res.status(400).json({ error: 'Reason too long (max 250 chars).' });
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const saved = await postModel.reportPost(supabase, {
+      postId,
+      reporterId: sessionUser.id,
+      reason,
+    });
+
+    if (!saved) return res.status(500).json({ error: 'Unable to submit report.' });
+
+    return res.json({ ok: true });
+  } catch (_err) {
+
+    return res.status(500).json({ error: 'Unable to submit report.' });
+  }
+}
+
+async function deletePost(req, res) {
+  const sessionUser = req.session.auth.user;
+  const postId = toPositiveInteger(req.params.postId);
+
+  if (!postId) return res.status(400).json({ error: 'Invalid post id.' });
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const post = await postModel.fetchPostById(supabase, postId);
+
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+
+    const isOwner = post.author_id === sessionUser.id;
+    const isAdmin = sessionUser.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Not allowed.' });
+    }
+
+    const deleted = await postModel.deletePost(supabase, postId);
+
+    if (!deleted) return res.status(500).json({ error: 'Unable to delete post.' });
+
+    return res.json({ ok: true });
+  } catch (_err) {
+    return res.status(500).json({ error: 'Unable to delete post.' });
+  }
+}
+
 module.exports = {
   showFeed,
   createFeedPost,
@@ -478,4 +560,6 @@ module.exports = {
   createPostComment,
   redirectToFeed,
   showPostById,
+  reportPost,
+  deletePost,
 };

@@ -185,38 +185,46 @@ async function fetchAffiliatedCommunities(supabase, userId) {
 
 router.get('/', requireAuth, async (req, res) => {
   const sessionUser = req.session.auth.user;
+  const userId = sessionUser.id;
+
   let profile = null;
   let courses = [];
   let communities = [];
 
   try {
     const supabase = createSupabaseAdminClient();
+
     const { data, error } = await supabase
       .from('profiles')
       .select('id,first_name,last_name,email,role')
-      .eq('id', sessionUser.id)
+      .eq('id', userId)
       .maybeSingle();
 
     if (!error && data) {
       profile = data;
     }
 
-    courses = await fetchAffiliatedCourses(supabase, sessionUser.id);
-    communities = await fetchAffiliatedCommunities(supabase, sessionUser.id);
-  } catch (_err) {
-    // If profile lookup fails, keep rendering from session data.
+    courses = await fetchAffiliatedCourses(supabase, userId);
+    communities = await fetchAffiliatedCommunities(supabase, userId);
+  } catch (err) {
+    console.log('DASHBOARD ERROR:', err);
   }
 
-  const profileFirstName = (profile && profile.first_name) || sessionUser.firstName || null;
-  const profileLastName =
-    (profile && typeof profile.last_name === 'string') ? profile.last_name : sessionUser.lastName || null;
-  const email = (profile && profile.email) || sessionUser.email;
-  const fullName = buildDisplayName(profileFirstName, profileLastName, email, { fallback: 'there' });
+  const profileFirstName = profile?.first_name || sessionUser.firstName || null;
+  const profileLastName = profile?.last_name || sessionUser.lastName || null;
+  const email = profile?.email || sessionUser.email || null;
+
+  const fullName = buildDisplayName(
+    profileFirstName,
+    profileLastName,
+    email,
+    { fallback: 'there' }
+  );
 
   const dashboardUser = {
-    id: sessionUser.id,
+    id: userId,
     email,
-    role: (profile && profile.role) || sessionUser.role || 'student',
+    role: profile?.role || sessionUser.role || 'student',
     firstName: buildFirstName(profileFirstName, email),
     lastName: profileLastName,
     fullName,

@@ -16,6 +16,7 @@ CREATE TABLE profiles (
     first_name TEXT NOT NULL,
     last_name TEXT,
     email TEXT NOT NULL,
+    bio TEXT,
     school_id INT REFERENCES schools(id),
     role user_role DEFAULT 'student',
     is_verified BOOLEAN DEFAULT FALSE,

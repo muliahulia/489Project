@@ -27,6 +27,7 @@ var app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+
 // middleware
 app.use(logger('dev'));
 app.use(express.json());
@@ -34,12 +35,19 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// session FIRST
+
+app.set('trust proxy', 1);
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'uniconnect-secret',
+  secret: process.env.SESSION_SECRET || 'dev-secret',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax'
+  }
 }));
+
+
 
 app.use(attachSessionUser);
 
@@ -59,7 +67,7 @@ app.use('/settings', settingsRouter);
 app.use('/courses', coursesRouter);
 app.use('/create-community', createCommunityRouter);
 app.use('/storage', storageRouter);
-
+app.use('/logout', authRouter);
 
 // 404
 app.use(function(req, res, next) {
