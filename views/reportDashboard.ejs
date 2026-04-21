@@ -4,116 +4,148 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UniConnect — Admin Dashboard</title>
+  <title>UniConnect — Reports</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
   <style>
-    /* Page-specific styles */
-
-    /*THis is the top part for the header*/
-
-    /*  */
-
-    /* buttons*/
-
-    
-    /* dashboard css */
-    .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr); /* 2 columns */
-    gap: 1.5rem;                          
-}
-
-    @media (max-width: 768px) {
-        .cards-grid {
-            grid-template-columns: 1fr; 
-        }
+    .report-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.85rem;
+      margin-bottom: 1rem;
     }
 
-    .report-banner { display: flex; flex-direction: row; background-color: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 10px; box-shadow: 0 1px 4px rgba(13,27,42,0.07); margin-bottom: 1.25rem; justify-content: space-between; align-items: center;}
+    .report-chip {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .table-wrap {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      overflow: auto;
+    }
+
+    .reports-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    .reports-table th,
+    .reports-table td {
+      padding: 0.9rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.9rem;
+    }
+
+    .reports-table th {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+      background: #f8fafc;
+    }
+
+    .reports-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .report-type {
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .report-reason {
+      max-width: 360px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-pill {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--navy-mid);
+      background: #f6f8fb;
+    }
+
+    .empty-state {
+      padding: 1rem;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
 
-
-
-  <%- include('header', { initials: 'JS' }) %>
+  <%- include('header', { initials: currentUser && currentUser.initials ? currentUser.initials : 'JS' }) %>
 
   <div class="layout">
-
-    
     <%- include('sidebar', { activePage: 'reportDashboard', showAdministrative: true }) %>
 
-
-    <!--Main content area — change per page --> 
     <main class="main main-pad main-wide">
+      <% const rows = Array.isArray(combinedReports) ? combinedReports : []; %>
 
       <div class="page-header">
         <h1 class="page-title">Reports</h1>
-        <p class="page-subtitle">Securely view and manage user reports.</p>
-        <!-- Admin Dashboard cards in 2x2 grid -->
-        <div class="cards-grid">
-            <div class="card">
-                <div class="card-title">Report Trends</div>
-                <canvas id="chart-reports"></canvas>
-            </div>
-            <div class="card">
-                <div class="card-title">Post Reports</div>
-                <div class="report-banner">
-                        <div class="account-reported">Post1</div>
-                        <div class="report-reason">Innapropriate content</div>
-                        <button class="btn btn-secondary" onclick="window.location.href='/report'">Details</button>
-                    </div>
-                    <div class="report-banner">
-                        <div class="account-reported">Post</div>
-                        <div class="report-reason">Spam</div>
-                        <button class="btn btn-secondary" onclick="window.location.href='/report'">Details</button>
-                    </div>
-                    <button class="btn btn-primary" >View More</button>
-            </div>
-            <div class="card">
-                <div class="card-title">Community Reports</div>
-                <div class="report-banner">
-                        <div class="account-reported">WSU</div>
-                        <div class="report-reason">Too Cool</div>
-                        <button class="btn btn-secondary" onclick="window.location.href='/report'">Details</button>
-                    </div>
-                    <div class="report-banner">
-                        <div class="account-reported">LI</div>
-                        <div class="report-reason">Spam</div>
-                        <button class="btn btn-secondary" onclick="window.location.href='/report'">Details</button>
-                    </div>
-                    <button class="btn btn-primary" onclick="directToSelectedTab(event)">View More</button>
-            </div>
-            <div class="card">
-                <div class="card-title">Account Reports</div>
-                <div class="report-banner">
-                        <div class="account-reported">User1</div>
-                        <div class="report-reason">Impersonating others</div>
-                        <button class="btn btn-secondary" onclick="window.location.href='/report'">Details</button>
-                    </div>
-                    <div class="report-banner">
-                        <div class="account-reported">User2</div>
-                        <div class="report-reason">Spam</div>
-                        <button class="btn btn-secondary" onclick="window.location.href='/report'">Details</button>
-                    </div>
-                    <button class="btn btn-primary" onclick="directToSelectedTab(event)">View More</button>
-            </div>
+        <p class="page-subtitle">Combined moderation queue across post, user, and community reports.</p>
+
+        <div class="report-summary">
+          <span class="report-chip">Total loaded: <%= typeof totalReports === 'number' ? totalReports : 0 %></span>
+          <span class="report-chip">Pending post: <%= typeof pendingPostReports === 'number' ? pendingPostReports : 0 %></span>
+          <span class="report-chip">Pending user: <%= typeof pendingUserReports === 'number' ? pendingUserReports : 0 %></span>
+          <span class="report-chip">Pending community: <%= typeof pendingCommunityReports === 'number' ? pendingCommunityReports : 0 %></span>
+        </div>
+
+        <div class="table-wrap">
+          <% if (rows.length === 0) { %>
+            <p class="empty-state">No reports available.</p>
+          <% } else { %>
+            <table class="reports-table">
+              <thead>
+                <tr>
+                  <th>Report Type</th>
+                  <th>Reported By</th>
+                  <th>Reported</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach((row) => { %>
+                  <% const createdText = row.created_at ? new Date(row.created_at).toLocaleString('en-US') : 'Unknown'; %>
+                  <tr>
+                    <td class="report-type"><%= row.reportType %></td>
+                    <td><%= row.reporter %></td>
+                    <td><%= row.reported %></td>
+                    <td class="report-reason" title="<%= row.reason %>"><%= row.reason %></td>
+                    <td><span class="status-pill"><%= row.status %></span></td>
+                    <td><%= createdText %></td>
+                    <td><a href="<%= row.viewHref %>" class="btn btn-secondary">View</a></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } %>
         </div>
       </div>
-
-      <div id="userReports" class="user-reports" style="display:none;">
-
-      </div>
-
-      <div id="communityReports" class="community-reports" style="display:none;">
-
-      </div>
-
-      <div id="postReports" class="post-reports" style="display:none;">
-
-      </div>
-
     </main>
   </div>
 

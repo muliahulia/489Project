@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — User Detail</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    .tabs {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .actions-menu {
+      position: relative;
+    }
+
+    .actions-dropdown {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 0.4rem);
+      min-width: 220px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(13,27,42,0.12);
+      padding: 0.4rem;
+      display: none;
+      z-index: 20;
+    }
+
+    .actions-dropdown.open {
+      display: block;
+    }
+
+    .dropdown-item {
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      padding: 0.55rem 0.6rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit;
+      color: var(--text-dark);
+    }
+
+    .dropdown-item:hover {
+      background: #f3f6fb;
+    }
+
+    .status-message {
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .status-message.success {
+      border: 1px solid #bfe6cf;
+      background: #f3fbf7;
+      color: #1d6a43;
+    }
+
+    .status-message.error {
+      border: 1px solid #f0c7c7;
+      background: #fff7f7;
+      color: #8f2f2f;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .details-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .detail-label {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      display: block;
+    }
+
+    .detail-value {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 0.65rem 0.75rem;
+      color: var(--text-dark);
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 1024px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .metrics-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .metric-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.8rem;
+      background: #fff;
+    }
+
+    .metric-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--text-dark);
+      line-height: 1.2;
+    }
+
+    .table-wrap {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      overflow: auto;
+    }
+
+    .activity-table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: collapse;
+    }
+
+    .activity-table th,
+    .activity-table td {
+      padding: 0.85rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.9rem;
+    }
+
+    .activity-table th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .activity-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .meta-pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      max-width: 360px;
+    }
+
+    .empty-state {
+      padding: 1rem;
+      color: var(--text-muted);
+    }
+
+    .actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .pager-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 27, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      padding: 1rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 28px rgba(13, 27, 42, 0.2);
+      padding: 1rem;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      margin: 0;
+      color: var(--text-dark);
+    }
+
+    .modal-close {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--text-muted);
+    }
+
+    .modal-form-group {
+      margin-bottom: 0.8rem;
+    }
+
+    .modal-input,
+    .modal-textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      font: inherit;
+      color: var(--text-dark);
+      background: #fff;
+    }
+
+    .modal-textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header') %>
+
+  <div class="layout">
+    <%- include('sidebar', { activePage: 'adminUsers', showAdministrative: true }) %>
+
+    <main class="main main-pad main-wide">
+      <% const detail = userDetail || {}; %>
+      <% const joinedText = detail.createdAt ? new Date(detail.createdAt).toLocaleString('en-US') : 'Unknown'; %>
+      <% const lastLoginText = detail.lastLogin ? new Date(detail.lastLogin).toLocaleString('en-US') : 'Never'; %>
+      <% const metric = detail.metrics || {}; %>
+      <% const activeTab = tab === 'activity' ? 'activity' : 'overview'; %>
+      <% const logs = activityLogs && Array.isArray(activityLogs.rows) ? activityLogs.rows : []; %>
+      <% const adminActions = Array.isArray(adminActionLogs) ? adminActionLogs : []; %>
+
+      <div class="page-header">
+        <h1 class="page-title">Internal User View</h1>
+        <p class="page-subtitle">Administrative profile and moderation context for this user.</p>
+
+        <% if (successMessage) { %>
+          <div class="status-message success"><%= successMessage %></div>
+        <% } %>
+        <% if (errorMessage) { %>
+          <div class="status-message error"><%= errorMessage %></div>
+        <% } %>
+
+        <div class="tabs">
+          <a href="/admin/users/<%= detail.id %>?tab=overview" class="tab-btn <%= activeTab === 'overview' ? 'active' : '' %>">Overview</a>
+          <a href="/admin/users/<%= detail.id %>?tab=activity&page=1" class="tab-btn <%= activeTab === 'activity' ? 'active' : '' %>">Activity Logs</a>
+        </div>
+
+        <% if (activeTab === 'activity') { %>
+          <div class="card">
+            <h2 class="card-title">User Activity Logs</h2>
+            <div class="table-wrap">
+              <% if (logs.length === 0) { %>
+                <p class="empty-state">No activity logs found for this user.</p>
+              <% } else { %>
+                <table class="activity-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Action Type</th>
+                      <th>Target Type</th>
+                      <th>Target ID</th>
+                      <th>Metadata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% logs.forEach((row) => { %>
+                      <% const createdText = row.createdAt ? new Date(row.createdAt).toLocaleString('en-US') : 'Unknown'; %>
+                      <tr>
+                        <td><%= createdText %></td>
+                        <td><%= row.actionType %></td>
+                        <td><%= row.targetType %></td>
+                        <td><%= row.targetId || '-' %></td>
+                        <td>
+                          <% if (row.metadata) { %>
+                            <pre class="meta-pre"><%= JSON.stringify(row.metadata, null, 2) %></pre>
+                          <% } else { %>
+                            -
+                          <% } %>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              <% } %>
+            </div>
+
+            <div class="actions-row">
+              <div class="pager">
+                <% const currentPage = activityLogs && activityLogs.page ? activityLogs.page : 1; %>
+                <% const totalPages = activityLogs && activityLogs.totalPages ? activityLogs.totalPages : 1; %>
+                <span class="pager-label">Page <%= currentPage %> of <%= totalPages %></span>
+                <% if (activityLogs && activityLogs.hasPreviousPage) { %>
+                  <a class="btn btn-secondary" href="/admin/users/<%= detail.id %>?tab=activity&page=<%= currentPage - 1 %>">Previous</a>
+                <% } else { %>
+                  <button class="btn btn-secondary" disabled>Previous</button>
+                <% } %>
+                <% if (activityLogs && activityLogs.hasNextPage) { %>
+                  <a class="btn btn-secondary" href="/admin/users/<%= detail.id %>?tab=activity&page=<%= currentPage + 1 %>">Next</a>
+                <% } else { %>
+                  <button class="btn btn-secondary" disabled>Next</button>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Admin Actions (Latest 20)</h2>
+            <div class="table-wrap">
+              <% if (adminActions.length === 0) { %>
+                <p class="empty-state">No admin actions found for this user.</p>
+              <% } else { %>
+                <table class="activity-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Admin</th>
+                      <th>Action Type</th>
+                      <th>Target Type</th>
+                      <th>Target ID</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% adminActions.forEach((row) => { %>
+                      <% const createdText = row.createdAt ? new Date(row.createdAt).toLocaleString('en-US') : 'Unknown'; %>
+                      <tr>
+                        <td><%= createdText %></td>
+                        <td><%= row.adminLabel %></td>
+                        <td><%= row.actionType %></td>
+                        <td><%= row.targetType %></td>
+                        <td><%= row.targetId || '-' %></td>
+                        <td><%= row.description || '-' %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              <% } %>
+            </div>
+          </div>
+        <% } else { %>
+          <div class="toolbar">
+            <div class="actions-menu">
+              <button class="btn btn-secondary" type="button" onclick="toggleActionsDropdown()">Actions ▾</button>
+              <div class="actions-dropdown" id="actionsDropdown">
+                <button type="button" class="dropdown-item" onclick="openModal('updateEmailModal')">Update Email</button>
+                <button type="button" class="dropdown-item" onclick="openModal('penalizeModal')">Penalize User</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="details-grid">
+              <div>
+                <span class="detail-label">Name</span>
+                <div class="detail-value"><%= detail.fullName || 'Unknown User' %></div>
+              </div>
+              <div>
+                <span class="detail-label">Email</span>
+                <div class="detail-value"><%= detail.email || 'Unknown' %></div>
+              </div>
+              <div>
+                <span class="detail-label">Role</span>
+                <div class="detail-value"><%= detail.role || 'student' %></div>
+              </div>
+              <div>
+                <span class="detail-label">Account Status</span>
+                <div class="detail-value"><%= detail.isActive ? 'active' : 'inactive' %></div>
+              </div>
+              <div>
+                <span class="detail-label">School</span>
+                <div class="detail-value"><%= detail.schoolName || 'Not set' %></div>
+              </div>
+              <div>
+                <span class="detail-label">Joined</span>
+                <div class="detail-value"><%= joinedText %></div>
+              </div>
+              <div>
+                <span class="detail-label">Last Login</span>
+                <div class="detail-value"><%= lastLoginText %></div>
+              </div>
+              <div>
+                <span class="detail-label">User ID</span>
+                <div class="detail-value"><%= detail.id || 'Unknown' %></div>
+              </div>
+            </div>
+
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-label">Posts Authored</div>
+                <div class="metric-value"><%= typeof metric.postsAuthored === 'number' ? metric.postsAuthored : 0 %></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Comments Authored</div>
+                <div class="metric-value"><%= typeof metric.commentsAuthored === 'number' ? metric.commentsAuthored : 0 %></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Communities Joined</div>
+                <div class="metric-value"><%= typeof metric.communitiesJoined === 'number' ? metric.communitiesJoined : 0 %></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Courses Enrolled</div>
+                <div class="metric-value"><%= typeof metric.coursesEnrolled === 'number' ? metric.coursesEnrolled : 0 %></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Reports Filed</div>
+                <div class="metric-value"><%= typeof metric.reportsFiled === 'number' ? metric.reportsFiled : 0 %></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Reports Against User</div>
+                <div class="metric-value"><%= typeof metric.reportsAgainstUser === 'number' ? metric.reportsAgainstUser : 0 %></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Active Penalties</div>
+                <div class="metric-value"><%= typeof metric.activePenalties === 'number' ? metric.activePenalties : 0 %></div>
+              </div>
+            </div>
+
+            <div class="actions-row">
+              <a class="btn btn-secondary" href="/admin/users">Back to User Search</a>
+            </div>
+          </div>
+
+          <div class="modal-backdrop" id="updateEmailModal" onclick="closeModalOnBackdrop(event, 'updateEmailModal')">
+            <div class="modal">
+              <div class="modal-header">
+                <h2 class="modal-title">Update Email</h2>
+                <button class="modal-close" type="button" onclick="closeModal('updateEmailModal')">&times;</button>
+              </div>
+              <form method="post" action="/admin/users/<%= detail.id %>/update-email">
+                <div class="modal-form-group">
+                  <label class="detail-label" for="updatedEmail">New Email</label>
+                  <input class="modal-input" id="updatedEmail" name="email" type="email" required value="<%= detail.email || '' %>" />
+                </div>
+                <div class="modal-actions">
+                  <button class="btn btn-secondary" type="button" onclick="closeModal('updateEmailModal')">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Save Email</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="modal-backdrop" id="penalizeModal" onclick="closeModalOnBackdrop(event, 'penalizeModal')">
+            <div class="modal">
+              <div class="modal-header">
+                <h2 class="modal-title">Penalize User</h2>
+                <button class="modal-close" type="button" onclick="closeModal('penalizeModal')">&times;</button>
+              </div>
+              <form method="post" action="/admin/users/<%= detail.id %>/penalize">
+                <div class="modal-form-group">
+                  <label class="detail-label" for="penaltyReason">Reason</label>
+                  <textarea class="modal-textarea" id="penaltyReason" name="reason" required placeholder="Describe why this penalty is being applied."></textarea>
+                </div>
+                <div class="modal-form-group">
+                  <label class="detail-label" for="penaltyExpiresAt">Expires At (Optional)</label>
+                  <input class="modal-input" id="penaltyExpiresAt" name="expiresAt" type="datetime-local" />
+                </div>
+                <div class="modal-actions">
+                  <button class="btn btn-secondary" type="button" onclick="closeModal('penalizeModal')">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Apply Penalty</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleActionsDropdown() {
+      var dropdown = document.getElementById('actionsDropdown');
+      if (!dropdown) return;
+      dropdown.classList.toggle('open');
+    }
+
+    function closeActionsDropdown() {
+      var dropdown = document.getElementById('actionsDropdown');
+      if (!dropdown) return;
+      dropdown.classList.remove('open');
+    }
+
+    function openModal(id) {
+      closeActionsDropdown();
+      var modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.add('open');
+      }
+    }
+
+    function closeModal(id) {
+      var modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.remove('open');
+      }
+    }
+
+    function closeModalOnBackdrop(event, id) {
+      if (event.target && event.target.id === id) {
+        closeModal(id);
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      var menu = document.querySelector('.actions-menu');
+      if (!menu) return;
+      if (!menu.contains(event.target)) {
+        closeActionsDropdown();
+      }
+    });
+
+    <% if (openModal === 'update-email') { %>
+      openModal('updateEmailModal');
+    <% } %>
+    <% if (openModal === 'penalize') { %>
+      openModal('penalizeModal');
+    <% } %>
+  </script>
+
+</body>
+</html>

@@ -17,11 +17,14 @@
     /*Dashboard grid*/
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr); /* 2 columns */
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 1.5rem;                          
     }
+    @media (max-width: 1200px) {
+      .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width: 768px) {
-      .cards-grid { grid-template-columns: 1fr; }
+      .cards-grid { grid-template-columns: minmax(0, 1fr); }
     }
 
     .active-sessions {
@@ -58,28 +61,28 @@
           <div class="card">
             <div class="card-title">Active Users</div>
             <div class="card-content">
-                <div class="active-sessions">643 - Active Sessions</div>
+                <div class="active-sessions"><%= typeof activeUsersToday === 'number' ? activeUsersToday : 0 %> users active today</div>
                 <canvas id="chart-reports"></canvas>
                 <div></div>
             </div>
             <div></div>
-            <button class="btn btn-primary">View User Statistics</button>
+            <button class="btn btn-primary" onclick="window.location.href='/admin/users'">View User Statistics</button>
           </div>
           <div class="card">
             <div class="card-title">Reports</div>
-            <div class="active-sessions">23 - Reports today</div>
+            <div class="active-sessions"><%= typeof reportsToday === 'number' ? reportsToday : 0 %> reports today</div>
             <canvas id="chart-reports"></canvas>
-            <button class="btn btn-primary" onclick="window.location.href='/reportDashboard'">View Reports</button>
+            <button class="btn btn-primary" onclick="window.location.href='/admin/reports'">View Reports</button>
           </div>
           <div class="card">
             <div class="card-title">Account Moderation</div>
-            <div class="active-sessions">3 - Accounts ready for review</div>
+            <div class="active-sessions"><%= typeof accountsUnderPenalty === 'number' ? accountsUnderPenalty : 0 %> accounts under penalty</div>
             <canvas id="chart-account-moderation"></canvas>
             <button class="btn btn-primary" onclick="window.location.href='/accountModeration'">View Accounts</button>
           </div>
           <div class="card">
             <div class="card-title">Community Moderation</div>
-            <div class="active-sessions">2 - Flagged communities</div>
+            <div class="active-sessions"><%= typeof flaggedCommunities === 'number' ? flaggedCommunities : 0 %> flagged communities</div>
             <canvas id="chart-community-moderation"></canvas>
             <button class="btn btn-primary" onclick="window.location.href='/communityModeration'">View Communities</button>
           </div>

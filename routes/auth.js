@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const { createSupabaseAnonClient } = require('../lib/supabase');
+const { createSupabaseAnonClient, createSupabaseAdminClient } = require('../lib/supabase');
 
 function wantsJson(req) {
   const accept = req.get('accept') || '';
@@ -23,6 +23,34 @@ function sendFailure(req, res, status, message) {
   return res.redirect(`/login?error=${encodeURIComponent(message)}`);
 }
 
+function joinName(firstName, lastName) {
+  const first = typeof firstName === 'string' ? firstName.trim() : '';
+  const last = typeof lastName === 'string' ? lastName.trim() : '';
+  return [first, last].filter(Boolean).join(' ').trim() || null;
+}
+
+async function resolveProfileRole(userId) {
+  if (!userId) {
+    return null;
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data || typeof data.role !== 'string' || !data.role.trim()) {
+      return null;
+    }
+
+    return data.role.trim();
+  } catch (_err) {
+    return null;
+  }
+}
 router.get('/login', (req, res) => {
   res.render('login', { error: req.query.error || null });
 });
@@ -51,14 +79,29 @@ router.post('/login', async (req, res) => {
   if (loginError || !loginData || !loginData.user || !loginData.session) {
     return sendFailure(req, res, 401, loginError ? loginError.message : 'Invalid login.');
   }
+  const profileRole = await resolveProfileRole(loginData.user.id);
+  const metadataRole =
+    loginData.user.user_metadata && loginData.user.user_metadata.role
+      ? loginData.user.user_metadata.role
+      : null;
 
   req.session.auth = {
     user: {
       id: loginData.user.id,
       email: loginData.user.email,
-      role: loginData.user.user_metadata?.role || 'student',
-      firstName: loginData.user.user_metadata?.first_name || null,
-      lastName: loginData.user.user_metadata?.last_name || null,
+      role: profileRole || metadataRole || 'student',
+      firstName:
+        loginData.user.user_metadata && loginData.user.user_metadata.first_name
+          ? loginData.user.user_metadata.first_name
+          : null,
+      lastName:
+        loginData.user.user_metadata && typeof loginData.user.user_metadata.last_name === 'string'
+          ? loginData.user.user_metadata.last_name
+          : null,
+      fullName: joinName(
+        loginData.user.user_metadata && loginData.user.user_metadata.first_name,
+        loginData.user.user_metadata && loginData.user.user_metadata.last_name
+      ),
     },
     accessToken: loginData.session.access_token,
     refreshToken: loginData.session.refresh_token,

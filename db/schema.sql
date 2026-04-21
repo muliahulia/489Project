@@ -6,7 +6,8 @@ CREATE TYPE user_role AS ENUM ('student', 'official', 'admin');
 CREATE TABLE schools (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    domain TEXT UNIQUE
+    domain TEXT UNIQUE,
+    logo_url TEXT
 );
 
 -- PROFILES
@@ -105,8 +106,8 @@ CREATE TABLE followers (
     CHECK (follower_id != following_id)
 );
 
--- REPORTS
-CREATE TABLE reports (
+-- POST REPORTS
+CREATE TABLE post_reports (
     id SERIAL PRIMARY KEY,
     reporter_id UUID REFERENCES profiles(id),
     post_id INT REFERENCES posts(id),
@@ -120,6 +121,31 @@ CREATE TABLE reports (
         OR
         (post_id IS NULL AND comment_id IS NOT NULL)
     )
+);
+
+-- USER REPORTS
+CREATE TABLE user_reports (
+    id SERIAL PRIMARY KEY,
+    reporter_id UUID REFERENCES profiles(id),
+    reported_user_id UUID REFERENCES profiles(id),
+    reason TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    admin_note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_user_report_target CHECK (
+        reporter_id IS DISTINCT FROM reported_user_id
+    )
+);
+
+-- COMMUNITY REPORTS
+CREATE TABLE community_reports (
+    id SERIAL PRIMARY KEY,
+    reporter_id UUID REFERENCES profiles(id),
+    community_id INT REFERENCES communities(id),
+    reason TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    admin_note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- NOTIFICATIONS
@@ -138,6 +164,7 @@ CREATE TABLE admin_actions (
     action_type TEXT NOT NULL,
     target_type TEXT,
     target_id INT,
+    target_user_id UUID REFERENCES profiles(id),
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -174,4 +201,6 @@ CREATE TABLE user_activity_logs (
 -- INDEXES (optional)
 -- CREATE INDEX idx_posts_author ON posts(author_id);
 -- CREATE INDEX idx_comments_post ON comments(post_id);
--- CREATE INDEX idx_reports_status ON reports(status);
+-- CREATE INDEX idx_post_reports_status ON post_reports(status);
+-- CREATE INDEX idx_user_reports_status ON user_reports(status);
+-- CREATE INDEX idx_community_reports_status ON community_reports(status);
