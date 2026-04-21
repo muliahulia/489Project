@@ -180,7 +180,7 @@ async function removeCommunityWithDependencies(supabase, communityId) {
     const commentIds = Array.isArray(comments) ? comments.map((row) => row.id).filter(Boolean) : [];
 
     const { error: reportByPostError } = await supabase
-      .from('reports')
+      .from('post_reports')
       .delete()
       .in('post_id', postIds);
 
@@ -190,7 +190,7 @@ async function removeCommunityWithDependencies(supabase, communityId) {
 
     if (commentIds.length > 0) {
       const { error: reportByCommentError } = await supabase
-        .from('reports')
+        .from('post_reports')
         .delete()
         .in('comment_id', commentIds);
 
