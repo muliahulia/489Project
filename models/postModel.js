@@ -66,7 +66,7 @@ async function fetchCommunitiesByIds(supabase, ids) {
 async function fetchVisibleFeedPosts(supabase, visibilityFilter, limit = 50) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id,author_id,content,is_official,community_id,course_id,created_at,is_deleted')
+    .select('id,author_id,content,image_url,is_official,community_id,course_id,created_at,is_deleted')
     .eq('is_deleted', false)
     .or(visibilityFilter)
     .order('created_at', { ascending: false })
@@ -82,7 +82,7 @@ async function fetchVisibleFeedPosts(supabase, visibilityFilter, limit = 50) {
 async function fetchVisiblePostById(supabase, postId, visibilityFilter) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id,author_id,content,is_official,community_id,course_id,created_at,is_deleted')
+    .select('id,author_id,content,image_url,is_official,community_id,course_id,created_at,is_deleted')
     .eq('id', postId)
     .eq('is_deleted', false)
     .or(visibilityFilter)
@@ -94,7 +94,6 @@ async function fetchVisiblePostById(supabase, postId, visibilityFilter) {
 
   return data;
 }
-
 async function createFeedPost(supabase, payload) {
   const { error } = await supabase
     .from('posts')
@@ -226,6 +225,55 @@ async function createComment(supabase, payload) {
   return !error;
 }
 
+async function reportPost(supabase, payload) {
+  const { error } = await supabase
+    .from('post_reports')
+    .insert({
+      post_id: payload.postId,
+      reporter_id: payload.reporterId,
+      reason: payload.reason,
+    });
+
+  return !error;
+}
+
+async function deletePost(supabase, postId) {
+  const { error } = await supabase
+    .from('posts')
+    .update({ is_deleted: true })
+    .eq('id', postId);
+
+  return !error;
+}
+
+async function fetchPostById(supabase, postId) {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id,author_id,content,is_deleted')
+    .eq('id', postId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data;
+}
+async function createFeedPostWithImage(supabase, payload) {
+  const { error } = await supabase
+    .from('posts')
+    .insert({
+      author_id: payload.authorId,
+      content: payload.content,
+      image_url: payload.imageUrl || null,
+      is_official: false,
+      course_id: null,
+      community_id: null,
+    });
+
+  if (error) {
+    console.error('CREATE POST DB ERROR:', error);
+  }
+
+  return !error;
+}
 module.exports = {
   fetchProfileById,
   fetchProfilesByIds,
@@ -234,6 +282,8 @@ module.exports = {
   fetchVisibleFeedPosts,
   fetchVisiblePostById,
   createFeedPost,
+  createFeedPostWithImage,
+  fetchPostById,
   fetchLikeRowsByPostIds,
   fetchUserLikeRowsByPostIds,
   fetchCommentsByPostIds,
@@ -242,4 +292,6 @@ module.exports = {
   upsertLikeReaction,
   countLikesForPost,
   createComment,
+  reportPost,
+  deletePost,
 };
