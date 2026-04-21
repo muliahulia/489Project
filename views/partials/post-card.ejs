@@ -5,6 +5,7 @@
   <% const currentUser = locals.user || {}; %>
   <% const isOwner = currentUser.id && post.authorId === currentUser.id; %>
   <% const isAdmin = currentUser.role === 'admin'; %>
+  <% const postAuthorHref = post.authorProfileHref || '/profile'; %>
 
   <div class="post-actions">
     <button
@@ -32,7 +33,7 @@
   <div class="post-author">
     <div class="post-avatar-initials"><%= post.authorInitials %></div>
     <div class="post-author-info">
-      <span class="post-author-name"><a href="/profile"><%= post.authorName %></a></span>
+      <span class="post-author-name"><a href="<%= postAuthorHref %>"><%= post.authorName %></a></span>
       <span class="post-meta"><a href="/post/<%= post.id %>"><%= post.createdAtLabel %></a></span>
       <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
     </div>

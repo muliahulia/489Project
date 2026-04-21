@@ -563,7 +563,7 @@
           <div class="post-author">
             <div class="post-avatar-initials">${escapeHtml(post.authorInitials || 'UC')}</div>
             <div class="post-author-info">
-              <span class="post-author-name"><a href="/profile">${escapeHtml(post.authorName || 'Unknown User')}</a></span>
+              <span class="post-author-name"><a href="${escapeHtml(post.authorProfileHref || '/profile')}">${escapeHtml(post.authorName || 'Unknown User')}</a></span>
               <span class="post-meta"><a href="/post/${escapeHtml(postId)}">${escapeHtml(post.createdAtLabel || '')}</a></span>
               <span class="post-community"><a href="${escapeHtml(post.scopeHref || '#')}">${escapeHtml(post.scopeLabel || 'General')}</a></span>
             </div>

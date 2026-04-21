@@ -2,6 +2,7 @@ const { createSupabaseAdminClient } = require('../lib/supabase');
 const {
   buildDisplayName,
   buildInitials,
+  buildProfilePath,
   formatCreatedAt,
 } = require('../lib/utils');
 const courseModel = require('../models/courseModel');
@@ -172,6 +173,12 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
 
     return {
       id: post.id,
+      authorId: post.author_id,
+      authorProfileHref: buildProfilePath(
+        post.author_id,
+        author && author.first_name,
+        author && author.last_name
+      ),
       authorName: displayName(author),
       authorInitials: buildInitials(
         author && author.first_name,

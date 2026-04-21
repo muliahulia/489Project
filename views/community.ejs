@@ -146,6 +146,7 @@
       border: 2px solid #fff;
       flex-shrink: 0;
       letter-spacing: 0.03em;
+      text-decoration: none;
     }
 
     .member-avatar:nth-child(2) { background: var(--navy-mid); }
@@ -253,6 +254,12 @@
       font-size: 0.9rem;
       font-weight: 500;
       color: var(--text-dark);
+      text-decoration: none;
+    }
+
+    .modal-student-name:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     /* ── Feed Section ── */
@@ -456,7 +463,7 @@
             <div class="members-label">Members</div>
             <div class="members-row">
               <% previewMembers.forEach((member) => { %>
-                <div class="member-avatar"><%= member.initials %></div>
+                <a class="member-avatar" href="<%= member.profileHref || '/profile' %>" title="<%= member.name %>" aria-label="View <%= member.name %> profile"><%= member.initials %></a>
               <% }) %>
 
               <% if (communityMembers.length > 0 && hiddenMemberCount > 0) { %>
@@ -535,7 +542,7 @@
           <% communityMembers.forEach((member) => { %>
             <div class="modal-student">
               <div class="modal-avatar"><%= member.initials %></div>
-              <span class="modal-student-name"><%= member.name %></span>
+              <a class="modal-student-name" href="<%= member.profileHref || '/profile' %>"><%= member.name %></a>
             </div>
           <% }) %>
         </div>

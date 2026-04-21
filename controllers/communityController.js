@@ -2,6 +2,7 @@ const { createSupabaseAdminClient } = require('../lib/supabase');
 const {
   buildDisplayName,
   buildInitials,
+  buildProfilePath,
   formatCreatedAt: formatPostDate,
 } = require('../lib/utils');
 const communityModel = require('../models/communityModel');
@@ -195,6 +196,11 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
           id: memberId,
           name: displayName(creatorProfile),
           initials: buildInitials(creatorProfile.first_name, creatorProfile.last_name, creatorProfile.email),
+          profileHref: buildProfilePath(
+            memberId,
+            creatorProfile.first_name,
+            creatorProfile.last_name
+          ),
         };
       }
 
@@ -205,6 +211,11 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
           profile && profile.first_name,
           profile && profile.last_name,
           profile && profile.email
+        ),
+        profileHref: buildProfilePath(
+          memberId,
+          profile && profile.first_name,
+          profile && profile.last_name
         ),
       };
     })
@@ -226,6 +237,12 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
 
     return {
       id: row.id,
+      authorId: row.author_id,
+      authorProfileHref: buildProfilePath(
+        row.author_id,
+        author && author.first_name,
+        author && author.last_name
+      ),
       authorName,
       authorInitials: buildInitials(
         author && author.first_name,
