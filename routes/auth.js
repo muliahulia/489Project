@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const { createSupabaseAnonClient } = require('../lib/supabase');
+const { createSupabaseAnonClient, createSupabaseAdminClient } = require('../lib/supabase');
 
 function wantsJson(req) {
   const accept = req.get('accept') || '';
@@ -36,6 +36,29 @@ function joinName(firstName, lastName) {
   const first = typeof firstName === 'string' ? firstName.trim() : '';
   const last = typeof lastName === 'string' ? lastName.trim() : '';
   return [first, last].filter(Boolean).join(' ').trim() || null;
+}
+
+async function resolveProfileRole(userId) {
+  if (!userId) {
+    return null;
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data || typeof data.role !== 'string' || !data.role.trim()) {
+      return null;
+    }
+
+    return data.role.trim();
+  } catch (_err) {
+    return null;
+  }
 }
 
 router.get('/login', (req, res) => {
@@ -75,6 +98,9 @@ router.post('/login', async (req, res) => {
   if (error || !data.session || !data.user) {
     return sendFailure(req, res, 401, error ? error.message : 'Invalid email or password.');
   }
+  const profileRole = await resolveProfileRole(data.user.id);
+  const metadataRole =
+    data.user.user_metadata && data.user.user_metadata.role ? data.user.user_metadata.role : null;
 
   req.session.auth = {
     accessToken: data.session.access_token,
@@ -82,7 +108,7 @@ router.post('/login', async (req, res) => {
     user: {
       id: data.user.id,
       email: data.user.email,
-      role: data.user.user_metadata && data.user.user_metadata.role ? data.user.user_metadata.role : 'student',
+      role: profileRole || metadataRole || 'student',
       firstName:
         data.user.user_metadata && data.user.user_metadata.first_name
           ? data.user.user_metadata.first_name
