@@ -312,6 +312,7 @@
       <% const metric = detail.metrics || {}; %>
       <% const activeTab = tab === 'activity' ? 'activity' : 'overview'; %>
       <% const logs = activityLogs && Array.isArray(activityLogs.rows) ? activityLogs.rows : []; %>
+      <% const adminActions = Array.isArray(adminActionLogs) ? adminActionLogs : []; %>
 
       <div class="page-header">
         <h1 class="page-title">Internal User View</h1>
@@ -331,6 +332,7 @@
 
         <% if (activeTab === 'activity') { %>
           <div class="card">
+            <h2 class="card-title">User Activity Logs</h2>
             <div class="table-wrap">
               <% if (logs.length === 0) { %>
                 <p class="empty-state">No activity logs found for this user.</p>
@@ -368,7 +370,6 @@
             </div>
 
             <div class="actions-row">
-              <a class="btn btn-secondary" href="/admin/users">Back to User Search</a>
               <div class="pager">
                 <% const currentPage = activityLogs && activityLogs.page ? activityLogs.page : 1; %>
                 <% const totalPages = activityLogs && activityLogs.totalPages ? activityLogs.totalPages : 1; %>
@@ -384,6 +385,41 @@
                   <button class="btn btn-secondary" disabled>Next</button>
                 <% } %>
               </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Admin Actions (Latest 20)</h2>
+            <div class="table-wrap">
+              <% if (adminActions.length === 0) { %>
+                <p class="empty-state">No admin actions found for this user.</p>
+              <% } else { %>
+                <table class="activity-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Admin</th>
+                      <th>Action Type</th>
+                      <th>Target Type</th>
+                      <th>Target ID</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% adminActions.forEach((row) => { %>
+                      <% const createdText = row.createdAt ? new Date(row.createdAt).toLocaleString('en-US') : 'Unknown'; %>
+                      <tr>
+                        <td><%= createdText %></td>
+                        <td><%= row.adminLabel %></td>
+                        <td><%= row.actionType %></td>
+                        <td><%= row.targetType %></td>
+                        <td><%= row.targetId || '-' %></td>
+                        <td><%= row.description || '-' %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              <% } %>
             </div>
           </div>
         <% } else { %>

@@ -113,6 +113,26 @@ function tableNameForReportType(reportType) {
   return null;
 }
 
+async function logAdminAction(supabase, payload) {
+  if (!supabase || !payload || typeof payload !== 'object') {
+    return;
+  }
+
+  const insertPayload = {
+    admin_id: payload.adminId || null,
+    action_type: payload.actionType || 'unknown',
+    target_type: payload.targetType || null,
+    target_id: Number.isInteger(payload.targetId) ? payload.targetId : null,
+    description: payload.description || null,
+    target_user_id: payload.targetUserId || null,
+  };
+
+  const { error } = await supabase.from('admin_actions').insert(insertPayload);
+  if (error) {
+    throw error;
+  }
+}
+
 async function fetchActiveUsersToday() {
   const supabase = createSupabaseAdminClient();
   const todayKey = dateKeyForTimeZone(new Date(), ACTIVE_USERS_TIMEZONE);
@@ -701,6 +721,35 @@ async function fetchUserActivityLogsPage(userId, pageNumber) {
   };
 }
 
+async function fetchRecentAdminActionsForUser(userId) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('admin_actions')
+    .select('id,admin_id,action_type,target_type,target_id,target_user_id,description,created_at')
+    .eq('target_user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error || !Array.isArray(data)) {
+    return [];
+  }
+
+  const adminIds = [...new Set(data.map((row) => row.admin_id).filter(Boolean))];
+  const adminLabelsById = await fetchProfileLabelsById(adminIds);
+
+  return data.map((row) => ({
+    id: row.id,
+    adminId: row.admin_id || null,
+    adminLabel: row.admin_id ? (adminLabelsById[row.admin_id] || fallbackUserLabel(row.admin_id)) : 'Unknown Admin',
+    actionType: row.action_type || 'unknown',
+    targetType: row.target_type || 'n/a',
+    targetId: row.target_id || null,
+    targetUserId: row.target_user_id || null,
+    description: row.description || '',
+    createdAt: row.created_at || null,
+  }));
+}
+
 async function fetchReportDetail(reportType, reportId) {
   const supabase = createSupabaseAdminClient();
 
@@ -854,6 +903,14 @@ async function applyModerationActions(supabase, report, actions, adminUserId) {
     if (penaltyInsert.error) {
       throw penaltyInsert.error;
     }
+
+    await logAdminAction(supabase, {
+      adminId: adminUserId,
+      actionType: 'penalty_added_from_report',
+      targetType: 'user_penalty',
+      targetUserId: report.reportedUserId,
+      description: `Added penalty from ${report.reportTypeSlug} report #${report.id}`,
+    });
   }
 
   if (actions.includes('remove_content')) {
@@ -866,6 +923,15 @@ async function applyModerationActions(supabase, report, actions, adminUserId) {
         if (commentUpdate.error) {
           throw commentUpdate.error;
         }
+
+        await logAdminAction(supabase, {
+          adminId: adminUserId,
+          actionType: 'comment_removed_from_report',
+          targetType: 'comment',
+          targetId: report.commentId,
+          targetUserId: report.reportedUserId || null,
+          description: `Removed comment from report #${report.id}`,
+        });
       } else if (report.postId) {
         const postUpdate = await supabase
           .from('posts')
@@ -874,6 +940,15 @@ async function applyModerationActions(supabase, report, actions, adminUserId) {
         if (postUpdate.error) {
           throw postUpdate.error;
         }
+
+        await logAdminAction(supabase, {
+          adminId: adminUserId,
+          actionType: 'post_removed_from_report',
+          targetType: 'post',
+          targetId: report.postId,
+          targetUserId: report.reportedUserId || null,
+          description: `Removed post from report #${report.id}`,
+        });
       }
     } else if (report.reportTypeSlug === 'user' && report.reportedUserId) {
       const [postsUpdate, commentsUpdate] = await Promise.all([
@@ -887,6 +962,14 @@ async function applyModerationActions(supabase, report, actions, adminUserId) {
       if (commentsUpdate.error) {
         throw commentsUpdate.error;
       }
+
+      await logAdminAction(supabase, {
+        adminId: adminUserId,
+        actionType: 'user_content_removed_from_report',
+        targetType: 'user_content',
+        targetUserId: report.reportedUserId,
+        description: `Removed posts/comments for user from report #${report.id}`,
+      });
     } else if (report.reportTypeSlug === 'community' && report.communityId) {
       const postsResult = await supabase
         .from('posts')
@@ -918,6 +1001,15 @@ async function applyModerationActions(supabase, report, actions, adminUserId) {
           throw commentsUpdate.error;
         }
       }
+
+      await logAdminAction(supabase, {
+        adminId: adminUserId,
+        actionType: 'community_content_removed_from_report',
+        targetType: 'community',
+        targetId: report.communityId,
+        targetUserId: report.reportedUserId || null,
+        description: `Removed community content from report #${report.id}`,
+      });
     }
   }
 }
@@ -998,9 +1090,10 @@ router.get('/users/:id', requireAuth, async (req, res, next) => {
   }
 
   try {
-    const [userDetail, activityLogs] = await Promise.all([
+    const [userDetail, activityLogs, adminActionLogs] = await Promise.all([
       fetchAdminUserDetail(userId),
       fetchUserActivityLogsPage(userId, activityPage),
+      fetchRecentAdminActionsForUser(userId),
     ]);
     if (!userDetail) {
       const err = new Error('User not found');
@@ -1012,6 +1105,7 @@ router.get('/users/:id', requireAuth, async (req, res, next) => {
       userDetail,
       tab,
       activityLogs,
+      adminActionLogs,
       successMessage,
       errorMessage,
       openModal,
@@ -1067,6 +1161,14 @@ router.post('/users/:id/update-email', requireAuth, async (req, res, next) => {
     if (profileUpdateResult.error) {
       return res.redirect(`/admin/users/${userId}?tab=overview&modal=update-email&error=${encodeURIComponent('Auth email updated, but profile email update failed')}`);
     }
+
+    await logAdminAction(supabase, {
+      adminId: req.session && req.session.auth && req.session.auth.user ? req.session.auth.user.id : null,
+      actionType: 'user_email_updated',
+      targetType: 'user',
+      targetUserId: userId,
+      description: `Updated user email to ${nextEmail}`,
+    });
 
     return res.redirect(`/admin/users/${userId}?tab=overview&success=${encodeURIComponent('Email updated successfully')}`);
   } catch (_err) {
@@ -1127,6 +1229,14 @@ router.post('/users/:id/penalize', requireAuth, async (req, res, next) => {
     if (penaltyResult.error) {
       return res.redirect(`/admin/users/${userId}?tab=overview&modal=penalize&error=${encodeURIComponent('Unable to create penalty')}`);
     }
+
+    await logAdminAction(supabase, {
+      adminId: adminUserId,
+      actionType: 'user_penalty_added',
+      targetType: 'user_penalty',
+      targetUserId: userId,
+      description: `Added penalty to user${expiresAt ? ` (expires ${expiresAt})` : ''}: ${reason}`,
+    });
 
     return res.redirect(`/admin/users/${userId}?tab=overview&success=${encodeURIComponent('Penalty added successfully')}`);
   } catch (_err) {
@@ -1241,6 +1351,15 @@ router.post('/reports/:type/:id', requireAuth, async (req, res, next) => {
     if (error) {
       return res.redirect(`/admin/reports/${reportType}/${reportId}?error=${encodeURIComponent('Unable to save report changes')}`);
     }
+
+    await logAdminAction(supabase, {
+      adminId: adminUserId,
+      actionType: 'report_moderated',
+      targetType: `${reportType}_report`,
+      targetId: reportId,
+      targetUserId: report.reportedUserId || null,
+      description: `Set ${reportType} report #${reportId} to ${decision}${moderationActions.length ? ` with actions: ${moderationActions.join(', ')}` : ''}${rawAdminNote ? ' and admin note' : ''}`,
+    });
 
     return res.redirect(`/admin/reports/${reportType}/${reportId}?saved=1`);
   } catch (_err) {
