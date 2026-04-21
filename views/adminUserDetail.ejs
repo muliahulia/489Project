@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — User Detail</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .details-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .detail-label {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      display: block;
+    }
+
+    .detail-value {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 0.65rem 0.75rem;
+      color: var(--text-dark);
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 1024px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .metrics-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .metric-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.8rem;
+      background: #fff;
+    }
+
+    .metric-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--text-dark);
+      line-height: 1.2;
+    }
+
+    .actions-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header') %>
+
+  <div class="layout">
+    <%- include('sidebar', { activePage: 'adminUsers', showAdministrative: true }) %>
+
+    <main class="main main-pad main-wide">
+      <% const detail = userDetail || {}; %>
+      <% const joinedText = detail.createdAt ? new Date(detail.createdAt).toLocaleString('en-US') : 'Unknown'; %>
+      <% const lastLoginText = detail.lastLogin ? new Date(detail.lastLogin).toLocaleString('en-US') : 'Never'; %>
+      <% const metric = detail.metrics || {}; %>
+
+      <div class="page-header">
+        <h1 class="page-title">Internal User View</h1>
+        <p class="page-subtitle">Administrative profile and moderation context for this user.</p>
+
+        <div class="card">
+          <div class="details-grid">
+            <div>
+              <span class="detail-label">Name</span>
+              <div class="detail-value"><%= detail.fullName || 'Unknown User' %></div>
+            </div>
+            <div>
+              <span class="detail-label">Email</span>
+              <div class="detail-value"><%= detail.email || 'Unknown' %></div>
+            </div>
+            <div>
+              <span class="detail-label">Role</span>
+              <div class="detail-value"><%= detail.role || 'student' %></div>
+            </div>
+            <div>
+              <span class="detail-label">Account Status</span>
+              <div class="detail-value"><%= detail.isActive ? 'active' : 'inactive' %></div>
+            </div>
+            <div>
+              <span class="detail-label">School</span>
+              <div class="detail-value"><%= detail.schoolName || 'Not set' %></div>
+            </div>
+            <div>
+              <span class="detail-label">Joined</span>
+              <div class="detail-value"><%= joinedText %></div>
+            </div>
+            <div>
+              <span class="detail-label">Last Login</span>
+              <div class="detail-value"><%= lastLoginText %></div>
+            </div>
+            <div>
+              <span class="detail-label">User ID</span>
+              <div class="detail-value"><%= detail.id || 'Unknown' %></div>
+            </div>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-label">Posts Authored</div>
+              <div class="metric-value"><%= typeof metric.postsAuthored === 'number' ? metric.postsAuthored : 0 %></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Comments Authored</div>
+              <div class="metric-value"><%= typeof metric.commentsAuthored === 'number' ? metric.commentsAuthored : 0 %></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Communities Joined</div>
+              <div class="metric-value"><%= typeof metric.communitiesJoined === 'number' ? metric.communitiesJoined : 0 %></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Courses Enrolled</div>
+              <div class="metric-value"><%= typeof metric.coursesEnrolled === 'number' ? metric.coursesEnrolled : 0 %></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Reports Filed</div>
+              <div class="metric-value"><%= typeof metric.reportsFiled === 'number' ? metric.reportsFiled : 0 %></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Reports Against User</div>
+              <div class="metric-value"><%= typeof metric.reportsAgainstUser === 'number' ? metric.reportsAgainstUser : 0 %></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Active Penalties</div>
+              <div class="metric-value"><%= typeof metric.activePenalties === 'number' ? metric.activePenalties : 0 %></div>
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <a class="btn btn-secondary" href="/admin/users">Back to User Search</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</body>
+</html>

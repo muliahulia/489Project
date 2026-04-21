@@ -7,6 +7,7 @@ const ACTIVE_USERS_TIMEZONE = process.env.ACTIVE_USERS_TIMEZONE || 'America/Los_
 const USERS_PAGE_SIZE = 1000;
 const REPORT_LOOKBACK_HOURS = 48;
 const REPORT_TABLE_LIMIT = 100;
+const USER_SEARCH_LIMIT = 100;
 const REPORT_TYPE_MAP = {
   post: 'post',
   user: 'user',
@@ -56,6 +57,18 @@ function formatProfileLabel(row) {
 
 function fallbackUserLabel(userId) {
   return userId ? `User ${userId}` : 'Unknown User';
+}
+
+function sanitizeSearchQuery(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.trim().slice(0, 80);
+}
+
+function isLikelyUuid(value) {
+  return typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function normalizeReportType(rawType) {
@@ -499,6 +512,135 @@ async function fetchReportsPageData() {
   };
 }
 
+async function fetchUsersBySearchQuery(searchQuery) {
+  const supabase = createSupabaseAdminClient();
+  const query = sanitizeSearchQuery(searchQuery);
+
+  if (!query) {
+    return [];
+  }
+
+  let request = supabase
+    .from('profiles')
+    .select('id,first_name,last_name,email,role,is_active,created_at,last_login')
+    .order('created_at', { ascending: false })
+    .limit(USER_SEARCH_LIMIT);
+
+  const escapedQuery = query.replace(/[%_]/g, '\\$&');
+  request = request.or(
+    `first_name.ilike.%${escapedQuery}%,last_name.ilike.%${escapedQuery}%,email.ilike.%${escapedQuery}%`
+  );
+
+  const { data, error } = await request;
+  if (error || !Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    fullName: formatProfileLabel(row),
+    email: row.email || 'Unknown',
+    role: row.role || 'student',
+    isActive: typeof row.is_active === 'boolean' ? row.is_active : true,
+    createdAt: row.created_at || null,
+    lastLogin: row.last_login || null,
+    viewHref: `/admin/users/${row.id}`,
+  }));
+}
+
+async function countRowsByEq(supabase, tableName, columnName, value) {
+  const { count, error } = await supabase
+    .from(tableName)
+    .select('*', { head: true, count: 'exact' })
+    .eq(columnName, value);
+
+  if (error) {
+    return 0;
+  }
+
+  return typeof count === 'number' ? count : 0;
+}
+
+async function fetchAdminUserDetail(userId) {
+  const supabase = createSupabaseAdminClient();
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id,first_name,last_name,email,role,is_active,created_at,last_login,school_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    return null;
+  }
+
+  let schoolName = null;
+  if (profile.school_id) {
+    const { data: schoolData, error: schoolError } = await supabase
+      .from('schools')
+      .select('name')
+      .eq('id', profile.school_id)
+      .maybeSingle();
+
+    if (!schoolError && schoolData && schoolData.name) {
+      schoolName = schoolData.name;
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  const [
+    postsAuthored,
+    commentsAuthored,
+    communitiesJoined,
+    coursesEnrolled,
+    postReportsFiled,
+    userReportsFiled,
+    communityReportsFiled,
+    reportsAgainstUser,
+    activePenalties,
+  ] = await Promise.all([
+    countRowsByEq(supabase, 'posts', 'author_id', userId),
+    countRowsByEq(supabase, 'comments', 'author_id', userId),
+    countRowsByEq(supabase, 'community_members', 'user_id', userId),
+    countRowsByEq(supabase, 'course_enrollments', 'user_id', userId),
+    countRowsByEq(supabase, 'post_reports', 'reporter_id', userId),
+    countRowsByEq(supabase, 'user_reports', 'reporter_id', userId),
+    countRowsByEq(supabase, 'community_reports', 'reporter_id', userId),
+    countRowsByEq(supabase, 'user_reports', 'reported_user_id', userId),
+    (async () => {
+      const { count, error } = await supabase
+        .from('user_penalties')
+        .select('*', { head: true, count: 'exact' })
+        .eq('user_id', userId)
+        .or(`expires_at.is.null,expires_at.gte.${nowIso}`);
+
+      if (error) {
+        return 0;
+      }
+      return typeof count === 'number' ? count : 0;
+    })(),
+  ]);
+
+  return {
+    id: profile.id,
+    fullName: formatProfileLabel(profile),
+    email: profile.email || 'Unknown',
+    role: profile.role || 'student',
+    isActive: typeof profile.is_active === 'boolean' ? profile.is_active : true,
+    createdAt: profile.created_at || null,
+    lastLogin: profile.last_login || null,
+    schoolName: schoolName || 'Not set',
+    metrics: {
+      postsAuthored,
+      commentsAuthored,
+      communitiesJoined,
+      coursesEnrolled,
+      reportsFiled: postReportsFiled + userReportsFiled + communityReportsFiled,
+      reportsAgainstUser,
+      activePenalties,
+    },
+  };
+}
+
 async function fetchReportDetail(reportType, reportId) {
   const supabase = createSupabaseAdminClient();
 
@@ -760,6 +902,49 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     accountsUnderPenalty,
     flaggedCommunities,
   });
+});
+
+router.get('/users', requireAuth, async (req, res) => {
+  const searchQuery = sanitizeSearchQuery(req.query.q);
+  let users = [];
+
+  try {
+    users = await fetchUsersBySearchQuery(searchQuery);
+  } catch (_err) {
+    users = [];
+  }
+
+  return res.render('adminUsers', {
+    searchQuery,
+    users,
+  });
+});
+
+router.get('/users/:id', requireAuth, async (req, res, next) => {
+  const userId = typeof req.params.id === 'string' ? req.params.id.trim() : '';
+
+  if (!isLikelyUuid(userId)) {
+    const err = new Error('User not found');
+    err.status = 404;
+    return next(err);
+  }
+
+  try {
+    const userDetail = await fetchAdminUserDetail(userId);
+    if (!userDetail) {
+      const err = new Error('User not found');
+      err.status = 404;
+      return next(err);
+    }
+
+    return res.render('adminUserDetail', {
+      userDetail,
+    });
+  } catch (_err) {
+    const err = new Error('Unable to load user details');
+    err.status = 500;
+    return next(err);
+  }
 });
 
 router.get('/reports', requireAuth, async (req, res) => {
