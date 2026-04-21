@@ -28,6 +28,14 @@
       margin-bottom: 1.5rem;
     }
 
+    .course-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
     .course-title {
       font-family: 'Playfair Display', serif;
       font-size: 2rem;
@@ -46,6 +54,60 @@
       font-size: 0.93rem;
       color: var(--text-dark);
       line-height: 1.65;
+    }
+
+    .membership-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text-dark);
+    }
+
+    .membership-btn.join {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--gold);
+    }
+
+    .membership-btn.leave {
+      background: var(--cream);
+    }
+
+    .membership-owner {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .membership-owner-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .membership-manage {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.42rem 0.8rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--navy);
+      background: #fff;
+      text-decoration: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .membership-manage:hover {
+      border-color: var(--navy);
+      background: var(--cream);
     }
 
     /* ── Members Card ── */
@@ -202,6 +264,67 @@
       margin-bottom: 1rem;
     }
 
+    .compose-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+    }
+
+    .compose-textarea {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      outline: none;
+    }
+
+    .compose-textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    }
+
+    .compose-footer {
+      margin-top: 0.65rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .compose-submit {
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--navy);
+      color: var(--gold);
+    }
+
+    .compose-locked {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+
+    .compose-error {
+      margin-bottom: 0.7rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid rgba(192,57,43,0.35);
+      border-radius: 8px;
+      background: rgba(192,57,43,0.08);
+      color: #b03a2e;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
     /* ── Post Cards ── */
     .post-card {
       background: #fff;
@@ -282,7 +405,18 @@
 </head>
 <body>
 
-  <%- include('header', { initials: 'LG' }) %>
+  <%
+    const communityUser = typeof user !== 'undefined' && user ? user : { initials: 'UC' };
+    const activeCommunity = typeof community !== 'undefined' ? community : null;
+    const communityMembers = Array.isArray(members) ? members : [];
+    const previewMembers = Array.isArray(memberPreview) ? memberPreview : [];
+    const postList = Array.isArray(posts) ? posts : [];
+    const hiddenMemberCount = Number.isInteger(remainingMemberCount) ? remainingMemberCount : 0;
+    const noCommunityMessage = typeof notFoundMessage === 'string' ? notFoundMessage : '';
+    const communityFormError = typeof formError === 'string' ? formError : '';
+  %>
+
+  <%- include('header', { initials: communityUser.initials || 'UC' }) %>
 
   <div class="layout">
 
@@ -293,155 +427,427 @@
     <main class="main">
       <div class="course-column">
 
-        <!-- Community Header -->
-        <div class="course-header">
-          <h1 class="course-title">Computer Science Club</h1>
-          <p class="course-instructor">142 members · Founded 2018</p>
-          <p class="course-description">
-            A community for CS students to connect, collaborate, and grow. We host weekly talks, coding challenges, and networking events with industry professionals throughout the semester. Whether you're just getting started or already deep into your studies, there's a place for you here.
-          </p>
-        </div>
-
-        <!-- Members Card -->
-        <div class="members-card">
-          <div class="members-label">Members</div>
-          <div class="members-row">
-            <div class="member-avatar">JB</div>
-            <div class="member-avatar">JS</div>
-            <div class="member-avatar">LGR</div>
-            <div class="member-avatar">AM</div>
-            <div class="member-avatar">TR</div>
-            <button class="members-overflow" onclick="document.getElementById('membersModal').classList.add('open')">… and 137 others.</button>
+        <% if (activeCommunity) { %>
+          <div class="course-header">
+            <div class="course-header-top">
+              <h1 class="course-title"><%= activeCommunity.name %></h1>
+              <% if (activeCommunity.isCreator) { %>
+                <div class="membership-owner-actions">
+                  <span class="membership-owner">Owner</span>
+                  <a href="/communities/manage/<%= activeCommunity.id %>" class="membership-manage">Manage</a>
+                </div>
+              <% } else if (activeCommunity.canLeave) { %>
+                <form method="POST" action="/communities/<%= activeCommunity.id %>/leave">
+                  <input type="hidden" name="redirectTo" value="/communities/<%= activeCommunity.id %>" />
+                  <button type="submit" class="membership-btn leave">Leave Community</button>
+                </form>
+              <% } else { %>
+                <form method="POST" action="/communities/<%= activeCommunity.id %>/join">
+                  <input type="hidden" name="redirectTo" value="/communities/<%= activeCommunity.id %>" />
+                  <button type="submit" class="membership-btn join">Join Community</button>
+                </form>
+              <% } %>
+            </div>
+            <p class="course-instructor"><%= activeCommunity.metaLine %></p>
+            <p class="course-description"><%= activeCommunity.description %></p>
           </div>
-        </div>
 
-        <!-- Community Feed -->
-        <h2 class="section-title">Feed</h2>
+          <div class="members-card">
+            <div class="members-label">Members</div>
+            <div class="members-row">
+              <% previewMembers.forEach((member) => { %>
+                <div class="member-avatar"><%= member.initials %></div>
+              <% }) %>
 
-        <!-- Post 1 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">KP</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="/profile">Keiko Park</a></span>
-              <span class="post-meta"><a href="/post">March 6, 2026 at 11:20 AM</a></span>
-              <span class="post-community"><a href="/community">Computer Science Club</a></span>
+              <% if (communityMembers.length > 0 && hiddenMemberCount > 0) { %>
+                <button class="members-overflow" onclick="document.getElementById('membersModal').classList.add('open')">... and <%= hiddenMemberCount %> others.</button>
+              <% } else if (communityMembers.length > 0) { %>
+                <button class="members-overflow" onclick="document.getElementById('membersModal').classList.add('open')">View all members</button>
+              <% } else { %>
+                <span class="members-overflow">No members yet.</span>
+              <% } %>
             </div>
           </div>
-          <div class="post-body">
-            <p>Hey everyone! Just a reminder that our speaker event this Thursday at 6 PM in EME 101 is still on. We have a senior engineer from Microsoft coming to talk about career paths in cloud infrastructure.</p>
-            <p>Free pizza will be provided. Please RSVP in the form linked in the bio so we can get a headcount for food. Bring questions — she's happy to do a real Q&amp;A!</p>
-          </div>
-        </div>
 
-        <!-- Post 2 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">DN</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="/profile">Diego Navarro</a></span>
-              <span class="post-meta"><a href="/post">March 5, 2026 at 3:45 PM</a></span>
-              <span class="post-community"><a href="/community">Computer Science Club</a></span>
-            </div>
-          </div>
-          <div class="post-body">
-            <p>Sharing my notes from last week's session on system design patterns — covered monoliths vs. microservices, event-driven architecture, and when to use each.</p>
-            <p>Happy to discuss further or do a follow-up session if there's interest. Drop a 👍 if you'd find that useful and I'll set something up with the officers.</p>
-          </div>
-        </div>
+          <h2 class="section-title">Feed</h2>
 
-        <!-- Post 3 -->
-        <div class="post-card">
-          <div class="post-actions">
-            <button class="post-action-btn" title="Like">👍</button>
-            <button class="post-action-btn" title="Comment">💬</button>
-            <button class="post-action-btn" title="Bookmark">🔖</button>
-          </div>
-          <div class="post-author">
-            <div class="post-avatar-initials">JB</div>
-            <div class="post-author-info">
-              <span class="post-author-name"><a href="/profile">Jaden Bryant</a></span>
-              <span class="post-meta"><a href="/post">March 4, 2026 at 9:05 PM</a></span>
-              <span class="post-community"><a href="/community">Computer Science Club</a></span>
+          <% if (activeCommunity.canPost) { %>
+            <div class="compose-card">
+              <% if (communityFormError) { %>
+                <div class="compose-error"><%= communityFormError %></div>
+              <% } %>
+              <form method="POST" action="/communities/<%= activeCommunity.id %>/posts">
+                <textarea
+                  name="content"
+                  class="compose-textarea"
+                  maxlength="4000"
+                  placeholder="Share something with this community..."
+                  required
+                ></textarea>
+                <div class="compose-footer">
+                  <button type="submit" class="compose-submit">Post</button>
+                </div>
+              </form>
             </div>
+          <% } else { %>
+            <div class="compose-card">
+              <p class="compose-locked">Join this community to publish posts in this feed.</p>
+            </div>
+          <% } %>
+
+          <% if (postList.length === 0) { %>
+            <div class="post-card">
+              <div class="post-body">
+                <p>No posts have been published in this community yet.</p>
+              </div>
+            </div>
+          <% } %>
+
+          <% postList.forEach((post) => { %>
+            <%- include('partials/post-card', { post }) %>
+          <% }) %>
+        <% } else { %>
+          <div class="course-header">
+            <h1 class="course-title">Community</h1>
+            <p class="course-instructor"><%= noCommunityMessage || 'No community is currently available.' %></p>
           </div>
-          <div class="post-body">
-            <p>Does anyone have experience with Rust? I've been wanting to try it for a side project and curious if anyone here has used it beyond a tutorial.</p>
-            <p>Specifically interested in whether it's worth learning for systems work alongside C++ or if one replaces the other for most practical purposes.</p>
-          </div>
-        </div>
+        <% } %>
 
       </div><!-- /.course-column -->
     </main>
 
   </div><!-- /.layout -->
 
-  <!-- Members Modal -->
-  <div class="modal-backdrop" id="membersModal" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Members — Computer Science Club</span>
-        <button class="modal-close" onclick="document.getElementById('membersModal').classList.remove('open')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="modal-student"><div class="modal-avatar">JB</div><span class="modal-student-name">Jaden Bryant</span></div>
-        <div class="modal-student"><div class="modal-avatar">JS</div><span class="modal-student-name">Julia Smith</span></div>
-        <div class="modal-student"><div class="modal-avatar">LGR</div><span class="modal-student-name">Luis Garcia Rangel</span></div>
-        <div class="modal-student"><div class="modal-avatar">AM</div><span class="modal-student-name">Aisha Mohammed</span></div>
-        <div class="modal-student"><div class="modal-avatar">TR</div><span class="modal-student-name">Tyler Rhodes</span></div>
-        <div class="modal-student"><div class="modal-avatar">KP</div><span class="modal-student-name">Keiko Park</span></div>
-        <div class="modal-student"><div class="modal-avatar">DN</div><span class="modal-student-name">Diego Navarro</span></div>
-        <div class="modal-student"><div class="modal-avatar">SC</div><span class="modal-student-name">Sophia Chen</span></div>
-        <div class="modal-student"><div class="modal-avatar">MO</div><span class="modal-student-name">Marcus Okafor</span></div>
-        <div class="modal-student"><div class="modal-avatar">RV</div><span class="modal-student-name">Rachel Vasquez</span></div>
-        <div class="modal-student"><div class="modal-avatar">BK</div><span class="modal-student-name">Ben Kim</span></div>
-        <div class="modal-student"><div class="modal-avatar">NW</div><span class="modal-student-name">Naomi Watts</span></div>
-        <div class="modal-student"><div class="modal-avatar">PL</div><span class="modal-student-name">Patrick Lin</span></div>
-        <div class="modal-student"><div class="modal-avatar">FO</div><span class="modal-student-name">Fatima Ouedraogo</span></div>
-        <div class="modal-student"><div class="modal-avatar">CH</div><span class="modal-student-name">Caleb Harris</span></div>
-        <div class="modal-student"><div class="modal-avatar">IM</div><span class="modal-student-name">Ingrid Müller</span></div>
-        <div class="modal-student"><div class="modal-avatar">JT</div><span class="modal-student-name">James Torres</span></div>
-        <div class="modal-student"><div class="modal-avatar">AB</div><span class="modal-student-name">Amara Bello</span></div>
-        <div class="modal-student"><div class="modal-avatar">OZ</div><span class="modal-student-name">Olivia Zhang</span></div>
-        <div class="modal-student"><div class="modal-avatar">SR</div><span class="modal-student-name">Samuel Rivera</span></div>
-        <div class="modal-student"><div class="modal-avatar">HN</div><span class="modal-student-name">Hannah Nguyen</span></div>
-        <div class="modal-student"><div class="modal-avatar">EF</div><span class="modal-student-name">Ethan Foster</span></div>
-        <div class="modal-student"><div class="modal-avatar">MP</div><span class="modal-student-name">Mia Patel</span></div>
-        <div class="modal-student"><div class="modal-avatar">AW</div><span class="modal-student-name">Aaron Williams</span></div>
-        <div class="modal-student"><div class="modal-avatar">LC</div><span class="modal-student-name">Layla Carter</span></div>
-        <div class="modal-student"><div class="modal-avatar">DM</div><span class="modal-student-name">David Mensah</span></div>
-        <div class="modal-student"><div class="modal-avatar">ZA</div><span class="modal-student-name">Zainab Al-Farsi</span></div>
-        <div class="modal-student"><div class="modal-avatar">CJ</div><span class="modal-student-name">Carlos Jiménez</span></div>
-        <div class="modal-student"><div class="modal-avatar">VS</div><span class="modal-student-name">Vera Sokolova</span></div>
-        <div class="modal-student"><div class="modal-avatar">TG</div><span class="modal-student-name">Thomas Grant</span></div>
-        <div class="modal-student"><div class="modal-avatar">RN</div><span class="modal-student-name">Riya Nair</span></div>
-        <div class="modal-student"><div class="modal-avatar">JM</div><span class="modal-student-name">Jordan Mills</span></div>
-        <div class="modal-student"><div class="modal-avatar">YW</div><span class="modal-student-name">Yuki Watanabe</span></div>
-        <div class="modal-student"><div class="modal-avatar">CB</div><span class="modal-student-name">Charlotte Brooks</span></div>
-        <div class="modal-student"><div class="modal-avatar">IA</div><span class="modal-student-name">Ibrahim Adeyemi</span></div>
-        <div class="modal-student"><div class="modal-avatar">PK</div><span class="modal-student-name">Priya Kumar</span></div>
-        <div class="modal-student"><div class="modal-avatar">NO</div><span class="modal-student-name">Nico Oliveira</span></div>
-        <div class="modal-student"><div class="modal-avatar">EL</div><span class="modal-student-name">Elena Larsson</span></div>
-        <div class="modal-student"><div class="modal-avatar">KD</div><span class="modal-student-name">Kofi Danso</span></div>
-        <div class="modal-student"><div class="modal-avatar">MW</div><span class="modal-student-name">Maya Wilson</span></div>
-        <div class="modal-student"><div class="modal-avatar">AT</div><span class="modal-student-name">Alex Thompson</span></div>
-        <div class="modal-student"><div class="modal-avatar">SB</div><span class="modal-student-name">Sara Bergström</span></div>
-        <div class="modal-student"><div class="modal-avatar">OM</div><span class="modal-student-name">Omar Malik</span></div>
+  <% if (activeCommunity) { %>
+    <div class="modal-backdrop" id="membersModal" onclick="if(event.target===this)this.classList.remove('open')">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">Members - <%= activeCommunity.name %></span>
+          <button class="modal-close" onclick="document.getElementById('membersModal').classList.remove('open')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <% if (communityMembers.length === 0) { %>
+            <div class="modal-student">
+              <span class="modal-student-name">No members yet.</span>
+            </div>
+          <% } %>
+
+          <% communityMembers.forEach((member) => { %>
+            <div class="modal-student">
+              <div class="modal-avatar"><%= member.initials %></div>
+              <span class="modal-student-name"><%= member.name %></span>
+            </div>
+          <% }) %>
+        </div>
       </div>
     </div>
-  </div>
+  <% } %>
 
   <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
+
+  <script>
+    const latestCommentTimers = new WeakMap();
+
+    function buildCommentHtml(comment) {
+      return `
+        <div class="post-comment">
+          <div class="post-comment-avatar">${comment.authorInitials || 'UC'}</div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong>${comment.authorName || 'Unknown User'}</strong>
+              <span>${comment.createdAtLabel || ''}</span>
+            </div>
+            <div class="post-comment-text">${(comment.content || '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateCommentBadge(postCard, count) {
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      if (!toggleButton) {
+        return;
+      }
+
+      let countNode = toggleButton.querySelector('.comment-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'comment-count';
+        toggleButton.appendChild(document.createTextNode(' '));
+        toggleButton.appendChild(countNode);
+      }
+
+      countNode.textContent = String(count || 0);
+      countNode.classList.toggle('is-hidden', !(count > 0));
+    }
+
+    function clearLatestCommentHighlight(postCard) {
+      const highlightedComment = postCard.querySelector('.post-comment.focused');
+      if (highlightedComment) {
+        highlightedComment.classList.remove('focused');
+      }
+    }
+
+    function flashLatestComment(postCard) {
+      clearLatestCommentHighlight(postCard);
+
+      const latestComment = postCard.querySelector('.post-comment[data-comment-id]:last-child');
+      if (!latestComment) {
+        return;
+      }
+
+      latestComment.classList.add('focused');
+
+      const existingTimer = latestCommentTimers.get(postCard);
+      if (existingTimer) {
+        window.clearTimeout(existingTimer);
+      }
+
+      const timerId = window.setTimeout(() => {
+        latestComment.classList.remove('focused');
+        latestCommentTimers.delete(postCard);
+      }, 1200);
+
+      latestCommentTimers.set(postCard, timerId);
+      latestComment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function openComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) {
+        return;
+      }
+
+      commentsPanel.hidden = false;
+      toggleButton.classList.add('active');
+      toggleButton.setAttribute('aria-expanded', 'true');
+
+      if (preview) {
+        preview.hidden = true;
+      }
+
+      const input = commentsPanel.querySelector('.post-comment-input');
+      if (input) {
+        input.focus();
+      }
+    }
+
+    function collapseComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+
+      if (!commentsPanel || !toggleButton) {
+        return;
+      }
+
+      commentsPanel.hidden = true;
+      toggleButton.classList.remove('active');
+      toggleButton.setAttribute('aria-expanded', 'false');
+
+      clearLatestCommentHighlight(postCard);
+
+      const timerId = latestCommentTimers.get(postCard);
+      if (timerId) {
+        window.clearTimeout(timerId);
+        latestCommentTimers.delete(postCard);
+      }
+
+      if (preview) {
+        preview.hidden = false;
+      }
+    }
+
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = likeButton.dataset.postId;
+      if (!postId) {
+        return;
+      }
+
+      if (likeButton.dataset.pending === 'true') {
+        return;
+      }
+
+      const countNode = likeButton.querySelector('.like-count');
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
+
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      if (countNode) {
+        countNode.textContent = String(optimisticCount);
+      }
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        if (countNode) {
+          countNode.textContent = String(payload.likeCount || 0);
+        }
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        if (countNode) {
+          countNode.textContent = String(previousCount);
+        }
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const commentTrigger = event.target.closest('.js-comment-toggle, .js-comment-expand');
+      if (!commentTrigger) {
+        return;
+      }
+
+      const postCard = commentTrigger.closest('.post-card');
+      if (!postCard) {
+        return;
+      }
+
+      const isToggleButton = commentTrigger.classList.contains('js-comment-toggle');
+      const isExpandButton = commentTrigger.classList.contains('js-comment-expand');
+      const commentsPanel = postCard.querySelector('.post-comments');
+
+      if (!commentsPanel) {
+        return;
+      }
+
+      if (isToggleButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        } else {
+          collapseComments(postCard);
+        }
+        return;
+      }
+
+      if (isExpandButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        }
+
+        flashLatestComment(postCard);
+      }
+    });
+
+    document.addEventListener('submit', async (event) => {
+      const commentForm = event.target.closest('.js-comment-form');
+      if (!commentForm) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = commentForm.dataset.postId;
+      const input = commentForm.querySelector('.post-comment-input');
+      const submitButton = commentForm.querySelector('.post-comment-submit');
+      const commentList = commentForm.parentElement.querySelector('.post-comment-list');
+      const postCard = commentForm.closest('.post-card');
+      const commentsPanel = postCard ? postCard.querySelector('.post-comments') : null;
+      const content = input ? input.value.trim() : '';
+
+      if (!postId || !input || !submitButton || !commentList) {
+        return;
+      }
+
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Posting...';
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ content }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to save comment.');
+        }
+
+        const comments = Array.isArray(payload.comments) ? payload.comments : [];
+        commentList.innerHTML = comments.map(buildCommentHtml).join('');
+
+        if (commentsPanel) {
+          commentsPanel.hidden = false;
+        }
+
+        const preview = postCard ? postCard.querySelector('.post-comment-preview') : null;
+        if (preview) {
+          preview.hidden = true;
+        }
+
+        if (postCard) {
+          const toggleButton = postCard.querySelector('.js-comment-toggle');
+          if (toggleButton) {
+            toggleButton.classList.add('active');
+            toggleButton.setAttribute('aria-expanded', 'true');
+          }
+        }
+
+        if (postCard && typeof payload.commentCount === 'number') {
+          updateCommentBadge(postCard, payload.commentCount);
+        }
+
+        if (postCard) {
+          const nextCommentsPanel = postCard.querySelector('.post-comments');
+          if (nextCommentsPanel && nextCommentsPanel.hidden) {
+            openComments(postCard);
+          }
+        }
+
+        input.value = '';
+      } catch (_err) {
+        // Keep UI fallback silent, matching feed behavior.
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Comment';
+      }
+    });
+  </script>
 
 </body>
 </html>

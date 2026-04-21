@@ -95,6 +95,20 @@
       transition: border-color 0.15s, box-shadow 0.15s;
     }
 
+    .circle-bubble.has-image {
+      padding: 0;
+      overflow: hidden;
+      background: #e9eef5;
+      color: transparent;
+    }
+
+    .circle-logo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
     .circle-item:hover .circle-bubble {
       border-color: var(--gold);
       box-shadow: 0 0 0 3px rgba(201,168,76,0.2);
@@ -117,11 +131,17 @@
     .circle-bubble.community-3 { background: var(--navy-light); }
     .circle-bubble.community-4 { background: #1e3a52; }
     .circle-bubble.community-5 { background: var(--navy); }
+
+    .empty-state {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      padding: 0.2rem 0;
+    }
   </style>
 </head>
 <body>
 
-  <%- include('header', { initials: 'JS' }) %>
+  <%- include('header', { initials: user && user.initials ? user.initials : '?' }) %>
 
   <div class="layout">
 
@@ -131,75 +151,57 @@
     <!-- Main Content -->
     <main class="main">
       <div class="dash-column">
+        <% const dashboardCourses = Array.isArray(courses) ? courses : []; %>
+        <% const dashboardCommunities = Array.isArray(communities) ? communities : []; %>
 
         <!-- Greeting -->
-        <h1 class="greeting-name">Hello, Jane!</h1>
+        <h1 class="greeting-name">Hello, <%= user && user.firstName ? user.firstName : 'there' %>!</h1>
         <p class="greeting-quote">"The secret of getting ahead is getting started." — Mark Twain</p>
 
         <!-- Your Courses -->
         <div class="dash-section-label">Your courses</div>
         <div class="scroll-card">
-          <div class="scroll-row">
-            <a href="/course" class="circle-item">
-              <div class="circle-bubble">CPT_S<br>101</div>
-              <span class="circle-label" title="Intro to Programming">Intro to Programming</span>
-            </a>
-            <a href="/courses" class="circle-item">
-              <div class="circle-bubble">CPT_S<br>223</div>
-              <span class="circle-label" title="Data Structures">Data Structures</span>
-            </a>
-            <a href="/courses" class="circle-item">
-              <div class="circle-bubble">CPT_S<br>350</div>
-              <span class="circle-label" title="Systems Programming">Systems Programming</span>
-            </a>
-            <a href="/courses" class="circle-item">
-              <div class="circle-bubble">CPT_S<br>451</div>
-              <span class="circle-label" title="Database Systems">Database Systems</span>
-            </a>
-            <a href="/courses" class="circle-item">
-              <div class="circle-bubble">CPT_S<br>489</div>
-              <span class="circle-label" title="Web Development">Web Development</span>
-            </a>
-            <a href="/courses" class="circle-item">
-              <div class="circle-bubble">MATH<br>315</div>
-              <span class="circle-label" title="Discrete Mathematics">Discrete Mathematics</span>
-            </a>
-            <a href="/courses" class="circle-item">
-              <div class="circle-bubble">CPT_S<br>427</div>
-              <span class="circle-label" title="Machine Learning">Machine Learning</span>
-            </a>
-          </div>
+          <% if (dashboardCourses.length === 0) { %>
+            <p class="empty-state">No course affiliations yet.</p>
+          <% } else { %>
+            <div class="scroll-row">
+              <% dashboardCourses.forEach((course) => { %>
+                <a href="/courses" class="circle-item">
+                  <div class="circle-bubble <%= course.imageUrl ? 'has-image' : '' %>">
+                    <% if (course.imageUrl) { %>
+                      <img src="<%= course.imageUrl %>" alt="<%= course.name %> logo" class="circle-logo" loading="lazy" referrerpolicy="no-referrer"/>
+                    <% } else { %>
+                      <%= course.bubbleText %>
+                    <% } %>
+                  </div>
+                  <span class="circle-label" title="<%= course.name %>"><%= course.name %></span>
+                </a>
+              <% }) %>
+            </div>
+          <% } %>
         </div>
 
         <!-- Your Communities -->
         <div class="dash-section-label">Your communities</div>
         <div class="scroll-card">
-          <div class="scroll-row">
-            <a href="/community" class="circle-item">
-              <div class="circle-bubble community-1">CS<br>Club</div>
-              <span class="circle-label" title="Computer Science Club">Computer Science Club</span>
-            </a>
-            <a href="/community" class="circle-item">
-              <div class="circle-bubble community-2">Algo<br>SG</div>
-              <span class="circle-label" title="Algorithms Study Group">Algorithms Study Group</span>
-            </a>
-            <a href="/community" class="circle-item">
-              <div class="circle-bubble community-3">Hack<br>WSU</div>
-              <span class="circle-label" title="HackWSU">HackWSU</span>
-            </a>
-            <a href="/community" class="circle-item">
-              <div class="circle-bubble community-4">AI/ML<br>Club</div>
-              <span class="circle-label" title="AI &amp; ML Interest Group">AI &amp; ML Interest Group</span>
-            </a>
-            <a href="/community" class="circle-item">
-              <div class="circle-bubble community-5">Open<br>Src</div>
-              <span class="circle-label" title="Open Source Initiative">Open Source Initiative</span>
-            </a>
-            <a href="/community" class="circle-item">
-              <div class="circle-bubble community-1">Women<br>CS</div>
-              <span class="circle-label" title="Women in Computer Science">Women in Computer Science</span>
-            </a>
-          </div>
+          <% if (dashboardCommunities.length === 0) { %>
+            <p class="empty-state">No community affiliations yet.</p>
+          <% } else { %>
+            <div class="scroll-row">
+              <% dashboardCommunities.forEach((community) => { %>
+                <a href="/communities" class="circle-item">
+                  <div class="circle-bubble <%= community.imageUrl ? 'has-image' : community.colorClass %>">
+                    <% if (community.imageUrl) { %>
+                      <img src="<%= community.imageUrl %>" alt="<%= community.name %> logo" class="circle-logo" loading="lazy" referrerpolicy="no-referrer"/>
+                    <% } else { %>
+                      <%= community.bubbleText %>
+                    <% } %>
+                  </div>
+                  <span class="circle-label" title="<%= community.name %>"><%= community.name %></span>
+                </a>
+              <% }) %>
+            </div>
+          <% } %>
         </div>
 
       </div><!-- /.dash-column -->

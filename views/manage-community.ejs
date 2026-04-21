@@ -34,6 +34,26 @@
       margin-bottom: 2rem;
     }
 
+    .form-feedback {
+      border-radius: 10px;
+      padding: 0.7rem 0.9rem;
+      margin-bottom: 1rem;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .form-feedback.error {
+      border: 1px solid #f1b8be;
+      background: #fff4f5;
+      color: #9f2f38;
+    }
+
+    .form-feedback.success {
+      border: 1px solid #b8e5c8;
+      background: #f2fbf5;
+      color: #22663a;
+    }
+
     /* ── Breadcrumb ── */
     .breadcrumb {
       display: flex;
@@ -453,6 +473,23 @@
 </head>
 <body>
 
+  <%
+    const activeCommunityId = Number.isInteger(communityId) ? communityId : null;
+    const activeCommunityName = typeof communityName === 'string' && communityName.trim()
+      ? communityName.trim()
+      : 'Community';
+    const activeCommunityDescription = typeof communityDescription === 'string' ? communityDescription : '';
+    const activeCommunityVisibility = communityVisibility === 'private' ? 'private' : 'public';
+    const activeCommunityTopics = Array.isArray(initialTopics) ? initialTopics : [];
+    const manageFormError = typeof formError === 'string' ? formError : '';
+    const manageFormSuccess = typeof formSuccess === 'string' ? formSuccess : '';
+    const activeLogoPath = typeof logoPath === 'string' ? logoPath : '';
+    const activeLogoSignedUrl = typeof logoSignedUrl === 'string' ? logoSignedUrl : '';
+    const activeCommunityHref = activeCommunityId ? `/communities/${activeCommunityId}` : '/communities';
+    const manageAction = activeCommunityId ? `/communities/manage/${activeCommunityId}` : '/communities';
+    const deleteAction = activeCommunityId ? `/communities/manage/${activeCommunityId}/delete` : '/communities';
+  %>
+
   <%- include('header', { initials: 'JB' }) %>
 
   <div class="layout">
@@ -468,16 +505,25 @@
         <nav class="breadcrumb">
           <a href="/communities">Communities</a>
           <span>›</span>
-          <a href="/community">Computer Science Club</a>
+          <a href="<%= activeCommunityHref %>"><%= activeCommunityName %></a>
           <span>›</span>
           <span>Manage</span>
         </nav>
 
         <h1 class="page-title">Manage Community</h1>
-        <p class="page-subtitle">Update the settings for <strong>Computer Science Club</strong>.</p>
+        <p class="page-subtitle">Update the settings for <strong><%= activeCommunityName %></strong>.</p>
+
+        <% if (manageFormError) { %>
+          <div class="form-feedback error"><%= manageFormError %></div>
+        <% } %>
+
+        <% if (manageFormSuccess) { %>
+          <div class="form-feedback success"><%= manageFormSuccess %></div>
+        <% } %>
 
         <div class="form-card">
-          <form id="manageCommunityForm" novalidate>
+          <form id="manageCommunityForm" method="POST" action="<%= manageAction %>" novalidate>
+            <input type="hidden" name="logoPath" id="logoPath" value="<%= activeLogoPath %>" />
 
             <!-- ── Basic Info ── -->
             <div class="section-divider">Basic Info</div>
@@ -491,7 +537,7 @@
                 placeholder="e.g. Robotics Club"
                 maxlength="60"
                 autocomplete="off"
-                value="Computer Science Club"
+                value="<%= activeCommunityName %>"
                 required
               />
               <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -507,10 +553,10 @@
                 name="description"
                 placeholder="What is this community about? What can members expect?"
                 maxlength="300"
-              >A community for CS students to connect, collaborate, and grow. We host weekly talks, coding challenges, and networking events with industry professionals throughout the semester.</textarea>
+              ><%= activeCommunityDescription %></textarea>
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span class="hint">Optional — shown on the community listing page.</span>
-                <span class="char-counter" id="descCounter">0 / 300</span>
+                <span class="char-counter" id="descCounter"><%= activeCommunityDescription.length %> / 300</span>
               </div>
             </div>
 
@@ -524,7 +570,7 @@
                 <div id="logoPlaceholder">
                   <div class="logo-upload-icon">🖼️</div>
                   <p class="logo-upload-text"><strong>Click to upload</strong> or drag &amp; drop</p>
-                  <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP — max 2 MB</p>
+                  <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP - max 5 MB</p>
                 </div>
                 <div class="logo-preview-wrap" id="logoPreviewWrap">
                   <img class="logo-preview" id="logoPreview" src="" alt="Logo preview"/>
@@ -534,7 +580,7 @@
                   </div>
                 </div>
               </div>
-              <span class="hint">Optional — shown next to your community name.</span>
+              <span class="hint" id="logoStatusHint">Optional - shown next to your community name.</span>
             </div>
 
             <!-- ── Topics ── -->
@@ -564,7 +610,7 @@
               <div class="visibility-group">
 
                 <label class="visibility-option">
-                  <input type="radio" name="visibility" value="public" checked/>
+                  <input type="radio" name="visibility" value="public" <%= activeCommunityVisibility === 'public' ? 'checked' : '' %>/>
                   <div class="visibility-card">
                     <div class="visibility-icon">🌐</div>
                     <div class="visibility-text">
@@ -575,7 +621,7 @@
                 </label>
 
                 <label class="visibility-option">
-                  <input type="radio" name="visibility" value="private"/>
+                  <input type="radio" name="visibility" value="private" <%= activeCommunityVisibility === 'private' ? 'checked' : '' %>/>
                   <div class="visibility-card">
                     <div class="visibility-icon">🔒</div>
                     <div class="visibility-text">
@@ -590,7 +636,7 @@
 
             <!-- ── Actions ── -->
             <button type="submit" class="btn-submit">Save Changes</button>
-            <a href="/community" class="btn-cancel">Cancel</a>
+            <a href="<%= activeCommunityHref %>" class="btn-cancel">Cancel</a>
 
           </form>
         </div>
@@ -605,6 +651,7 @@
             </div>
             <button type="button" class="btn-danger" id="deleteBtn">Delete Community</button>
           </div>
+          <form id="deleteCommunityForm" method="POST" action="<%= deleteAction %>"></form>
         </div>
 
       </div><!-- /.form-column -->
@@ -617,7 +664,7 @@
     <div class="modal">
       <h2 class="modal-title">Delete Community?</h2>
       <p class="modal-body">
-        This will permanently delete <strong>Computer Science Club</strong> along with all posts and member data.
+        This will permanently delete <strong><%= activeCommunityName %></strong> along with all posts and member data.
         This action <strong>cannot be undone</strong>.
       </p>
       <div class="modal-actions">
@@ -635,6 +682,12 @@
     const nameCounter = document.getElementById('nameCounter');
     const descInput   = document.getElementById('description');
     const descCounter = document.getElementById('descCounter');
+    const submitButton = document.querySelector('#manageCommunityForm .btn-submit');
+    const logoPathInput = document.getElementById('logoPath');
+    const logoStatusHint = document.getElementById('logoStatusHint');
+    const SUPABASE_URL = <%- JSON.stringify(supabaseUrl || '') %>;
+    const STORAGE_BUCKET = <%- JSON.stringify(storageBucket || 'media') %>;
+    const EXISTING_LOGO_URL = <%- JSON.stringify(activeLogoSignedUrl || '') %>;
 
     function updateCounter(input, counter, max, warnAt) {
       const len = input.value.length;
@@ -650,7 +703,7 @@
     descInput.addEventListener('input', () => updateCounter(descInput, descCounter, 300, 270));
 
     /* ── Topics tag input ── */
-    const INITIAL_TAGS = ['programming', 'networking', 'algorithms'];
+    const INITIAL_TAGS = <%- JSON.stringify(activeCommunityTopics) %>;
     const MAX_TAGS     = 8;
     const tags         = [];
     const wrapper      = document.getElementById('tagsWrapper');
@@ -706,8 +759,89 @@
     wrapper.addEventListener('click', () => topicsInput.focus());
 
     /* ── Form submission ── */
-    document.getElementById('manageCommunityForm').addEventListener('submit', (e) => {
+    function encodePathForStorageUrl(path) {
+      return path
+        .split('/')
+        .map((part) => encodeURIComponent(part))
+        .join('/');
+    }
+
+    async function requestSignedUpload(fileName) {
+      const response = await fetch('/storage/signed-upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          fileName,
+          folder: 'communities',
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload && payload.error ? payload.error : 'Unable to prepare upload.');
+      }
+
+      return payload;
+    }
+
+    async function uploadLogoToStorage(file) {
+      if (!SUPABASE_URL) {
+        throw new Error('Missing SUPABASE_URL for browser uploads.');
+      }
+
+      const signed = await requestSignedUpload(file.name);
+      if (!signed || !signed.token || !signed.path) {
+        throw new Error('Upload token was not returned by the server.');
+      }
+
+      const encodedPath = encodePathForStorageUrl(signed.path);
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/upload/sign/${encodeURIComponent(STORAGE_BUCKET)}/${encodedPath}?token=${encodeURIComponent(signed.token)}`;
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text();
+        throw new Error(message || 'Upload failed.');
+      }
+
+      return signed.path;
+    }
+
+    async function uploadSelectedLogoIfAny() {
+      const file = logoFile.files && logoFile.files[0] ? logoFile.files[0] : null;
+      if (!file) {
+        return null;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Selected file is not an image.');
+      }
+
+      if (file.size > MAX_LOGO_BYTES) {
+        throw new Error('Please choose an image under 5 MB.');
+      }
+
+      submitButton.disabled = true;
+
+      const path = await uploadLogoToStorage(file);
+      logoPathInput.value = path;
+      submitButton.disabled = false;
+      return path;
+    }
+
+    document.getElementById('manageCommunityForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const form = e.currentTarget;
 
       const name = nameInput.value.trim();
       if (!name) {
@@ -716,7 +850,16 @@
         return;
       }
 
-      window.location.href = '/community';
+      try {
+        await uploadSelectedLogoIfAny();
+      } catch (error) {
+        submitButton.disabled = false;
+        logoStatusHint.textContent = 'Unable to upload logo right now. Please try again.';
+        alert('Unable to upload logo right now. Please try again.');
+        return;
+      }
+
+      HTMLFormElement.prototype.submit.call(form);
     });
 
     nameInput.addEventListener('input', () => nameInput.style.borderColor = '');
@@ -729,12 +872,12 @@
     const logoPreview     = document.getElementById('logoPreview');
     const logoFileName    = document.getElementById('logoFileName');
     const logoRemove      = document.getElementById('logoRemove');
-    const MAX_LOGO_BYTES  = 2 * 1024 * 1024;
+    const MAX_LOGO_BYTES  = 5 * 1024 * 1024;
 
     function showLogoPreview(file) {
       if (!file || !file.type.startsWith('image/')) return;
       if (file.size > MAX_LOGO_BYTES) {
-        alert('Please choose an image under 2 MB.');
+        alert('Please choose an image under 5 MB.');
         logoFile.value = '';
         return;
       }
@@ -756,6 +899,8 @@
     logoRemove.addEventListener('click', (e) => {
       e.stopPropagation();
       logoFile.value = '';
+      logoPathInput.value = '';
+      logoStatusHint.textContent = 'Logo removed. Save changes to persist this update.';
       logoPreview.src = '';
       logoPreviewWrap.classList.remove('visible');
       logoPlaceholder.style.display = '';
@@ -779,6 +924,13 @@
       }
     });
 
+    if (EXISTING_LOGO_URL) {
+      logoPreview.src = EXISTING_LOGO_URL;
+      logoFileName.textContent = 'Current logo';
+      logoPlaceholder.style.display = 'none';
+      logoPreviewWrap.classList.add('visible');
+    }
+
     /* ── Delete community modal ── */
     const deleteModal  = document.getElementById('deleteModal');
     document.getElementById('deleteBtn').addEventListener('click', () => {
@@ -788,7 +940,7 @@
       deleteModal.classList.remove('open');
     });
     document.getElementById('confirmDelete').addEventListener('click', () => {
-      window.location.href = '/communities';
+      document.getElementById('deleteCommunityForm').submit();
     });
     deleteModal.addEventListener('click', (e) => {
       if (e.target === deleteModal) deleteModal.classList.remove('open');

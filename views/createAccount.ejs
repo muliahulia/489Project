@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UniConnect — Forgot Password</title>
+  <title>UniConnect — Create Account</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
   <style>
@@ -105,7 +105,7 @@
 
     <div id="form-state">
       <h1>Welcome!</h1>
-      <p class="subtitle">Enter your information below to sign up to UniConnect.</p>
+      <p class="subtitle">Enter your information below to sign up for UniConnect.</p>
 
       <div class="error-banner" id="error-banner">
         <span>⚠️</span>
@@ -117,7 +117,7 @@
         <input type="firstName" id="firstName" placeholder="John" autocomplete="name"/>
       </div>
       <div class="field">
-        <label>Last Name</label>
+        <label>Last Name (Optional)</label>
         <input type="lastName" id="lastName" placeholder="Smith" autocomplete="family-name"/>
       </div>
       <div class="field">
@@ -138,7 +138,7 @@
       </div>
       
 
-      <button class="btn" onclick="handleSubmit()">Sign Up</button>
+      <button class="btn" onclick="handleSubmit(event)">Sign Up</button>
       <a href="/login" class="back-link">← Back to login</a>
     </div>
 
@@ -151,8 +151,8 @@
   </div>
 
   <script>
-    function handleSubmit(e) {
-    event.preventDefault();
+    async function handleSubmit(e) {
+    e.preventDefault();
 
     const firstName = document.getElementById("firstName").value.trim();
     const lastName = document.getElementById("lastName").value.trim();
@@ -173,12 +173,6 @@
         const li1 = document.createElement("li");
         li1.textContent = "First name is required.";
         ul.appendChild(li1);
-    }
-
-    if (!lastName) {
-        const li2 = document.createElement("li");
-        li2.textContent = "Last name is required.";
-        ul.appendChild(li2);
     }
 
     if (!schoolName) {
@@ -206,23 +200,41 @@
         ul.appendChild(li6);
     }
 
-    if (!firstName || !lastName || !schoolName || !emailRegex.test(email) || password.length < 8|| password != confirmPassword) {
+    if (!firstName || !schoolName || !emailRegex.test(email) || password.length < 8|| password != confirmPassword) {
         errorMessage.appendChild(ul);
         errorBanner.style.display= "block";
         return;
     }
 
-    const userData = {
-        firstName,
-        lastName,
-        email,
-        password
-    };
+    try {
+        const response = await fetch('/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            schoolName,
+            email,
+            password,
+            role: 'student',
+          }),
+        });
 
-    console.log("Submitting user:", userData);
-    document.getElementById("form-state").style.display = "none";
-    sentEmail.textContent = email;
-    document.getElementById("success-state").style.display = "block";
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to create account right now.');
+        }
+
+        document.getElementById("form-state").style.display = "none";
+        sentEmail.textContent = email;
+        document.getElementById("success-state").style.display = "block";
+    } catch (err) {
+        errorMessage.textContent = err.message || 'Unable to create account right now.';
+        errorBanner.style.display = 'block';
+    }
 }
   </script>
 

@@ -5,4 +5,4 @@ var router = express.Router();
 router.get('/', (req, res) => {
     res.render('communities');
   });
-  module.exports = router;
+module.exports = router;
