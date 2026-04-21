@@ -16,7 +16,9 @@ var settingsRouter = require('./routes/settings');
 var coursesRouter = require('./routes/courses');
 var createCommunityRouter = require('./routes/create-community');
 var feedRouter = require('./routes/feed');
+var communitiesRouter = require('./routes/communities');
 var app = express();
+
 
 // view engine
 app.set('view engine', 'ejs');
