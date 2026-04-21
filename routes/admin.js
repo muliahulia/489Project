@@ -8,6 +8,7 @@ const USERS_PAGE_SIZE = 1000;
 const REPORT_LOOKBACK_HOURS = 48;
 const REPORT_TABLE_LIMIT = 100;
 const USER_SEARCH_LIMIT = 100;
+const USER_ACTIVITY_PAGE_SIZE = 20;
 const REPORT_TYPE_MAP = {
   post: 'post',
   user: 'user',
@@ -641,6 +642,46 @@ async function fetchAdminUserDetail(userId) {
   };
 }
 
+async function fetchUserActivityLogsPage(userId, pageNumber) {
+  const supabase = createSupabaseAdminClient();
+  const page = Number.isInteger(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+  const from = (page - 1) * USER_ACTIVITY_PAGE_SIZE;
+  const to = from + USER_ACTIVITY_PAGE_SIZE - 1;
+
+  const [rowsResult, countResult] = await Promise.all([
+    supabase
+      .from('user_activity_logs')
+      .select('id,action_type,target_type,target_id,metadata,created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(from, to),
+    supabase
+      .from('user_activity_logs')
+      .select('*', { head: true, count: 'exact' })
+      .eq('user_id', userId),
+  ]);
+
+  const rows = !rowsResult.error && Array.isArray(rowsResult.data) ? rowsResult.data : [];
+  const totalCount = !countResult.error && typeof countResult.count === 'number' ? countResult.count : 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / USER_ACTIVITY_PAGE_SIZE));
+
+  return {
+    rows: rows.map((row) => ({
+      id: row.id,
+      actionType: row.action_type || 'unknown',
+      targetType: row.target_type || 'n/a',
+      targetId: row.target_id || null,
+      metadata: row.metadata || null,
+      createdAt: row.created_at || null,
+    })),
+    page,
+    totalPages,
+    totalCount,
+    hasPreviousPage: page > 1,
+    hasNextPage: page < totalPages,
+  };
+}
+
 async function fetchReportDetail(reportType, reportId) {
   const supabase = createSupabaseAdminClient();
 
@@ -922,6 +963,11 @@ router.get('/users', requireAuth, async (req, res) => {
 
 router.get('/users/:id', requireAuth, async (req, res, next) => {
   const userId = typeof req.params.id === 'string' ? req.params.id.trim() : '';
+  const tab = typeof req.query.tab === 'string' && req.query.tab.trim().toLowerCase() === 'activity'
+    ? 'activity'
+    : 'overview';
+  const requestedPage = Number.parseInt(req.query.page, 10);
+  const activityPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
   if (!isLikelyUuid(userId)) {
     const err = new Error('User not found');
@@ -930,7 +976,10 @@ router.get('/users/:id', requireAuth, async (req, res, next) => {
   }
 
   try {
-    const userDetail = await fetchAdminUserDetail(userId);
+    const [userDetail, activityLogs] = await Promise.all([
+      fetchAdminUserDetail(userId),
+      fetchUserActivityLogsPage(userId, activityPage),
+    ]);
     if (!userDetail) {
       const err = new Error('User not found');
       err.status = 404;
@@ -939,6 +988,8 @@ router.get('/users/:id', requireAuth, async (req, res, next) => {
 
     return res.render('adminUserDetail', {
       userDetail,
+      tab,
+      activityLogs,
     });
   } catch (_err) {
     const err = new Error('Unable to load user details');
