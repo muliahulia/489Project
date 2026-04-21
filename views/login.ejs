@@ -196,6 +196,10 @@
     }
     .field input::placeholder { color: #b0b8c4; }
 
+    .field-input-wrap {
+      position: relative;
+    }
+
     .field .field-icon {
       position: absolute;
       right: 1rem;
@@ -205,6 +209,10 @@
       cursor: pointer;
       font-size: 1rem;
       user-select: none;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .field input.has-icon { padding-right: 2.8rem; }
 
@@ -388,8 +396,10 @@
           </div>
           <div class="field">
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Enter your password" class="has-icon" autocomplete="current-password"/>
-            <span class="field-icon" onclick="togglePassword()">👁</span>
+            <div class="field-input-wrap">
+              <input type="password" id="password" placeholder="Enter your password" class="has-icon" autocomplete="current-password"/>
+              <span class="field-icon" onclick="togglePassword()">👁</span>
+            </div>
           </div>
         </div>
 
