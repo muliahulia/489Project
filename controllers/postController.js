@@ -163,7 +163,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
       scopeHref = '/communities';
     } else if (course) {
       scopeLabel = course.name;
-      scopeHref = '/courses';
+      scopeHref = `/courses/${course.id}`;
     }
 
     return {

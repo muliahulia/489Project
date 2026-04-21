@@ -131,7 +131,7 @@
           <span class="right-sidebar-item">None yet</span>
         <% } else { %>
           <% courses.forEach((course) => { %>
-            <a href="/courses" class="right-sidebar-item"><%= course.name %></a>
+            <a href="/courses/<%= course.id %>" class="right-sidebar-item"><%= course.name %></a>
           <% }) %>
         <% } %>
       </div>

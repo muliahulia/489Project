@@ -166,7 +166,7 @@
           <% } else { %>
             <div class="scroll-row">
               <% dashboardCourses.forEach((course) => { %>
-                <a href="/courses" class="circle-item">
+                <a href="/courses/<%= course.id %>" class="circle-item">
                   <div class="circle-bubble <%= course.imageUrl ? 'has-image' : '' %>">
                     <% if (course.imageUrl) { %>
                       <img src="<%= course.imageUrl %>" alt="<%= course.name %> logo" class="circle-logo" loading="lazy" referrerpolicy="no-referrer"/>
