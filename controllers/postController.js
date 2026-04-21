@@ -529,15 +529,30 @@ async function reportPost(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const saved = await postModel.reportPost(supabase, {
+    const post = await postModel.fetchActivePostById(supabase, postId);
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+    if (post.author_id === sessionUser.id) {
+      return res.status(400).json({ error: 'You cannot report your own post.' });
+    }
+
+    const existingReport = await postModel.fetchPostReportByReporterAndPost(
+      supabase,
+      sessionUser.id,
+      postId
+    );
+    if (existingReport && String(existingReport.status || '').toLowerCase() === 'pending') {
+      return res.status(409).json({ error: 'You have already reported this post.' });
+    }
+
+    const { report, error } = await postModel.reportPost(supabase, {
       postId,
       reporterId: sessionUser.id,
       reason,
     });
 
-    if (!saved) return res.status(500).json({ error: 'Unable to submit report.' });
+    if (error || !report) return res.status(500).json({ error: 'Unable to submit report.' });
 
-    return res.json({ ok: true });
+    return res.json({ ok: true, message: 'Report submitted.' });
   } catch (_err) {
 
     return res.status(500).json({ error: 'Unable to submit report.' });

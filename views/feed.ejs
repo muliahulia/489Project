@@ -397,6 +397,73 @@
     let hasMorePosts = <%= hasMorePosts ? 'true' : 'false' %>;
     let isLoadingMorePosts = false;
 
+    if (typeof window.showUiNotice !== 'function') {
+      window.showUiNotice = function showUiNotice(message, variant) {
+        let stack = document.getElementById('ui-notice-stack');
+        if (!stack) {
+          stack = document.createElement('div');
+          stack.id = 'ui-notice-stack';
+          stack.className = 'ui-notice-stack';
+          document.body.appendChild(stack);
+        }
+
+        const notice = document.createElement('div');
+        const typeClass = variant === 'success' ? 'ui-notice-success' : 'ui-notice-error';
+        notice.className = `ui-notice ${typeClass}`;
+        notice.textContent = message || 'Something went wrong.';
+        stack.appendChild(notice);
+
+        window.setTimeout(() => {
+          if (notice.parentNode) notice.parentNode.removeChild(notice);
+        }, 3200);
+      };
+    }
+
+    if (typeof window.confirmUi !== 'function') {
+      window.confirmUi = function confirmUi(message) {
+        let overlay = document.getElementById('ui-confirm-overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'ui-confirm-overlay';
+          overlay.className = 'ui-confirm-overlay';
+          overlay.hidden = true;
+          overlay.innerHTML = `
+            <div class="ui-confirm-dialog" role="dialog" aria-modal="true" aria-label="Confirm action">
+              <div class="ui-confirm-title">Please confirm</div>
+              <div class="ui-confirm-message js-ui-confirm-message"></div>
+              <div class="ui-confirm-actions">
+                <button type="button" class="ui-confirm-btn ui-confirm-btn-cancel js-ui-confirm-cancel">Cancel</button>
+                <button type="button" class="ui-confirm-btn ui-confirm-btn-confirm js-ui-confirm-confirm">Confirm</button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+        }
+
+        const messageNode = overlay.querySelector('.js-ui-confirm-message');
+        const cancelBtn = overlay.querySelector('.js-ui-confirm-cancel');
+        const confirmBtn = overlay.querySelector('.js-ui-confirm-confirm');
+        if (messageNode) messageNode.textContent = message || 'Are you sure?';
+
+        return new Promise((resolve) => {
+          const close = (value) => {
+            overlay.hidden = true;
+            overlay.onclick = null;
+            if (cancelBtn) cancelBtn.onclick = null;
+            if (confirmBtn) confirmBtn.onclick = null;
+            resolve(value);
+          };
+
+          overlay.hidden = false;
+          overlay.onclick = (event) => {
+            if (event.target === overlay) close(false);
+          };
+          if (cancelBtn) cancelBtn.onclick = () => close(false);
+          if (confirmBtn) confirmBtn.onclick = () => close(true);
+        });
+      };
+    }
+
     function escapeHtml(value) {
       return String(value || '')
         .replace(/&/g, '&amp;')
@@ -574,7 +641,12 @@
 
     window.openReport = function openReport(postId) {
       const modal = document.getElementById(`report-modal-${postId}`);
-      if (modal) modal.style.display = 'flex';
+      if (modal) {
+        if (modal.parentElement !== document.body) {
+          document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+      }
     };
 
     window.closeReport = function closeReport(postId) {
@@ -586,7 +658,7 @@
       const reasonField = document.getElementById(`report-reason-${postId}`);
       const reason = reasonField ? reasonField.value.trim() : '';
       if (!reason) {
-        alert('Please enter a reason.');
+        window.showUiNotice('Please enter a reason.', 'error');
         return;
       }
 
@@ -597,17 +669,20 @@
           body: JSON.stringify({ reason }),
         });
 
-        if (!response.ok) throw new Error('Unable to submit report.');
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to submit report.');
+        }
         window.closeReport(postId);
         if (reasonField) reasonField.value = '';
-        alert('Report submitted.');
       } catch (_err) {
-        alert('Unable to submit report.');
+        window.showUiNotice(_err.message || 'Unable to submit report.', 'error');
       }
     };
 
     window.deletePostById = async function deletePostById(postId, triggerEl) {
-      if (!confirm('Delete this post?')) return;
+      const confirmed = await window.confirmUi('Delete this post?');
+      if (!confirmed) return;
 
       try {
         const response = await fetch(`/feed/posts/${postId}`, {
@@ -623,7 +698,7 @@
         updateFeedEmptyState();
         updateFeedEndState();
       } catch (_err) {
-        alert('Unable to delete post.');
+        window.showUiNotice('Unable to delete post.', 'error');
       }
     };
 

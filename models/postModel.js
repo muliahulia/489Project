@@ -250,16 +250,38 @@ async function createComment(supabase, payload) {
   return !error;
 }
 
+async function fetchPostReportByReporterAndPost(supabase, reporterId, postId) {
+  const { data, error } = await supabase
+    .from('post_reports')
+    .select('id,status,created_at')
+    .eq('reporter_id', reporterId)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
 async function reportPost(supabase, payload) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('post_reports')
     .insert({
       post_id: payload.postId,
       reporter_id: payload.reporterId,
       reason: payload.reason,
-    });
+    })
+    .select('id,status')
+    .maybeSingle();
 
-  return !error;
+  return {
+    report: data || null,
+    error: error || null,
+  };
 }
 
 async function deletePost(supabase, postId) {
@@ -318,6 +340,7 @@ module.exports = {
   upsertLikeReaction,
   countLikesForPost,
   createComment,
+  fetchPostReportByReporterAndPost,
   reportPost,
   deletePost,
 };
