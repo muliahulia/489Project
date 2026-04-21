@@ -63,20 +63,30 @@ async function fetchCommunitiesByIds(supabase, ids) {
   return data;
 }
 
-async function fetchVisibleFeedPosts(supabase, visibilityFilter, limit = 50) {
+async function fetchGlobalFeedPosts(supabase, options = {}) {
+  const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 10;
+  const offset = Number.isInteger(options.offset) && options.offset >= 0 ? options.offset : 0;
+  const rangeEnd = offset + limit;
+
   const { data, error } = await supabase
     .from('posts')
     .select('id,author_id,content,image_url,is_official,community_id,course_id,created_at,is_deleted')
     .eq('is_deleted', false)
-    .or(visibilityFilter)
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .range(offset, rangeEnd);
 
   if (error || !data) {
-    return [];
+    return {
+      rows: [],
+      hasMore: false,
+    };
   }
 
-  return data;
+  const hasMore = data.length > limit;
+  return {
+    rows: hasMore ? data.slice(0, limit) : data,
+    hasMore,
+  };
 }
 
 async function fetchVisiblePostById(supabase, postId, visibilityFilter) {
@@ -86,6 +96,21 @@ async function fetchVisiblePostById(supabase, postId, visibilityFilter) {
     .eq('id', postId)
     .eq('is_deleted', false)
     .or(visibilityFilter)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+async function fetchActivePostById(supabase, postId) {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id,author_id,content,image_url,is_official,community_id,course_id,created_at,is_deleted')
+    .eq('id', postId)
+    .eq('is_deleted', false)
     .maybeSingle();
 
   if (error || !data) {
@@ -279,8 +304,9 @@ module.exports = {
   fetchProfilesByIds,
   fetchCoursesByIds,
   fetchCommunitiesByIds,
-  fetchVisibleFeedPosts,
+  fetchGlobalFeedPosts,
   fetchVisiblePostById,
+  fetchActivePostById,
   createFeedPost,
   createFeedPostWithImage,
   fetchPostById,

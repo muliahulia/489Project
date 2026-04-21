@@ -178,6 +178,95 @@
       color: var(--text-muted);
       margin-bottom: 1.25rem;
     }
+
+    .feed-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      padding: 1rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .feed-loader {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      line-height: 1;
+    }
+
+    .feed-loader-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(16, 44, 87, 0.3);
+      animation: feedDotPulse 0.9s ease-in-out infinite;
+    }
+
+    .feed-loader-dot:nth-child(2) {
+      animation-delay: 0.12s;
+    }
+
+    .feed-loader-dot:nth-child(3) {
+      animation-delay: 0.24s;
+    }
+
+    @keyframes feedDotPulse {
+      0%, 100% { transform: scale(0.92); background: rgba(16, 44, 87, 0.3); }
+      50% { transform: scale(1.16); background: rgba(16, 44, 87, 0.9); }
+    }
+
+    .feed-skeletons {
+      display: grid;
+      gap: 0.9rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .feed-loading[hidden],
+    .feed-skeletons[hidden],
+    .feed-end[hidden],
+    .empty-state[hidden] {
+      display: none !important;
+    }
+
+    .feed-skeleton-card {
+      height: 138px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: linear-gradient(
+        100deg,
+        rgba(236, 241, 248, 0.65) 35%,
+        rgba(255, 255, 255, 0.95) 50%,
+        rgba(236, 241, 248, 0.65) 65%
+      );
+      background-size: 220% 100%;
+      animation: feedShimmer 1.1s linear infinite;
+    }
+
+    @keyframes feedShimmer {
+      to { background-position-x: -220%; }
+    }
+
+    .feed-end {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      padding: 0.8rem 0 1.35rem;
+    }
+
+    #feed-sentinel {
+      height: 1px;
+    }
+
+    .post-card.feed-enter {
+      animation: feedEnter 0.32s ease-out;
+    }
+
+    @keyframes feedEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -197,7 +286,7 @@
 
       <div class="page-header">
         <h1 class="page-title">Feed</h1>
-        <p class="page-subtitle">Recent posts from your courses and communities.</p>
+        <p class="page-subtitle">Recent posts from across UniConnect.</p>
       </div>
 
       <div class="create-post">
@@ -232,13 +321,33 @@
         </div>
       </div>
 
-      <% if (feedPosts.length === 0) { %>
-        <p class="empty-state">No posts found.</p>
-      <% } else { %>
-        <% feedPosts.forEach((post) => { %>
-          <%- include('partials/post-card', { post }) %>
-        <% }) %>
-      <% } %>
+      <div
+        id="feed-posts"
+        data-viewer-id="<%= user && user.id ? user.id : '' %>"
+        data-viewer-role="<%= user && user.role ? user.role : '' %>"
+      >
+        <% if (feedPosts.length > 0) { %>
+          <% feedPosts.forEach((post) => { %>
+            <%- include('partials/post-card', { post }) %>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <p id="feed-empty" class="empty-state" <%= feedPosts.length === 0 ? '' : 'hidden' %>>No posts found.</p>
+
+      <div id="feed-loading" class="feed-loading" hidden>
+        <div class="feed-loader" aria-hidden="true">
+          <div class="feed-loader-dot"></div>
+          <div class="feed-loader-dot"></div>
+          <div class="feed-loader-dot"></div>
+        </div>
+        <span class="feed-loading-label">Loading more posts</span>
+      </div>
+      <div id="feed-skeletons" class="feed-skeletons" hidden>
+        <div class="feed-skeleton-card"></div>
+      </div>
+      <p id="feed-end" class="feed-end" hidden>You're all caught up.</p>
+      <div id="feed-sentinel" aria-hidden="true"></div>
 
       </div>
     </main>
@@ -273,6 +382,243 @@
 
   <script>
     const latestCommentTimers = new WeakMap();
+    const feedPostsContainer = document.getElementById('feed-posts');
+    const feedEmptyState = document.getElementById('feed-empty');
+    const feedLoading = document.getElementById('feed-loading');
+    const feedSkeletons = document.getElementById('feed-skeletons');
+    const feedEnd = document.getElementById('feed-end');
+    const feedSentinel = document.getElementById('feed-sentinel');
+    const viewerId = feedPostsContainer ? feedPostsContainer.dataset.viewerId || '' : '';
+    const viewerRole = feedPostsContainer
+      ? (feedPostsContainer.dataset.viewerRole || '').trim().toLowerCase()
+      : '';
+    const pageSize = Number.parseInt('<%= pageSize %>', 10) || 10;
+    let nextOffset = Number.parseInt('<%= nextOffset %>', 10) || 0;
+    let hasMorePosts = <%= hasMorePosts ? 'true' : 'false' %>;
+    let isLoadingMorePosts = false;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function updateFeedEmptyState() {
+      if (!feedPostsContainer || !feedEmptyState) return;
+      feedEmptyState.hidden = feedPostsContainer.querySelector('.post-card') !== null;
+    }
+
+    function updateFeedEndState() {
+      if (!feedPostsContainer || !feedEnd) return;
+      const hasAnyPosts = feedPostsContainer.querySelector('.post-card') !== null;
+      feedEnd.hidden = !hasAnyPosts || hasMorePosts || isLoadingMorePosts;
+    }
+
+    function setFeedLoadingState(loading) {
+      if (feedLoading) feedLoading.hidden = !loading;
+      if (feedSkeletons) feedSkeletons.hidden = !loading;
+      updateFeedEndState();
+    }
+
+    function renderPostCard(post) {
+      const postId = post && post.id ? String(post.id) : '';
+      const comments = Array.isArray(post && post.comments) ? post.comments : [];
+      const latestComment = comments.length > 0 ? comments[comments.length - 1] : null;
+      const isOwner = Boolean(viewerId && post && post.authorId && String(post.authorId) === viewerId);
+      const isAdmin = viewerRole === 'admin';
+      const canDelete = isOwner || isAdmin;
+      const commentCount = Number.isInteger(post && post.commentCount) ? post.commentCount : comments.length;
+      const likeCount = Number.isInteger(post && post.likeCount) ? post.likeCount : 0;
+      const liked = Boolean(post && post.liked);
+      const imageHtml = post && post.imageUrl
+        ? `<div class="post-image" style="margin-top: 0.75rem;">
+            <img src="${escapeHtml(post.imageUrl)}" alt="Post image" style="max-width:100%; border-radius:8px; border:1px solid var(--border);"/>
+          </div>`
+        : '';
+      const latestCommentHtml = latestComment
+        ? `<div class="post-comment-preview" data-post-id="${escapeHtml(postId)}">
+            <div class="post-comment post-comment-preview-item">
+              <div class="post-comment-avatar">${escapeHtml(latestComment.authorInitials || 'UC')}</div>
+              <div class="post-comment-body">
+                <div class="post-comment-preview-copy">
+                  <span class="post-comment-preview-copy-inner">
+                    <strong class="post-comment-preview-name">${escapeHtml(latestComment.authorName || 'Unknown User')}</strong>
+                    <span class="post-comment-text post-comment-preview-text">${escapeHtml(latestComment.content || '')}</span>
+                  </span>
+                  <button class="post-comment-show-more js-comment-expand" type="button" data-post-id="${escapeHtml(postId)}">Show more</button>
+                </div>
+              </div>
+            </div>
+          </div>`
+        : '';
+      const commentsHtml = comments.map((comment) => `
+        <div class="post-comment" data-comment-id="${escapeHtml(comment.id)}">
+          <div class="post-comment-avatar">${escapeHtml(comment.authorInitials || 'UC')}</div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong>${escapeHtml(comment.authorName || 'Unknown User')}</strong>
+              <span>${escapeHtml(comment.createdAtLabel || '')}</span>
+            </div>
+            <div class="post-comment-text">${escapeHtml(comment.content || '')}</div>
+          </div>
+        </div>
+      `).join('');
+
+      return `
+        <div class="post-card feed-enter" data-post-id="${escapeHtml(postId)}">
+          <div class="post-actions">
+            <button
+              class="post-action-btn like-btn js-like-btn ${liked ? 'active' : ''}"
+              title="Like"
+              data-post-id="${escapeHtml(postId)}"
+              data-liked="${liked ? 'true' : 'false'}"
+              aria-pressed="${liked ? 'true' : 'false'}"
+            >
+              👍 <span class="like-count">${likeCount}</span>
+            </button>
+            <button class="post-action-btn comment-btn js-comment-toggle" title="Comment" type="button" data-post-id="${escapeHtml(postId)}">
+              💬 <span class="comment-count ${commentCount ? '' : 'is-hidden'}">${commentCount || 0}</span>
+            </button>
+            <button class="post-action-btn js-report-btn" title="Report" type="button" data-post-id="${escapeHtml(postId)}" onclick="openReport('${escapeHtml(postId)}')">🚩</button>
+            ${canDelete ? `<button class="post-action-btn js-delete-btn" title="Delete" type="button" data-post-id="${escapeHtml(postId)}" onclick="deletePostById('${escapeHtml(postId)}', this)" style="color: var(--error);">🗑️</button>` : ''}
+          </div>
+
+          <div class="post-author">
+            <div class="post-avatar-initials">${escapeHtml(post.authorInitials || 'UC')}</div>
+            <div class="post-author-info">
+              <span class="post-author-name"><a href="/profile">${escapeHtml(post.authorName || 'Unknown User')}</a></span>
+              <span class="post-meta"><a href="/post/${escapeHtml(postId)}">${escapeHtml(post.createdAtLabel || '')}</a></span>
+              <span class="post-community"><a href="${escapeHtml(post.scopeHref || '#')}">${escapeHtml(post.scopeLabel || 'General')}</a></span>
+            </div>
+          </div>
+
+          <div class="post-body">${escapeHtml(post.content || '')}</div>
+          ${imageHtml}
+          ${latestCommentHtml}
+
+          <div class="post-comments" data-post-id="${escapeHtml(postId)}" hidden>
+            <div class="post-comment-list">${commentsHtml}</div>
+            <form class="post-comment-form js-comment-form" method="post" action="/feed/posts/${escapeHtml(postId)}/comments" data-post-id="${escapeHtml(postId)}">
+              <textarea class="post-comment-input" name="content" rows="2" maxlength="2000" placeholder="Write a comment..."></textarea>
+              <div class="post-comment-form-actions">
+                <button class="post-comment-submit" type="submit">Comment</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="report-modal" id="report-modal-${escapeHtml(postId)}" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:999; align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:14px; padding:1.5rem; max-width:420px; width:90%;">
+              <h3 style="margin-bottom:1rem;">Report Post</h3>
+              <textarea id="report-reason-${escapeHtml(postId)}" maxlength="250" rows="3" placeholder="Describe the reason for reporting..." style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid var(--border); margin-bottom:1rem;"></textarea>
+              <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button onclick="closeReport('${escapeHtml(postId)}')" style="padding:0.5rem 1rem; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer;">Cancel</button>
+                <button onclick="submitReport('${escapeHtml(postId)}')" style="padding:0.5rem 1rem; border-radius:8px; border:none; background:var(--navy); color:white; cursor:pointer;">Submit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadMorePosts() {
+      if (!hasMorePosts || isLoadingMorePosts) return;
+
+      isLoadingMorePosts = true;
+      setFeedLoadingState(true);
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+        let response;
+        try {
+          response = await fetch(`/feed/posts?offset=${encodeURIComponent(nextOffset)}&limit=${encodeURIComponent(pageSize)}`, {
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+          });
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
+        const payload = await response.json();
+        if (!response.ok || !payload || payload.ok === false) throw new Error('Unable to load posts.');
+
+        const posts = Array.isArray(payload.posts) ? payload.posts : [];
+        if (feedPostsContainer && posts.length > 0) {
+          feedPostsContainer.insertAdjacentHTML('beforeend', posts.map(renderPostCard).join(''));
+        }
+
+        if (typeof payload.nextOffset === 'number') {
+          nextOffset = payload.nextOffset;
+        } else {
+          nextOffset += posts.length;
+        }
+        hasMorePosts = Boolean(payload.hasMore);
+      } catch (_err) {
+        hasMorePosts = false;
+      } finally {
+        isLoadingMorePosts = false;
+        setFeedLoadingState(false);
+        updateFeedEmptyState();
+        updateFeedEndState();
+      }
+    }
+
+    window.openReport = function openReport(postId) {
+      const modal = document.getElementById(`report-modal-${postId}`);
+      if (modal) modal.style.display = 'flex';
+    };
+
+    window.closeReport = function closeReport(postId) {
+      const modal = document.getElementById(`report-modal-${postId}`);
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.submitReport = async function submitReport(postId) {
+      const reasonField = document.getElementById(`report-reason-${postId}`);
+      const reason = reasonField ? reasonField.value.trim() : '';
+      if (!reason) {
+        alert('Please enter a reason.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
+        });
+
+        if (!response.ok) throw new Error('Unable to submit report.');
+        window.closeReport(postId);
+        if (reasonField) reasonField.value = '';
+        alert('Report submitted.');
+      } catch (_err) {
+        alert('Unable to submit report.');
+      }
+    };
+
+    window.deletePostById = async function deletePostById(postId, triggerEl) {
+      if (!confirm('Delete this post?')) return;
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}`, {
+          method: 'DELETE',
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error('Unable to delete post.');
+
+        const card = triggerEl && typeof triggerEl.closest === 'function'
+          ? triggerEl.closest('.post-card')
+          : document.querySelector(`.post-card[data-post-id="${String(postId)}"]`);
+        if (card) card.remove();
+        updateFeedEmptyState();
+        updateFeedEndState();
+      } catch (_err) {
+        alert('Unable to delete post.');
+      }
+    };
 
     function buildCommentHtml(comment) {
       return `
@@ -501,6 +847,21 @@
         submitButton.textContent = 'Comment';
       }
     });
+
+    if (feedSentinel && 'IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            loadMorePosts();
+          }
+        });
+      }, { rootMargin: '240px 0px' });
+
+      observer.observe(feedSentinel);
+    }
+
+    updateFeedEmptyState();
+    updateFeedEndState();
   </script>
 
 </body>

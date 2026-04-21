@@ -6,6 +6,7 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.get('/', requireAuth, postController.showFeed);
+router.get('/posts', requireAuth, postController.listFeedPosts);
 router.post('/posts', requireAuth, upload.single('image'), postController.createFeedPost);
 router.post('/posts/:postId/like', requireAuth, postController.togglePostLike);
 router.post('/posts/:postId/comments', requireAuth, postController.createPostComment);

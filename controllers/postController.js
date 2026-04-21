@@ -3,14 +3,19 @@ const {
   buildDisplayName,
   buildInitials,
   formatCreatedAt,
-  buildPostScopeFilter,
   fetchAffiliations,
 } = require('../lib/utils');
 const postModel = require('../models/postModel');
+const FEED_PAGE_SIZE = 10;
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function toNonNegativeInteger(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function buildFallbackUser(sessionUser) {
@@ -187,24 +192,23 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
   });
 }
 
-async function buildFeedViewModel(supabase, sessionUser) {
+async function buildFeedViewModel(supabase, sessionUser, options = {}) {
+  const limit = FEED_PAGE_SIZE;
+  const offset = toNonNegativeInteger(options.offset);
   const affiliations = await fetchAffiliations(supabase, sessionUser.id);
-  const visibilityFilter = buildPostScopeFilter(
-    affiliations.courseIds,
-    affiliations.communityIds,
-    sessionUser.id
-  );
-  const [user, postRows] = await Promise.all([
+  const [user, pagedPosts] = await Promise.all([
     buildCurrentUserViewModel(supabase, sessionUser),
-    postModel.fetchVisibleFeedPosts(supabase, visibilityFilter),
+    postModel.fetchGlobalFeedPosts(supabase, { limit, offset }),
   ]);
-  const posts = await buildPostsViewModel(supabase, postRows, sessionUser.id);
+  const posts = await buildPostsViewModel(supabase, pagedPosts.rows, sessionUser.id);
 
   return {
     user,
     posts,
     courses: affiliations.courses,
     communities: affiliations.communities,
+    hasMore: Boolean(pagedPosts.hasMore),
+    nextOffset: offset + posts.length,
   };
 }
 
@@ -232,6 +236,9 @@ async function showFeed(req, res) {
       posts: viewModel.posts,
       courses: viewModel.courses,
       communities: viewModel.communities,
+      hasMorePosts: viewModel.hasMore,
+      nextOffset: viewModel.nextOffset,
+      pageSize: FEED_PAGE_SIZE,
       formError: req.query.error || null,
     });
   } catch (_err) {
@@ -241,7 +248,37 @@ async function showFeed(req, res) {
       posts: [],
       courses: [],
       communities: [],
+      hasMorePosts: false,
+      nextOffset: 0,
+      pageSize: FEED_PAGE_SIZE,
       formError: req.query.error || null,
+    });
+  }
+}
+
+async function listFeedPosts(req, res) {
+  const sessionUser = req.session.auth.user;
+  const offset = toNonNegativeInteger(req.query.offset);
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const pagedPosts = await postModel.fetchGlobalFeedPosts(supabase, {
+      offset,
+      limit: FEED_PAGE_SIZE,
+    });
+    const posts = await buildPostsViewModel(supabase, pagedPosts.rows, sessionUser.id);
+
+    return res.json({
+      ok: true,
+      posts,
+      hasMore: Boolean(pagedPosts.hasMore),
+      nextOffset: offset + posts.length,
+      pageSize: FEED_PAGE_SIZE,
+    });
+  } catch (_err) {
+    return res.status(500).json({
+      ok: false,
+      error: 'Unable to load feed posts.',
     });
   }
 }
@@ -321,13 +358,7 @@ async function togglePostLike(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const affiliations = await fetchAffiliations(supabase, sessionUser.id);
-    const visibilityFilter = buildPostScopeFilter(
-      affiliations.courseIds,
-      affiliations.communityIds,
-      sessionUser.id
-    );
-    const visiblePost = await postModel.fetchVisiblePostById(supabase, postId, visibilityFilter);
+    const visiblePost = await postModel.fetchActivePostById(supabase, postId);
 
     if (!visiblePost) {
       return res.status(404).json({ error: 'Post not found.' });
@@ -401,13 +432,7 @@ async function createPostComment(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const affiliations = await fetchAffiliations(supabase, sessionUser.id);
-    const visibilityFilter = buildPostScopeFilter(
-      affiliations.courseIds,
-      affiliations.communityIds,
-      sessionUser.id
-    );
-    const visiblePost = await postModel.fetchVisiblePostById(supabase, postId, visibilityFilter);
+    const visiblePost = await postModel.fetchActivePostById(supabase, postId);
 
     if (!visiblePost) {
       return jsonOrRedirect(req, res, 404, { error: 'Post not found.' }, `/post/${postId}`);
@@ -461,12 +486,7 @@ async function showPostById(req, res) {
   try {
     const supabase = createSupabaseAdminClient();
     const affiliations = await fetchAffiliations(supabase, sessionUser.id);
-    const visibilityFilter = buildPostScopeFilter(
-      affiliations.courseIds,
-      affiliations.communityIds,
-      sessionUser.id
-    );
-    const rawPost = await postModel.fetchVisiblePostById(supabase, postId, visibilityFilter);
+    const rawPost = await postModel.fetchActivePostById(supabase, postId);
 
     if (!rawPost) {
       return res.status(404).render('post', {
@@ -555,6 +575,7 @@ async function deletePost(req, res) {
 
 module.exports = {
   showFeed,
+  listFeedPosts,
   createFeedPost,
   togglePostLike,
   createPostComment,
