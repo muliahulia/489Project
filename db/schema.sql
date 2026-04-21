@@ -6,7 +6,8 @@ CREATE TYPE user_role AS ENUM ('student', 'official', 'admin');
 CREATE TABLE schools (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    domain TEXT UNIQUE
+    domain TEXT UNIQUE,
+    logo_url TEXT
 );
 
 -- PROFILES
