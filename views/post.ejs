@@ -7,182 +7,213 @@
   <title>UniConnect — Post</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
   <style>
-    /* Page-specific styles */
+    .main {
+      margin-right: 260px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
+    .feed-column {
+      width: 100%;
+      max-width: 620px;
+    }
 
-    .page-header { width: 100%; max-width: 720px; margin: 0 auto 1.75rem; }
+    .back-to-feed {
+      display: inline-block;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--navy);
+      text-decoration: none;
+      font-weight: 600;
+    }
 
-    /* Post Card */
-    .post-card {
+    .back-to-feed:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .right-sidebar {
+      position: fixed;
+      top: var(--topbar-h);
+      right: 0;
+      bottom: 0;
+      width: 260px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-right: none;
+      padding: 1.5rem 1.25rem;
+      overflow-y: auto;
+      z-index: 90;
+    }
+
+    .right-sidebar-section {
+      margin-bottom: 2rem;
+    }
+
+    .right-sidebar-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.75rem;
+    }
+
+    .right-sidebar-item {
+      display: block;
+      padding: 0.45rem 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .right-sidebar-item:last-child {
+      border-bottom: none;
+    }
+
+    .right-sidebar-item:hover {
+      color: var(--navy);
+    }
+
+    .post-status {
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
-      width: 100%;
-      max-width: 720px;
-      position: relative;
-      margin: 0 auto;
-    }
-
-    /* Action buttons (top-right corner) */
-    .post-actions {
-      position: absolute;
-      top: 1.25rem;
-      right: 1.25rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .post-action-btn {
-      width: 34px; height: 34px;
-      border-radius: 8px;
-      background: var(--cream);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      font-size: 1rem;
-      color: var(--text-muted);
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .post-action-btn:hover {
-      background: var(--cream-dark);
-      color: var(--navy);
-    }
-
-    /* Author row */
-    .post-author {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1.25rem;
-      padding-right: 8rem; /* leave space for action buttons */
-    }
-
-    .post-avatar {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--border);
-      flex-shrink: 0;
-      background: var(--cream-dark); /* fallback if no image */
-    }
-
-    .post-author-info { display: flex; flex-direction: column; gap: 0.15rem; }
-
-    .post-author-name {
-      font-weight: 600;
-      font-size: 1rem;
-      color: var(--text-dark);
-    }
-
-    .post-author-name a {
-      color: var(--text-dark);
-      text-decoration: none;
-    }
-
-    .post-author-name a:hover {
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    .post-meta {
-      font-size: 0.8rem;
+      padding: 1rem 1.25rem;
       color: var(--text-muted);
     }
 
-    .post-meta a {
-      color: var(--text-muted);
-      text-decoration: none;
-    }
+    @media (max-width: 1024px) {
+      .main {
+        margin-right: 0;
+      }
 
-    .post-meta a:hover {
-      color: var(--navy);
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    .post-community {
-      font-size: 0.8rem;
-      color: var(--navy);
-      font-weight: 500;
-    }
-
-    .post-community a {
-      color: var(--navy);
-      text-decoration: none;
-    }
-
-    .post-community a:hover {
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    /* Post body lines */
-    .post-body {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      font-size: 0.93rem;
-      color: var(--text-dark);
-      line-height: 1.6;
+      .right-sidebar {
+        position: static;
+        width: 100%;
+        border-right: 1px solid var(--border);
+      }
     }
   </style>
 </head>
 <body>
 
-  <%- include('header', { initials: 'JS' }) %>
+  <%- include('header', { initials: user && user.initials ? user.initials : 'UC' }) %>
 
   <div class="layout">
 
     <%- include('sidebar', { activePage: 'feed' }) %>
 
-    <main class="main main-pad">
+    <main class="main">
 
-      <div class="page-header">
-        <h1 class="page-title">Post</h1>
-        <p class="page-subtitle">View the full post and details.</p>
-      </div>
+      <div class="feed-column">
+        <% const pageNotFoundMessage = typeof notFoundMessage === 'string' ? notFoundMessage : null; %>
+        <a class="back-to-feed" href="/feed">Back to Feed</a>
 
-      <!-- Post Card -->
-      <div class="post-card">
-
-        <!-- Action icon buttons (top-right) -->
-        <div class="post-actions">
-          <button class="post-action-btn" title="Like">👍</button>
-          <button class="post-action-btn" title="Comment">💬</button>
-          <button class="post-action-btn" title="Bookmark">🔖</button>
-        </div>
-
-        <!-- Author info row -->
-        <div class="post-author">
-          <img
-            src="profile-placeholder.png"
-            alt="Student profile photo"
-            class="post-avatar"
-            onerror="this.style.background='var(--cream-dark)'; this.removeAttribute('src');"
-          />
-          <div class="post-author-info">
-            <span class="post-author-name"><a href="#">Student Name</a></span>
-            <span class="post-meta"><a href="#">March 6, 2026 at 10:32 AM</a></span>
-            <span class="post-community"><a href="#">Course or Community Name</a></span>
-          </div>
-        </div>
-
-        <!-- Post content -->
-        <div class="post-body">
-          <p>This is the first line of the post content. Students can share updates, questions, or resources with their course or community members here.</p>
-          <p>A second paragraph providing more detail or context about the topic being discussed in this post.</p>
-          <p>Additional lines of text continue here, giving the post room to breathe and present information clearly.</p>
-          <p>A final line wrapping up the post's content or asking a question of fellow community members.</p>
-        </div>
-
+        <% if (pageNotFoundMessage) { %>
+          <div class="post-status"><%= pageNotFoundMessage %></div>
+        <% } else if (post) { %>
+          <%- include('partials/post-card', { post, expandComments: true }) %>
+        <% } %>
       </div>
 
     </main>
+
+    <aside class="right-sidebar">
+      <div class="right-sidebar-section">
+        <h2 class="right-sidebar-title">Courses</h2>
+        <% if (!Array.isArray(courses) || courses.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% courses.forEach((course) => { %>
+            <a href="/courses" class="right-sidebar-item"><%= course.name %></a>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <div class="right-sidebar-section">
+        <h2 class="right-sidebar-title">Communities</h2>
+        <% if (!Array.isArray(communities) || communities.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% communities.forEach((community) => { %>
+            <a href="/communities" class="right-sidebar-item"><%= community.name %></a>
+          <% }) %>
+        <% } %>
+      </div>
+    </aside>
+
   </div>
+
+  <%- include('footer', { footerLayout: 'sidebarBoth' }) %>
+
+  <script>
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = likeButton.dataset.postId;
+      if (!postId || likeButton.dataset.pending === 'true') {
+        return;
+      }
+
+      const countNode = likeButton.querySelector('.like-count');
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
+
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      if (countNode) {
+        countNode.textContent = String(optimisticCount);
+      }
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        if (countNode) {
+          countNode.textContent = String(payload.likeCount || 0);
+        }
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        if (countNode) {
+          countNode.textContent = String(previousCount);
+        }
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+  </script>
 
 </body>
 </html>

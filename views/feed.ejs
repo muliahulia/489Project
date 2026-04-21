@@ -4,24 +4,19 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UniConnect — Feed</title>
+  <title>UniConnect - Feed</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/stylesheets/style.css"/>
-  <!-- Tailwind required for footer -->
   <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
   <style>
-    /* ── Topbar ── */
-
-    /* ── Main content ── */
     .main {
-      margin-right: 260px; /* right sidebar width */
+      margin-right: 260px;
       padding: 2rem;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
-    /* Constrain feed to a readable fixed width */
     .feed-column {
       width: 100%;
       max-width: 620px;
@@ -29,7 +24,6 @@
 
     .page-header { margin-bottom: 1.75rem; }
 
-    /* ── Create Post Box ── */
     .create-post {
       background: #fff;
       border: 1px solid var(--border);
@@ -41,7 +35,7 @@
 
     .create-post-top {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 0.75rem;
     }
 
@@ -59,51 +53,67 @@
     .create-post-input-wrap {
       flex: 1;
       display: flex;
-      align-items: center;
-      border-radius: 999px;
+      flex-direction: column;
+      gap: 0.6rem;
+      border-radius: 12px;
       border: 1.5px solid var(--border);
       background: var(--cream);
-      transition: border-color 0.15s, background 0.15s;
-      overflow: hidden;
-      padding-right: 0.25rem;
-    }
-    .create-post-input-wrap:focus-within {
-      border-color: var(--navy-light);
-      background: #fff;
+      padding: 0.65rem;
     }
 
     .create-post-input {
       flex: 1;
-      padding: 0.6rem 1rem;
+      min-height: 72px;
+      padding: 0.55rem 0.7rem;
       border: none;
+      border-radius: 8px;
       background: transparent;
       font-family: 'DM Sans', sans-serif;
       font-size: 0.9rem;
       color: var(--text-dark);
       outline: none;
-      cursor: pointer;
+      resize: vertical;
     }
-    .create-post-input:focus { cursor: text; }
-    .create-post-input::placeholder { color: #b0b8c4; }
 
-    .create-post-attach {
-      width: 32px; height: 32px;
-      border-radius: 50%;
+    .create-post-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .create-post-submit {
       border: none;
-      background: transparent;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-      color: var(--text-muted);
+      background: var(--navy);
+      color: var(--gold);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
       cursor: pointer;
-      flex-shrink: 0;
-      transition: background 0.15s, color 0.15s;
-    }
-    .create-post-attach:hover {
-      background: var(--cream-dark);
-      color: var(--navy);
+      white-space: nowrap;
     }
 
-    /* ── Right Sidebar ── */
+    .create-post-submit:hover { background: var(--navy-mid); }
+
+    .form-banner {
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.84rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .form-banner.error {
+      background: rgba(192,57,43,0.08);
+      border: 1px solid rgba(192,57,43,0.25);
+      color: #9b2d22;
+    }
+
+    .form-banner.success {
+      background: rgba(30,126,92,0.08);
+      border: 1px solid rgba(30,126,92,0.25);
+      color: #1a6c4e;
+    }
+
     .right-sidebar {
       position: fixed; top: var(--topbar-h); right: 0; bottom: 0;
       width: 260px;
@@ -130,129 +140,67 @@
       text-decoration: none;
       transition: color 0.15s;
     }
+
     .right-sidebar-item:last-child { border-bottom: none; }
     .right-sidebar-item:hover { color: var(--navy); }
 
-    /* ── Post Card (from post.html) ── */
-    .post-card {
+    .empty-state {
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
-      position: relative;
-      margin-bottom: 1.25rem;
-      width: 100%;
-    }
-
-    .post-actions {
-      position: absolute;
-      top: 1.25rem;
-      right: 1.25rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .post-action-btn {
-      width: 34px; height: 34px;
-      border-radius: 8px;
-      background: var(--cream);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      font-size: 1rem;
+      padding: 1rem 1.25rem;
       color: var(--text-muted);
-      transition: background 0.15s, color 0.15s;
-    }
-    .post-action-btn:hover {
-      background: var(--cream-dark);
-      color: var(--navy);
-    }
-
-    .post-author {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
       margin-bottom: 1.25rem;
-      padding-right: 8rem;
-    }
-
-    .post-avatar {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--border);
-      flex-shrink: 0;
-      background: var(--cream-dark);
-    }
-
-    .post-avatar-initials {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      background: var(--navy);
-      color: var(--gold);
-      font-weight: 700;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid var(--border);
-      letter-spacing: 0.03em;
-    }
-
-    .post-author-info { display: flex; flex-direction: column; gap: 0.15rem; }
-
-    .post-author-name { font-weight: 600; font-size: 1rem; color: var(--text-dark); }
-    .post-author-name a { color: var(--text-dark); text-decoration: none; }
-    .post-author-name a:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-    .post-meta { font-size: 0.8rem; color: var(--text-muted); }
-    .post-meta a { color: var(--text-muted); text-decoration: none; }
-    .post-meta a:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
-
-    .post-community { font-size: 0.8rem; color: var(--navy); font-weight: 500; }
-    .post-community a { color: var(--navy); text-decoration: none; }
-    .post-community a:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-    .post-body {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      font-size: 0.93rem;
-      color: var(--text-dark);
-      line-height: 1.6;
     }
   </style>
 </head>
 <body>
 
-  <%- include('header', { initials: 'JB' }) %>
+  <%- include('header', { initials: user && user.initials ? user.initials : 'UC' }) %>
 
   <div class="layout">
 
-    <!-- Left Sidebar -->
     <%- include('sidebar', { activePage: 'feed' }) %>
 
-    <!-- Feed -->
     <main class="main">
       <div class="feed-column">
+        <% const feedPosts = Array.isArray(locals.posts) ? locals.posts : []; %>      <% const affiliatedCourses = Array.isArray(courses) ? courses : []; %>
+      <% const affiliatedCommunities = Array.isArray(communities) ? communities : []; %>
+      <% const createPostError = typeof formError === 'string' ? formError : null; %>
 
       <div class="page-header">
         <h1 class="page-title">Feed</h1>
         <p class="page-subtitle">Recent posts from your courses and communities.</p>
       </div>
 
-      <!-- Create Post -->
       <div class="create-post">
+        <% if (createPostError) { %>
+          <div class="form-banner error"><%= createPostError %></div>
+        <% } %>
         <div class="create-post-top">
-          <div class="create-post-avatar">JS</div>
-          <div class="create-post-input-wrap">
-            <input class="create-post-input" type="text" placeholder="What's on your mind?"/>
-            <button class="create-post-attach" title="Attach media">📎</button>
-          </div>
+          <div class="create-post-avatar"><%= user && user.initials ? user.initials : 'UC' %></div>
+          <form class="create-post-input-wrap" method="post" action="/feed/posts">
+            <textarea
+              class="create-post-input"
+              name="content"
+              maxlength="4000"
+              required
+              placeholder="What's on your mind?"
+            ></textarea>
+            <div class="create-post-row">
+              <button class="create-post-submit" type="submit">Post</button>
+            </div>
+          </form>
         </div>
       </div>
+
+      <% if (feedPosts.length === 0) { %>
+        <p class="empty-state">No posts found.</p>
+      <% } else { %>
+        <% feedPosts.forEach((post) => { %>
+          <%- include('partials/post-card', { post }) %>
+        <% }) %>
+      <% } %>
 
       <!-- Post 1 -->
       <div class="post-card">
@@ -264,9 +212,9 @@
         <div class="post-author">
           <div class="post-avatar-initials">JB</div>
           <div class="post-author-info">
-            <span class="post-author-name"><a href="profile.ejs">Jaden Bryant</a></span>
-            <span class="post-meta"><a href="post.ejs">March 6, 2026 at 9:14 AM</a></span>
-            <span class="post-community"><a href="courses.ejs">Software Engineering</a></span>
+            <span class="post-author-name"><a href="/profile">Jaden Bryant</a></span>
+            <span class="post-meta"><a href="/post">March 6, 2026 at 9:14 AM</a></span>
+            <span class="post-community"><a href="/courses">Software Engineering</a></span>
           </div>
         </div>
         <div class="post-body">
@@ -286,9 +234,9 @@
         <div class="post-author">
           <div class="post-avatar-initials">JS</div>
           <div class="post-author-info">
-            <span class="post-author-name"><a href="profile.ejs">Julia Smith</a></span>
-            <span class="post-meta"><a href="post.ejs">March 6, 2026 at 8:45 AM</a></span>
-            <span class="post-community"><a href="courses.ejs">Data Structures &amp; Algorithms</a></span>
+            <span class="post-author-name"><a href="/profile">Julia Smith</a></span>
+            <span class="post-meta"><a href="/post">March 6, 2026 at 8:45 AM</a></span>
+            <span class="post-community"><a href="/courses">Data Structures &amp; Algorithms</a></span>
           </div>
         </div>
         <div class="post-body">
@@ -308,9 +256,9 @@
         <div class="post-author">
           <div class="post-avatar-initials">LGR</div>
           <div class="post-author-info">
-            <span class="post-author-name"><a href="profile.ejs">Luis Garcia Rangel</a></span>
-            <span class="post-meta"><a href="post.ejs">March 5, 2026 at 11:30 PM</a></span>
-            <span class="post-community"><a href="community.ejs">Computer Science Club</a></span>
+            <span class="post-author-name"><a href="/profile">Luis Garcia Rangel</a></span>
+            <span class="post-meta"><a href="/post">March 5, 2026 at 11:30 PM</a></span>
+            <span class="post-community"><a href="/community">Computer Science Club</a></span>
           </div>
         </div>
         <div class="post-body">
@@ -319,35 +267,340 @@
           <p>If anyone wants to collaborate on cleaning it up and maybe open-sourcing it, let me know. Could be a solid portfolio piece for all of us.</p>
         </div>
       </div>
-
-      </div><!-- /.feed-column -->
     </main>
 
-    <!-- Right Sidebar -->
     <aside class="right-sidebar">
-
       <div class="right-sidebar-section">
         <h2 class="right-sidebar-title">Courses</h2>
-        <a href="courses.ejs" class="right-sidebar-item">Intro to Computer Science</a>
-        <a href="courses.ejs" class="right-sidebar-item">Data Structures &amp; Algorithms</a>
-        <a href="courses.ejs" class="right-sidebar-item">Software Engineering</a>
-        <a href="courses.ejs" class="right-sidebar-item">Database Systems</a>
-        <a href="courses.ejs" class="right-sidebar-item">Web Development</a>
+        <% if (affiliatedCourses.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% affiliatedCourses.forEach((course) => { %>
+            <a href="/courses" class="right-sidebar-item"><%= course.name %></a>
+          <% }) %>
+        <% } %>
       </div>
 
       <div class="right-sidebar-section">
         <h2 class="right-sidebar-title">Communities</h2>
-        <a href="community.ejs" class="right-sidebar-item">Computer Science Club</a>
-        <a href="#" class="right-sidebar-item">Study Groups</a>
-        <a href="#" class="right-sidebar-item">Campus Events</a>
+        <% if (affiliatedCommunities.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% affiliatedCommunities.forEach((community) => { %>
+            <a href="/communities" class="right-sidebar-item"><%= community.name %></a>
+          <% }) %>
+        <% } %>
       </div>
-
     </aside>
 
   </div>
 
   <%- include('footer', { footerLayout: 'sidebarBoth' }) %>
 
+  <script>
+    const latestCommentTimers = new WeakMap();
+
+    function buildCommentHtml(comment) {
+      return `
+        <div class="post-comment">
+          <div class="post-comment-avatar">${comment.authorInitials || 'UC'}</div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong>${comment.authorName || 'Unknown User'}</strong>
+              <span>${comment.createdAtLabel || ''}</span>
+            </div>
+            <div class="post-comment-text">${(comment.content || '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateCommentBadge(postCard, count) {
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      if (!toggleButton) {
+        return;
+      }
+
+      let countNode = toggleButton.querySelector('.comment-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'comment-count';
+        toggleButton.appendChild(document.createTextNode(' '));
+        toggleButton.appendChild(countNode);
+      }
+
+      countNode.textContent = String(count || 0);
+      countNode.classList.toggle('is-hidden', !(count > 0));
+    }
+
+    function clearLatestCommentHighlight(postCard) {
+      const highlightedComment = postCard.querySelector('.post-comment.focused');
+      if (highlightedComment) {
+        highlightedComment.classList.remove('focused');
+      }
+    }
+
+    function flashLatestComment(postCard) {
+      clearLatestCommentHighlight(postCard);
+
+      const latestComment = postCard.querySelector('.post-comment[data-comment-id]:last-child');
+      if (!latestComment) {
+        return;
+      }
+
+      latestComment.classList.add('focused');
+
+      const existingTimer = latestCommentTimers.get(postCard);
+      if (existingTimer) {
+        window.clearTimeout(existingTimer);
+      }
+
+      const timerId = window.setTimeout(() => {
+        latestComment.classList.remove('focused');
+        latestCommentTimers.delete(postCard);
+      }, 1200);
+
+      latestCommentTimers.set(postCard, timerId);
+      latestComment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function openComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) {
+        return;
+      }
+
+      commentsPanel.hidden = false;
+      toggleButton.classList.add('active');
+      toggleButton.setAttribute('aria-expanded', 'true');
+
+      if (preview) {
+        preview.hidden = true;
+      }
+
+      const input = commentsPanel.querySelector('.post-comment-input');
+      if (input) {
+        input.focus();
+      }
+    }
+
+    function collapseComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+
+      if (!commentsPanel || !toggleButton) {
+        return;
+      }
+
+      commentsPanel.hidden = true;
+      toggleButton.classList.remove('active');
+      toggleButton.setAttribute('aria-expanded', 'false');
+
+      clearLatestCommentHighlight(postCard);
+
+      const timerId = latestCommentTimers.get(postCard);
+      if (timerId) {
+        window.clearTimeout(timerId);
+        latestCommentTimers.delete(postCard);
+      }
+
+      if (preview) {
+        preview.hidden = false;
+      }
+    }
+
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = likeButton.dataset.postId;
+      if (!postId) {
+        return;
+      }
+
+      if (likeButton.dataset.pending === 'true') {
+        return;
+      }
+
+      const countNode = likeButton.querySelector('.like-count');
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
+
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      if (countNode) {
+        countNode.textContent = String(optimisticCount);
+      }
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        if (countNode) {
+          countNode.textContent = String(payload.likeCount || 0);
+        }
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        if (countNode) {
+          countNode.textContent = String(previousCount);
+        }
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const commentTrigger = event.target.closest('.js-comment-toggle, .js-comment-expand');
+      if (!commentTrigger) {
+        return;
+      }
+
+      const postCard = commentTrigger.closest('.post-card');
+      if (!postCard) {
+        return;
+      }
+
+      const isToggleButton = commentTrigger.classList.contains('js-comment-toggle');
+      const isExpandButton = commentTrigger.classList.contains('js-comment-expand');
+      const commentsPanel = postCard.querySelector('.post-comments');
+
+      if (!commentsPanel) {
+        return;
+      }
+
+      if (isToggleButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        } else {
+          collapseComments(postCard);
+        }
+        return;
+      }
+
+      if (isExpandButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        }
+
+        flashLatestComment(postCard);
+      }
+    });
+
+    document.addEventListener('submit', async (event) => {
+      const commentForm = event.target.closest('.js-comment-form');
+      if (!commentForm) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = commentForm.dataset.postId;
+      const input = commentForm.querySelector('.post-comment-input');
+      const submitButton = commentForm.querySelector('.post-comment-submit');
+      const commentList = commentForm.parentElement.querySelector('.post-comment-list');
+      const commentCountNode = commentForm.closest('.post-card')?.querySelector('.comment-count');
+      const postCard = commentForm.closest('.post-card');
+      const commentsPanel = postCard ? postCard.querySelector('.post-comments') : null;
+      const content = input ? input.value.trim() : '';
+
+      if (!postId || !input || !submitButton || !commentList) {
+        return;
+      }
+
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Posting...';
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ content }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to save comment.');
+        }
+
+        const comments = Array.isArray(payload.comments) ? payload.comments : [];
+        commentList.innerHTML = comments.map(buildCommentHtml).join('');
+
+        if (commentsPanel) {
+          commentsPanel.hidden = false;
+        }
+
+        const preview = postCard ? postCard.querySelector('.post-comment-preview') : null;
+        if (preview) {
+          preview.hidden = true;
+        }
+
+        if (postCard) {
+          const toggleButton = postCard.querySelector('.js-comment-toggle');
+          if (toggleButton) {
+            toggleButton.classList.add('active');
+            toggleButton.setAttribute('aria-expanded', 'true');
+          }
+        }
+
+        if (postCard && typeof payload.commentCount === 'number') {
+          updateCommentBadge(postCard, payload.commentCount);
+        }
+
+        if (postCard) {
+          const commentsPanel = postCard.querySelector('.post-comments');
+          if (commentsPanel && commentsPanel.hidden) {
+            openComments(postCard);
+          }
+        }
+
+        input.value = '';
+      } catch (_err) {
+        // Intentionally silent for now to keep the UI lightweight.
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Comment';
+      }
+    });
+  </script>
+
 </body>
 </html>
->>>>>>> origin/page/feed
