@@ -14,7 +14,7 @@ router.get('/school', (req, res) => {
 });
 
 router.get('/reports', (req, res) => {
-  res.render('reportDashboard');
+  res.redirect('/admin/reports');
 });
 
 router.get('/', (req, res) => {
