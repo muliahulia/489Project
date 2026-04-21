@@ -50,7 +50,7 @@ app.use('/dashboard', dashboardRouter);
 app.use('/feed', feedRouter);
 app.use('/communities', communityRouter);
 app.use('/communities', communityDetailRouter);
-app.use('/admin', adminRouter);
+app.use('/admin/dashboard', adminRouter);
 app.use('/moderation', moderationRouter);
 app.use('/posts', postsRouter);
 app.use('/post', postsRouter);

@@ -14,7 +14,7 @@
 
   <% if (hasAdministrative) { %>
     <div class="sidebar-label">Administrative</div>
-    <a href="/adminDashboard" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
+    <a href="/admin/dashboard" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
     <a href="/reportDashboard" class="<%= currentPage === 'reportDashboard' ? 'active' : '' %>">🚩 Reports</a>
     <a href="/accountModeration" class="<%= currentPage === 'accountModeration' ? 'active' : '' %>">👤 Account Moderation</a>
     <a href="/communityModeration" class="<%= currentPage === 'communityModeration' ? 'active' : '' %>">🏘️ Community Moderation</a>
