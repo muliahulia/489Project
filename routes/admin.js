@@ -72,6 +72,25 @@ function isLikelyUuid(value) {
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function sanitizeModalName(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'update-email' || normalized === 'penalize') {
+    return normalized;
+  }
+  return '';
+}
+
+function isLikelyEmail(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const email = value.trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function normalizeReportType(rawType) {
   if (!rawType || typeof rawType !== 'string') {
     return null;
@@ -966,6 +985,9 @@ router.get('/users/:id', requireAuth, async (req, res, next) => {
   const tab = typeof req.query.tab === 'string' && req.query.tab.trim().toLowerCase() === 'activity'
     ? 'activity'
     : 'overview';
+  const successMessage = typeof req.query.success === 'string' ? req.query.success : '';
+  const errorMessage = typeof req.query.error === 'string' ? req.query.error : '';
+  const openModal = sanitizeModalName(req.query.modal);
   const requestedPage = Number.parseInt(req.query.page, 10);
   const activityPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
@@ -990,11 +1012,125 @@ router.get('/users/:id', requireAuth, async (req, res, next) => {
       userDetail,
       tab,
       activityLogs,
+      successMessage,
+      errorMessage,
+      openModal,
     });
   } catch (_err) {
     const err = new Error('Unable to load user details');
     err.status = 500;
     return next(err);
+  }
+});
+
+router.post('/users/:id/update-email', requireAuth, async (req, res, next) => {
+  const userId = typeof req.params.id === 'string' ? req.params.id.trim() : '';
+  const nextEmail = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+
+  if (!isLikelyUuid(userId)) {
+    const err = new Error('User not found');
+    err.status = 404;
+    return next(err);
+  }
+
+  if (!isLikelyEmail(nextEmail)) {
+    return res.redirect(`/admin/users/${userId}?tab=overview&modal=update-email&error=${encodeURIComponent('Please provide a valid email address')}`);
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const profileResult = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileResult.error || !profileResult.data) {
+      const err = new Error('User not found');
+      err.status = 404;
+      return next(err);
+    }
+
+    const authUpdateResult = await supabase.auth.admin.updateUserById(userId, {
+      email: nextEmail,
+    });
+
+    if (authUpdateResult.error) {
+      return res.redirect(`/admin/users/${userId}?tab=overview&modal=update-email&error=${encodeURIComponent(authUpdateResult.error.message || 'Unable to update email')}`);
+    }
+
+    const profileUpdateResult = await supabase
+      .from('profiles')
+      .update({ email: nextEmail })
+      .eq('id', userId);
+
+    if (profileUpdateResult.error) {
+      return res.redirect(`/admin/users/${userId}?tab=overview&modal=update-email&error=${encodeURIComponent('Auth email updated, but profile email update failed')}`);
+    }
+
+    return res.redirect(`/admin/users/${userId}?tab=overview&success=${encodeURIComponent('Email updated successfully')}`);
+  } catch (_err) {
+    return res.redirect(`/admin/users/${userId}?tab=overview&modal=update-email&error=${encodeURIComponent('Unable to update email')}`);
+  }
+});
+
+router.post('/users/:id/penalize', requireAuth, async (req, res, next) => {
+  const userId = typeof req.params.id === 'string' ? req.params.id.trim() : '';
+  const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+  const expiresAtRaw = typeof req.body.expiresAt === 'string' ? req.body.expiresAt.trim() : '';
+  const adminUserId = req.session && req.session.auth && req.session.auth.user
+    ? req.session.auth.user.id
+    : null;
+
+  if (!isLikelyUuid(userId)) {
+    const err = new Error('User not found');
+    err.status = 404;
+    return next(err);
+  }
+
+  if (!reason) {
+    return res.redirect(`/admin/users/${userId}?tab=overview&modal=penalize&error=${encodeURIComponent('Penalty reason is required')}`);
+  }
+
+  let expiresAt = null;
+  if (expiresAtRaw) {
+    const parsed = new Date(expiresAtRaw);
+    if (Number.isNaN(parsed.getTime())) {
+      return res.redirect(`/admin/users/${userId}?tab=overview&modal=penalize&error=${encodeURIComponent('Invalid expiration date')}`);
+    }
+    expiresAt = parsed.toISOString();
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const profileResult = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileResult.error || !profileResult.data) {
+      const err = new Error('User not found');
+      err.status = 404;
+      return next(err);
+    }
+
+    const penaltyResult = await supabase
+      .from('user_penalties')
+      .insert({
+        user_id: userId,
+        issued_by: adminUserId,
+        reason,
+        expires_at: expiresAt,
+      });
+
+    if (penaltyResult.error) {
+      return res.redirect(`/admin/users/${userId}?tab=overview&modal=penalize&error=${encodeURIComponent('Unable to create penalty')}`);
+    }
+
+    return res.redirect(`/admin/users/${userId}?tab=overview&success=${encodeURIComponent('Penalty added successfully')}`);
+  } catch (_err) {
+    return res.redirect(`/admin/users/${userId}?tab=overview&modal=penalize&error=${encodeURIComponent('Unable to create penalty')}`);
   }
 });
 

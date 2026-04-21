@@ -14,6 +14,70 @@
       flex-wrap: wrap;
     }
 
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .actions-menu {
+      position: relative;
+    }
+
+    .actions-dropdown {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 0.4rem);
+      min-width: 220px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(13,27,42,0.12);
+      padding: 0.4rem;
+      display: none;
+      z-index: 20;
+    }
+
+    .actions-dropdown.open {
+      display: block;
+    }
+
+    .dropdown-item {
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      padding: 0.55rem 0.6rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit;
+      color: var(--text-dark);
+    }
+
+    .dropdown-item:hover {
+      background: #f3f6fb;
+    }
+
+    .status-message {
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .status-message.success {
+      border: 1px solid #bfe6cf;
+      background: #f3fbf7;
+      color: #1d6a43;
+    }
+
+    .status-message.error {
+      border: 1px solid #f0c7c7;
+      background: #fff7f7;
+      color: #8f2f2f;
+    }
+
     .details-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -156,6 +220,82 @@
       font-size: 0.85rem;
       color: var(--text-muted);
     }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 27, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      padding: 1rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 28px rgba(13, 27, 42, 0.2);
+      padding: 1rem;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      margin: 0;
+      color: var(--text-dark);
+    }
+
+    .modal-close {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--text-muted);
+    }
+
+    .modal-form-group {
+      margin-bottom: 0.8rem;
+    }
+
+    .modal-input,
+    .modal-textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      font: inherit;
+      color: var(--text-dark);
+      background: #fff;
+    }
+
+    .modal-textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+    }
   </style>
 </head>
 <body>
@@ -176,6 +316,13 @@
       <div class="page-header">
         <h1 class="page-title">Internal User View</h1>
         <p class="page-subtitle">Administrative profile and moderation context for this user.</p>
+
+        <% if (successMessage) { %>
+          <div class="status-message success"><%= successMessage %></div>
+        <% } %>
+        <% if (errorMessage) { %>
+          <div class="status-message error"><%= errorMessage %></div>
+        <% } %>
 
         <div class="tabs">
           <a href="/admin/users/<%= detail.id %>?tab=overview" class="tab-btn <%= activeTab === 'overview' ? 'active' : '' %>">Overview</a>
@@ -240,6 +387,16 @@
             </div>
           </div>
         <% } else { %>
+          <div class="toolbar">
+            <div class="actions-menu">
+              <button class="btn btn-secondary" type="button" onclick="toggleActionsDropdown()">Actions ▾</button>
+              <div class="actions-dropdown" id="actionsDropdown">
+                <button type="button" class="dropdown-item" onclick="openModal('updateEmailModal')">Update Email</button>
+                <button type="button" class="dropdown-item" onclick="openModal('penalizeModal')">Penalize User</button>
+              </div>
+            </div>
+          </div>
+
           <div class="card">
             <div class="details-grid">
               <div>
@@ -311,10 +468,102 @@
               <a class="btn btn-secondary" href="/admin/users">Back to User Search</a>
             </div>
           </div>
+
+          <div class="modal-backdrop" id="updateEmailModal" onclick="closeModalOnBackdrop(event, 'updateEmailModal')">
+            <div class="modal">
+              <div class="modal-header">
+                <h2 class="modal-title">Update Email</h2>
+                <button class="modal-close" type="button" onclick="closeModal('updateEmailModal')">&times;</button>
+              </div>
+              <form method="post" action="/admin/users/<%= detail.id %>/update-email">
+                <div class="modal-form-group">
+                  <label class="detail-label" for="updatedEmail">New Email</label>
+                  <input class="modal-input" id="updatedEmail" name="email" type="email" required value="<%= detail.email || '' %>" />
+                </div>
+                <div class="modal-actions">
+                  <button class="btn btn-secondary" type="button" onclick="closeModal('updateEmailModal')">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Save Email</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="modal-backdrop" id="penalizeModal" onclick="closeModalOnBackdrop(event, 'penalizeModal')">
+            <div class="modal">
+              <div class="modal-header">
+                <h2 class="modal-title">Penalize User</h2>
+                <button class="modal-close" type="button" onclick="closeModal('penalizeModal')">&times;</button>
+              </div>
+              <form method="post" action="/admin/users/<%= detail.id %>/penalize">
+                <div class="modal-form-group">
+                  <label class="detail-label" for="penaltyReason">Reason</label>
+                  <textarea class="modal-textarea" id="penaltyReason" name="reason" required placeholder="Describe why this penalty is being applied."></textarea>
+                </div>
+                <div class="modal-form-group">
+                  <label class="detail-label" for="penaltyExpiresAt">Expires At (Optional)</label>
+                  <input class="modal-input" id="penaltyExpiresAt" name="expiresAt" type="datetime-local" />
+                </div>
+                <div class="modal-actions">
+                  <button class="btn btn-secondary" type="button" onclick="closeModal('penalizeModal')">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Apply Penalty</button>
+                </div>
+              </form>
+            </div>
+          </div>
         <% } %>
       </div>
     </main>
   </div>
+
+  <script>
+    function toggleActionsDropdown() {
+      var dropdown = document.getElementById('actionsDropdown');
+      if (!dropdown) return;
+      dropdown.classList.toggle('open');
+    }
+
+    function closeActionsDropdown() {
+      var dropdown = document.getElementById('actionsDropdown');
+      if (!dropdown) return;
+      dropdown.classList.remove('open');
+    }
+
+    function openModal(id) {
+      closeActionsDropdown();
+      var modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.add('open');
+      }
+    }
+
+    function closeModal(id) {
+      var modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.remove('open');
+      }
+    }
+
+    function closeModalOnBackdrop(event, id) {
+      if (event.target && event.target.id === id) {
+        closeModal(id);
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      var menu = document.querySelector('.actions-menu');
+      if (!menu) return;
+      if (!menu.contains(event.target)) {
+        closeActionsDropdown();
+      }
+    });
+
+    <% if (openModal === 'update-email') { %>
+      openModal('updateEmailModal');
+    <% } %>
+    <% if (openModal === 'penalize') { %>
+      openModal('penalizeModal');
+    <% } %>
+  </script>
 
 </body>
 </html>
