@@ -175,6 +175,16 @@
       flex-shrink: 0;
       letter-spacing: 0.03em;
       text-decoration: none;
+      overflow: hidden;
+    }
+
+    .member-avatar img,
+    .modal-student-avatar img,
+    .create-post-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .member-avatar:nth-child(2) { background: var(--navy-mid); }
@@ -240,6 +250,7 @@
       justify-content: center;
       border: 2px solid rgba(201,168,76,0.4);
       flex-shrink: 0;
+      overflow: hidden;
     }
 
     .create-post-input-wrap {
@@ -370,6 +381,7 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      overflow: hidden;
     }
 
     .modal-student-name {
@@ -449,7 +461,13 @@
                 <span class="modal-student-name">No students enrolled yet.</span>
               <% } else { %>
                 <% previewMembers.forEach((member) => { %>
-                  <a class="member-avatar" href="<%= member.profileHref || '/profile' %>" title="<%= member.name %>" aria-label="View <%= member.name %> profile"><%= member.initials %></a>
+                  <a class="member-avatar" href="<%= member.profileHref || '/profile' %>" title="<%= member.name %>" aria-label="View <%= member.name %> profile">
+                    <% if (member.profileAvatarUrl) { %>
+                      <img src="<%= member.profileAvatarUrl %>" alt="<%= member.name %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+                    <% } else { %>
+                      <%= member.initials %>
+                    <% } %>
+                  </a>
                 <% }) %>
                 <% if (remainingMemberCount > 0) { %>
                   <button type="button" class="members-overflow" onclick="openMembersModal()">+<%= remainingMemberCount %> more</button>
@@ -469,7 +487,13 @@
           <% } else { %>
             <div class="create-post">
               <div class="create-post-top">
-                <div class="create-post-avatar"><%= user && user.initials ? user.initials : 'UC' %></div>
+                <div class="create-post-avatar">
+                  <% if (user && user.profileAvatarUrl) { %>
+                    <img src="<%= user.profileAvatarUrl %>" alt="Your profile photo" loading="lazy" referrerpolicy="no-referrer" />
+                  <% } else { %>
+                    <%= user && user.initials ? user.initials : 'UC' %>
+                  <% } %>
+                </div>
                 <form class="create-post-input-wrap" method="post" action="/courses/<%= course.id %>/posts">
                   <textarea
                     class="create-post-input"
@@ -513,7 +537,13 @@
         <% } else { %>
           <% courseMembers.forEach((member) => { %>
             <div class="modal-student">
-              <div class="modal-student-avatar"><%= member.initials %></div>
+              <div class="modal-student-avatar">
+                <% if (member.profileAvatarUrl) { %>
+                  <img src="<%= member.profileAvatarUrl %>" alt="<%= member.name %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+                <% } else { %>
+                  <%= member.initials %>
+                <% } %>
+              </div>
               <a class="modal-student-name" href="<%= member.profileHref || '/profile' %>"><%= member.name %></a>
             </div>
           <% }) %>
@@ -550,7 +580,7 @@
     function buildCommentHtml(comment) {
       return `
         <div class="post-comment">
-          <div class="post-comment-avatar">${comment.authorInitials || 'UC'}</div>
+          <div class="post-comment-avatar">${comment.authorAvatarUrl ? `<img src="${comment.authorAvatarUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}" alt="${(comment.authorName || 'User').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')} profile photo" loading="lazy" referrerpolicy="no-referrer"/>` : (comment.authorInitials || 'UC')}</div>
           <div class="post-comment-body">
             <div class="post-comment-meta">
               <strong>${comment.authorName || 'Unknown User'}</strong>

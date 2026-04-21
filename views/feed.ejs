@@ -48,6 +48,14 @@
       display: flex; align-items: center; justify-content: center;
       border: 2px solid rgba(201,168,76,0.4);
       flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .create-post-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .create-post-input-wrap {
@@ -294,7 +302,13 @@
           <div class="form-banner error"><%= createPostError %></div>
         <% } %>
         <div class="create-post-top">
-          <div class="create-post-avatar"><%= user && user.initials ? user.initials : 'UC' %></div>
+          <div class="create-post-avatar">
+            <% if (user && user.profileAvatarUrl) { %>
+              <img src="<%= user.profileAvatarUrl %>" alt="Your profile photo" loading="lazy" referrerpolicy="no-referrer" />
+            <% } else { %>
+              <%= user && user.initials ? user.initials : 'UC' %>
+            <% } %>
+          </div>
           <form class="create-post-input-wrap" method="post" action="/feed/posts" enctype="multipart/form-data">
             <textarea
               class="create-post-input"
@@ -490,6 +504,14 @@
       updateFeedEndState();
     }
 
+    function renderAvatarHtml(className, imageUrl, initials, altText) {
+      if (imageUrl) {
+        return `<div class="${className}"><img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(altText || 'Profile photo')}" loading="lazy" referrerpolicy="no-referrer"/></div>`;
+      }
+
+      return `<div class="${className}">${escapeHtml(initials || 'UC')}</div>`;
+    }
+
     function renderPostCard(post) {
       const postId = post && post.id ? String(post.id) : '';
       const comments = Array.isArray(post && post.comments) ? post.comments : [];
@@ -515,7 +537,7 @@
       const latestCommentHtml = latestComment
         ? `<div class="post-comment-preview" data-post-id="${escapeHtml(postId)}">
             <div class="post-comment post-comment-preview-item">
-              <div class="post-comment-avatar">${escapeHtml(latestComment.authorInitials || 'UC')}</div>
+              ${renderAvatarHtml('post-comment-avatar', latestComment.authorAvatarUrl, latestComment.authorInitials, `${latestComment.authorName || 'User'} profile photo`)}
               <div class="post-comment-body">
                 <div class="post-comment-preview-copy">
                   <span class="post-comment-preview-copy-inner">
@@ -530,7 +552,7 @@
         : '';
       const commentsHtml = comments.map((comment) => `
         <div class="post-comment" data-comment-id="${escapeHtml(comment.id)}">
-          <div class="post-comment-avatar">${escapeHtml(comment.authorInitials || 'UC')}</div>
+          ${renderAvatarHtml('post-comment-avatar', comment.authorAvatarUrl, comment.authorInitials, `${comment.authorName || 'User'} profile photo`)}
           <div class="post-comment-body">
             <div class="post-comment-meta">
               <strong>${escapeHtml(comment.authorName || 'Unknown User')}</strong>
@@ -561,7 +583,7 @@
           </div>
 
           <div class="post-author">
-            <div class="post-avatar-initials">${escapeHtml(post.authorInitials || 'UC')}</div>
+            ${renderAvatarHtml('post-avatar-initials', post.authorAvatarUrl, post.authorInitials, `${post.authorName || 'User'} profile photo`)}
             <div class="post-author-info">
               <span class="post-author-name"><a href="${escapeHtml(post.authorProfileHref || '/profile')}">${escapeHtml(post.authorName || 'Unknown User')}</a></span>
               <span class="post-meta"><a href="/post/${escapeHtml(postId)}">${escapeHtml(post.createdAtLabel || '')}</a></span>
@@ -705,7 +727,7 @@
     function buildCommentHtml(comment) {
       return `
         <div class="post-comment">
-          <div class="post-comment-avatar">${comment.authorInitials || 'UC'}</div>
+          ${renderAvatarHtml('post-comment-avatar', comment.authorAvatarUrl, comment.authorInitials, `${comment.authorName || 'User'} profile photo`)}
           <div class="post-comment-body">
             <div class="post-comment-meta">
               <strong>${comment.authorName || 'Unknown User'}</strong>

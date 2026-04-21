@@ -112,6 +112,14 @@ body {
   justify-content: center;
   border: 2px solid rgba(201, 168, 76, 0.4);
   cursor: pointer;
+  overflow: hidden;
+}
+
+.topbar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /* Shared sidebar styles used by views/sidebar.ejs */
@@ -622,6 +630,14 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.post-comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .post-comment-body {
@@ -726,6 +742,14 @@ body {
   justify-content: center;
   border: 2px solid var(--border);
   letter-spacing: 0.03em;
+  overflow: hidden;
+}
+
+.post-avatar-initials img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .post-author-info {

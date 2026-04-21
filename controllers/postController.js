@@ -6,6 +6,7 @@ const {
   formatCreatedAt,
   fetchAffiliations,
 } = require('../lib/utils');
+const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
 const postModel = require('../models/postModel');
 const FEED_PAGE_SIZE = 10;
 
@@ -27,6 +28,7 @@ function buildFallbackUser(sessionUser) {
     fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
     email: sessionUser.email,
     initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
+    profileAvatarUrl: sessionUser.profileAvatarUrl || null,
   };
 }
 
@@ -45,6 +47,7 @@ async function buildCurrentUserViewModel(supabase, sessionUser) {
       ? currentProfile.last_name
       : sessionUser.lastName || null;
   const email = (currentProfile && currentProfile.email) || sessionUser.email;
+  const media = currentProfile ? await resolveProfileMedia(supabase, currentProfile) : null;
 
   return {
     id: sessionUser.id,
@@ -53,6 +56,8 @@ async function buildCurrentUserViewModel(supabase, sessionUser) {
     fullName: buildDisplayName(firstName, lastName, email),
     email,
     initials: buildInitials(firstName, lastName, email),
+    profileAvatarUrl:
+      (media && media.avatarUrl) || sessionUser.profileAvatarUrl || null,
   };
 }
 
@@ -101,6 +106,7 @@ async function buildCommentState(supabase, postIds) {
 
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
   const profiles = await postModel.fetchProfilesByIds(supabase, authorIds);
+  const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
   const commentCountByPostId = new Map();
   const commentsByPostId = new Map();
@@ -108,6 +114,7 @@ async function buildCommentState(supabase, postIds) {
   comments.forEach((comment) => {
     const author = profileById.get(comment.author_id);
     const authorEmail = (author && author.email) || '';
+    const authorMedia = profileMediaById.get(comment.author_id);
     const list = commentsByPostId.get(comment.post_id) || [];
 
     list.push({
@@ -118,6 +125,7 @@ async function buildCommentState(supabase, postIds) {
         author && author.last_name,
         authorEmail
       ),
+      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
       createdAtLabel: formatCreatedAt(comment.created_at),
       content: comment.content,
     });
@@ -150,6 +158,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
     buildLikeState(supabase, postIds, viewerUserId),
     buildCommentState(supabase, postIds),
   ]);
+  const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
 
   const profileById = new Map(profiles.map((row) => [row.id, row]));
   const courseById = new Map(courses.map((row) => [row.id, row]));
@@ -157,6 +166,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
 
   return postRows.map((post) => {
     const author = profileById.get(post.author_id);
+    const authorMedia = profileMediaById.get(post.author_id);
     const course = courseById.get(post.course_id);
     const community = communityById.get(post.community_id);
     const authorEmail = (author && author.email) || '';
@@ -185,6 +195,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
         author && author.last_name,
         authorEmail
       ),
+      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
       createdAtLabel: formatCreatedAt(post.created_at),
       scopeLabel,
       scopeHref,

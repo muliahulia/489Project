@@ -31,7 +31,13 @@
   </div>
 
   <div class="post-author">
-    <div class="post-avatar-initials"><%= post.authorInitials %></div>
+    <div class="post-avatar-initials">
+      <% if (post.authorAvatarUrl) { %>
+        <img src="<%= post.authorAvatarUrl %>" alt="<%= post.authorName %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+      <% } else { %>
+        <%= post.authorInitials %>
+      <% } %>
+    </div>
     <div class="post-author-info">
       <span class="post-author-name"><a href="<%= postAuthorHref %>"><%= post.authorName %></a></span>
       <span class="post-meta"><a href="/post/<%= post.id %>"><%= post.createdAtLabel %></a></span>
@@ -57,7 +63,13 @@
   <% if (latestComment && !showExpandedComments) { %>
     <div class="post-comment-preview" data-post-id="<%= post.id %>">
       <div class="post-comment post-comment-preview-item">
-        <div class="post-comment-avatar"><%= latestComment.authorInitials %></div>
+        <div class="post-comment-avatar">
+          <% if (latestComment.authorAvatarUrl) { %>
+            <img src="<%= latestComment.authorAvatarUrl %>" alt="<%= latestComment.authorName %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+          <% } else { %>
+            <%= latestComment.authorInitials %>
+          <% } %>
+        </div>
         <div class="post-comment-body">
           <div class="post-comment-preview-copy">
             <span class="post-comment-preview-copy-inner">
@@ -75,7 +87,13 @@
     <div class="post-comment-list">
       <% postComments.forEach((comment) => { %>
         <div class="post-comment" data-comment-id="<%= comment.id %>">
-          <div class="post-comment-avatar"><%= comment.authorInitials %></div>
+          <div class="post-comment-avatar">
+            <% if (comment.authorAvatarUrl) { %>
+              <img src="<%= comment.authorAvatarUrl %>" alt="<%= comment.authorName %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+            <% } else { %>
+              <%= comment.authorInitials %>
+            <% } %>
+          </div>
           <div class="post-comment-body">
             <div class="post-comment-meta">
               <strong><%= comment.authorName %></strong>

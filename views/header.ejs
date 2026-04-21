@@ -35,6 +35,16 @@
   const routeUserInitials = deriveInitialsFromUser(typeof user !== 'undefined' ? user : null);
   const sessionUserInitials = deriveInitialsFromUser(typeof currentUser !== 'undefined' ? currentUser : null);
   const explicitInitials = typeof initials === 'string' ? initials.trim() : '';
+  const routeUserAvatar =
+    user && typeof user === 'object'
+      ? user.profileAvatarUrl || user.avatarUrl || null
+      : null;
+  const sessionUserAvatar =
+    currentUser && typeof currentUser === 'object'
+      ? currentUser.profileAvatarUrl || currentUser.avatarUrl || null
+      : null;
+  const explicitAvatarUrl = typeof avatarUrl === 'string' && avatarUrl.trim() ? avatarUrl.trim() : '';
+  const headerAvatarUrl = routeUserAvatar || sessionUserAvatar || explicitAvatarUrl || '';
   const headerInitials = routeUserInitials || sessionUserInitials || explicitInitials || 'UC';
 %>
 <nav class="topbar">
@@ -49,6 +59,12 @@
     />
   </div>
   <div class="topbar-right">
-    <div class="topbar-avatar"><%= headerInitials %></div>
+    <div class="topbar-avatar">
+      <% if (headerAvatarUrl) { %>
+        <img src="<%= headerAvatarUrl %>" alt="Profile photo" />
+      <% } else { %>
+        <%= headerInitials %>
+      <% } %>
+    </div>
   </div>
 </nav>

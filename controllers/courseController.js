@@ -5,6 +5,7 @@ const {
   buildProfilePath,
   formatCreatedAt,
 } = require('../lib/utils');
+const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
 const courseModel = require('../models/courseModel');
 
 const PREVIEW_MEMBER_COUNT = 5;
@@ -54,6 +55,7 @@ function buildFallbackUser(sessionUser) {
     fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
     email: sessionUser.email,
     initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
+    profileAvatarUrl: sessionUser.profileAvatarUrl || null,
   };
 }
 
@@ -72,6 +74,8 @@ function buildCurrentUserViewModel(profile, sessionUser) {
     fullName: buildDisplayName(firstName, lastName, email),
     email,
     initials: buildInitials(firstName, lastName, email),
+    profileAvatarUrl:
+      (profile && profile.profileAvatarUrl) || sessionUser.profileAvatarUrl || null,
   };
 }
 
@@ -200,6 +204,7 @@ async function buildCommentState(supabase, postIds) {
   const comments = await courseModel.fetchCommentsByPostIds(supabase, postIds);
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
   const profiles = await courseModel.fetchProfilesByIds(supabase, authorIds);
+  const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
   const commentCountByPostId = new Map();
   const commentsByPostId = new Map();
@@ -207,6 +212,7 @@ async function buildCommentState(supabase, postIds) {
   comments.forEach((comment) => {
     const author = profileById.get(comment.author_id);
     const authorEmail = (author && author.email) || '';
+    const authorMedia = profileMediaById.get(comment.author_id);
     const list = commentsByPostId.get(comment.post_id) || [];
 
     list.push({
@@ -217,6 +223,7 @@ async function buildCommentState(supabase, postIds) {
         author && author.last_name,
         authorEmail
       ),
+      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
       createdAtLabel: formatCreatedAt(comment.created_at),
       content: comment.content,
     });
@@ -243,11 +250,13 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
     buildLikeState(supabase, postIds, viewerUserId),
     buildCommentState(supabase, postIds),
   ]);
+  const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
 
   return postRows.map((post) => {
     const author = profileById.get(post.author_id);
     const authorEmail = (author && author.email) || '';
+    const authorMedia = profileMediaById.get(post.author_id);
 
     return {
       id: post.id,
@@ -263,6 +272,7 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
         author && author.last_name,
         authorEmail
       ),
+      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
       createdAtLabel: formatCreatedAt(post.created_at),
       scopeLabel: course.name,
       scopeHref: `/courses/${course.id}`,
@@ -284,6 +294,7 @@ function buildMemberViewModel(profile) {
       profile && profile.first_name,
       profile && profile.last_name
     ),
+    profileAvatarUrl: profile && profile.profileAvatarUrl ? profile.profileAvatarUrl : null,
     initials: buildInitials(
       profile && profile.first_name,
       profile && profile.last_name,
@@ -306,6 +317,10 @@ async function listCourses(req, res) {
       courseModel.fetchProfileById(supabase, sessionUser.id),
       courseModel.fetchCourseEnrollmentsForUser(supabase, sessionUser.id),
     ]);
+    const profileMedia = profile ? await resolveProfileMedia(supabase, profile) : null;
+    if (profile) {
+      profile.profileAvatarUrl = profileMedia && profileMedia.avatarUrl ? profileMedia.avatarUrl : null;
+    }
     const user = buildCurrentUserViewModel(profile, sessionUser);
     const schoolId = profile && profile.school_id ? profile.school_id : null;
     const userEnrollmentByCourseId = new Map(
@@ -562,6 +577,10 @@ async function showCourseById(req, res) {
       courseModel.fetchProfileById(supabase, sessionUser.id),
       courseModel.fetchCourseById(supabase, courseId),
     ]);
+    const profileMedia = profile ? await resolveProfileMedia(supabase, profile) : null;
+    if (profile) {
+      profile.profileAvatarUrl = profileMedia && profileMedia.avatarUrl ? profileMedia.avatarUrl : null;
+    }
     const user = buildCurrentUserViewModel(profile, sessionUser);
 
     if (!courseRow) {
@@ -589,6 +608,10 @@ async function showCourseById(req, res) {
     const canViewPosts = Boolean(viewerEnrollment || viewerIsInstructor);
     const memberIds = [...new Set(enrollments.map((row) => row.user_id).filter(Boolean))];
     const memberProfiles = await courseModel.fetchProfilesByIds(supabase, memberIds);
+    const memberMediaById = await resolveProfileMediaMap(supabase, memberProfiles);
+    memberProfiles.forEach((memberProfile) => {
+      memberProfile.profileAvatarUrl = memberMediaById.get(memberProfile.id)?.avatarUrl || null;
+    });
     const members = memberProfiles
       .map((profileRow) => buildMemberViewModel(profileRow))
       .sort((left, right) => left.name.localeCompare(right.name, 'en', { sensitivity: 'base' }));

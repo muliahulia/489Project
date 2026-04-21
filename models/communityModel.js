@@ -252,7 +252,7 @@ async function fetchCommunityIdentity(supabase, communityId) {
 async function fetchProfileById(supabase, userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id,first_name,last_name,email')
+    .select('*')
     .eq('id', userId)
     .maybeSingle();
 
@@ -270,7 +270,7 @@ async function fetchProfilesByIds(supabase, ids) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id,first_name,last_name,email')
+    .select('*')
     .in('id', ids);
 
   if (error || !data) {

@@ -5,6 +5,7 @@ const {
   buildProfilePath,
   formatCreatedAt: formatPostDate,
 } = require('../lib/utils');
+const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
 const communityModel = require('../models/communityModel');
 
 const PREVIEW_MEMBER_COUNT = 5;
@@ -80,6 +81,7 @@ function buildFallbackUser(sessionUser) {
     fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
     email: sessionUser.email,
     initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
+    profileAvatarUrl: sessionUser.profileAvatarUrl || null,
   };
 }
 
@@ -119,6 +121,7 @@ async function buildCommentState(supabase, postIds) {
   const comments = await communityModel.fetchCommentsByPostIds(supabase, postIds);
   const commentAuthorIds = [...new Set(comments.map((row) => row.author_id).filter(Boolean))];
   const commentAuthorProfiles = await communityModel.fetchProfilesByIds(supabase, commentAuthorIds);
+  const commentAuthorMediaById = await resolveProfileMediaMap(supabase, commentAuthorProfiles);
   const commentAuthorById = new Map(commentAuthorProfiles.map((row) => [row.id, row]));
 
   const commentCountByPostId = new Map();
@@ -127,6 +130,7 @@ async function buildCommentState(supabase, postIds) {
   comments.forEach((comment) => {
     const author = commentAuthorById.get(comment.author_id);
     const authorName = displayName(author);
+    const authorMedia = commentAuthorMediaById.get(comment.author_id);
     const authorEmail = (author && author.email) || '';
     const list = commentsByPostId.get(comment.post_id) || [];
 
@@ -138,6 +142,7 @@ async function buildCommentState(supabase, postIds) {
         author && author.last_name,
         authorEmail
       ),
+      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
       createdAtLabel: formatPostDate(comment.created_at),
       content: comment.content,
     });
@@ -185,7 +190,9 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
   const isMember = Boolean(viewerUserId && memberIdSet.has(viewerUserId));
 
   const memberProfiles = await communityModel.fetchProfilesByIds(supabase, memberIds);
+  const memberMediaById = await resolveProfileMediaMap(supabase, memberProfiles);
   const profileById = new Map(memberProfiles.map((row) => [row.id, row]));
+  const creatorMedia = creatorProfile ? await resolveProfileMedia(supabase, creatorProfile) : null;
 
   const members = memberIds
     .map((memberId) => {
@@ -196,6 +203,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
           id: memberId,
           name: displayName(creatorProfile),
           initials: buildInitials(creatorProfile.first_name, creatorProfile.last_name, creatorProfile.email),
+          profileAvatarUrl: creatorMedia && creatorMedia.avatarUrl ? creatorMedia.avatarUrl : null,
           profileHref: buildProfilePath(
             memberId,
             creatorProfile.first_name,
@@ -212,6 +220,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
           profile && profile.last_name,
           profile && profile.email
         ),
+        profileAvatarUrl: memberMediaById.get(memberId)?.avatarUrl || null,
         profileHref: buildProfilePath(
           memberId,
           profile && profile.first_name,
@@ -228,11 +237,13 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
     buildLikeState(supabase, postIds, viewerUserId),
     buildCommentState(supabase, postIds),
   ]);
+  const postAuthorMediaById = await resolveProfileMediaMap(supabase, postAuthorProfiles);
   const postAuthorById = new Map(postAuthorProfiles.map((row) => [row.id, row]));
 
   const posts = postRows.map((row) => {
     const author = postAuthorById.get(row.author_id);
     const authorName = displayName(author);
+    const authorMedia = postAuthorMediaById.get(row.author_id);
     const content = row.content && String(row.content).trim() ? String(row.content).trim() : '';
 
     return {
@@ -249,6 +260,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
         author && author.last_name,
         author && author.email
       ),
+      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
       createdAtLabel: formatPostDate(row.created_at),
       scopeLabel: communityRow.name || 'Community',
       scopeHref: `/communities/${communityRow.id}`,
@@ -301,6 +313,7 @@ async function renderCommunity(req, res, explicitCommunityId) {
   try {
     const supabase = createSupabaseAdminClient();
     const currentProfile = await communityModel.fetchProfileById(supabase, sessionUser.id);
+    const currentMedia = currentProfile ? await resolveProfileMedia(supabase, currentProfile) : null;
     const currentFirstName = (currentProfile && currentProfile.first_name) || sessionUser.firstName || null;
     const currentLastName =
       (currentProfile && typeof currentProfile.last_name === 'string')
@@ -322,6 +335,7 @@ async function renderCommunity(req, res, explicitCommunityId) {
         currentLastName,
         (currentProfile && currentProfile.email) || sessionUser.email
       ),
+      profileAvatarUrl: currentMedia && currentMedia.avatarUrl ? currentMedia.avatarUrl : null,
     };
 
     const communityId = await communityModel.resolveCommunityId(

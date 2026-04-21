@@ -1,4 +1,5 @@
 const { createSupabaseAdminClient } = require('../lib/supabase');
+const { resolveProfileMedia } = require('../lib/profileMedia');
 
 async function attachSessionUser(req, res, next) {
   const authSession = req.session && req.session.auth;
@@ -8,12 +9,29 @@ async function attachSessionUser(req, res, next) {
       const supabase = createSupabaseAdminClient();
       const { data, error } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', authSession.user.id)
         .maybeSingle();
 
-      if (!error && data && typeof data.role === 'string' && data.role.trim()) {
-        authSession.user.role = data.role.trim();
+      if (!error && data) {
+        if (typeof data.role === 'string' && data.role.trim()) {
+          authSession.user.role = data.role.trim();
+        }
+
+        if (typeof data.first_name === 'string') {
+          authSession.user.firstName = data.first_name;
+        }
+
+        if (typeof data.last_name === 'string') {
+          authSession.user.lastName = data.last_name;
+        }
+
+        if (typeof data.email === 'string' && data.email.trim()) {
+          authSession.user.email = data.email.trim();
+        }
+
+        const media = await resolveProfileMedia(supabase, data);
+        authSession.user.profileAvatarUrl = media.avatarUrl || null;
       }
     } catch (_err) {
       // Keep existing session role when profile lookup fails.
