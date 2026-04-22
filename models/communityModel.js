@@ -137,6 +137,7 @@ async function createCommunityRecord(supabase, community) {
       name: community.name,
       description: community.description || null,
       creator_id: community.creatorId,
+      school_id: community.schoolId || null,
       is_private: Boolean(community.isPrivate),
       logo_bucket: community.logoBucket || DEFAULT_STORAGE_BUCKET,
       logo_path: community.logoPath || null,
@@ -144,11 +145,10 @@ async function createCommunityRecord(supabase, community) {
     .select('id')
     .single();
 
-  if (error || !data) {
-    return null;
-  }
-
-  return data;
+  return {
+    community: error || !data ? null : data,
+    error: error || null,
+  };
 }
 
 async function upsertCommunityMembership(supabase, membership) {

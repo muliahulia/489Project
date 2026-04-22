@@ -13,6 +13,7 @@ const {
   buildSchoolScopeOptions,
 } = require('../lib/schoolScope');
 const communityModel = require('../models/communityModel');
+const userActivityLogModel = require('../models/userActivityLogModel');
 
 const PREVIEW_MEMBER_COUNT = 5;
 const DEFAULT_DESCRIPTION = 'No description has been added for this community yet.';
@@ -615,46 +616,164 @@ function showCreateCommunity(req, res) {
 async function createCommunity(req, res) {
   const sessionUser = req.session.auth.user;
   const { communityName, description, isPrivate, logoPath } = normalizeCreatePayload(req.body);
+  const requestContext = {
+    ip: req.ip || null,
+    userAgent: req.get('user-agent') || null,
+  };
 
   if (!communityName) {
+    try {
+      const logSupabase = createSupabaseAdminClient();
+      await userActivityLogModel.insertUserActivityLog(logSupabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_invalid',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          reason: 'missing_name',
+          hasDescription: Boolean(description),
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          ...requestContext,
+        },
+      });
+    } catch (logErr) {
+      console.error('COMMUNITY CREATE VALIDATION LOG ERROR:', {
+        userId: sessionUser.id,
+        message: logErr && logErr.message ? logErr.message : null,
+      });
+    }
     return res.redirect(
       '/communities/create-community?error=' + encodeURIComponent('Community name is required.')
     );
   }
 
+  let supabase = null;
   try {
-    const supabase = createSupabaseAdminClient();
+    supabase = createSupabaseAdminClient();
     const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
-    if (!viewerContext.isGlobalAdmin && !viewerContext.schoolId) {
+    const resolvedSchoolId = viewerContext.schoolId || sessionUser.schoolId || null;
+    if (!resolvedSchoolId) {
+      await userActivityLogModel.insertUserActivityLog(supabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_blocked',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          reason: 'missing_school_id',
+          attemptedName: communityName,
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          isGlobalAdmin: Boolean(viewerContext.isGlobalAdmin),
+          ...requestContext,
+        },
+      });
       return res.redirect(
         '/communities/create-community?error='
         + encodeURIComponent('Your profile must be linked to a school to create communities.')
       );
     }
-    const createdCommunity = await communityModel.createCommunityRecord(supabase, {
+    const createResult = await communityModel.createCommunityRecord(supabase, {
       name: communityName,
       description,
       creatorId: sessionUser.id,
+      schoolId: resolvedSchoolId,
       isPrivate,
       logoBucket: communityModel.DEFAULT_STORAGE_BUCKET,
       logoPath,
     });
+    const createdCommunity = createResult.community;
 
     if (!createdCommunity) {
+      if (createResult.error) {
+        console.error('CREATE COMMUNITY DB ERROR:', {
+          userId: sessionUser.id,
+          code: createResult.error.code || null,
+          message: createResult.error.message || null,
+          details: createResult.error.details || null,
+          hint: createResult.error.hint || null,
+        });
+      }
+      await userActivityLogModel.insertUserActivityLog(supabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_failed',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          attemptedName: communityName,
+          schoolId: resolvedSchoolId,
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          dbErrorCode: createResult.error && createResult.error.code ? createResult.error.code : null,
+          dbErrorMessage: createResult.error && createResult.error.message
+            ? createResult.error.message
+            : null,
+          dbErrorDetails: createResult.error && createResult.error.details
+            ? createResult.error.details
+            : null,
+          dbErrorHint: createResult.error && createResult.error.hint ? createResult.error.hint : null,
+          ...requestContext,
+        },
+      });
       return res.redirect(
         '/communities/create-community?error=' +
           encodeURIComponent('Unable to create community right now.')
       );
     }
 
-    await communityModel.upsertCommunityMembership(supabase, {
+    const membershipUpserted = await communityModel.upsertCommunityMembership(supabase, {
       userId: sessionUser.id,
       communityId: createdCommunity.id,
       role: 'owner',
     });
 
+    if (!membershipUpserted) {
+      console.error('COMMUNITY OWNER MEMBERSHIP UPSERT FAILED:', {
+        userId: sessionUser.id,
+        communityId: createdCommunity.id,
+      });
+    }
+
+    await userActivityLogModel.insertUserActivityLog(supabase, {
+      userId: sessionUser.id,
+      actionType: 'community_created',
+      targetType: 'community',
+      targetId: createdCommunity.id,
+      metadata: {
+        name: communityName,
+        schoolId: resolvedSchoolId,
+        isPrivate,
+        hasDescription: Boolean(description),
+        hasLogoPath: Boolean(logoPath),
+        ownerMembershipUpserted: membershipUpserted,
+        ...requestContext,
+      },
+    });
+
     return res.redirect(`/communities/${createdCommunity.id}`);
-  } catch (_err) {
+  } catch (err) {
+    console.error('CREATE COMMUNITY ERROR:', {
+      userId: sessionUser.id,
+      message: err && err.message ? err.message : 'Unknown create-community error',
+      stack: err && err.stack ? err.stack : null,
+    });
+    if (supabase) {
+      await userActivityLogModel.insertUserActivityLog(supabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_failed',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          attemptedName: communityName,
+          schoolId: sessionUser.schoolId || null,
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          reason: 'unexpected_exception',
+          errorMessage: err && err.message ? err.message : null,
+          ...requestContext,
+        },
+      });
+    }
     return res.redirect(
       '/communities/create-community?error=' + encodeURIComponent('Unable to create community right now.')
     );
