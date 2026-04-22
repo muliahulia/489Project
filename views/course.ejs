@@ -611,6 +611,7 @@
 
       countNode.textContent = String(count || 0);
       countNode.classList.toggle('is-hidden', !(count > 0));
+      toggleButton.classList.toggle('has-count', count > 0);
     }
 
     function clearLatestCommentHighlight(postCard) {
@@ -666,6 +667,26 @@
       }
     }
 
+    function updateLikeBadge(likeButton, count) {
+      if (!likeButton) {
+        return;
+      }
+
+      let countNode = likeButton.querySelector('.like-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'like-count';
+        likeButton.appendChild(document.createTextNode(' '));
+        likeButton.appendChild(countNode);
+      }
+
+      const parsedCount = Number.parseInt(String(count), 10);
+      const safeCount = Number.isFinite(parsedCount) ? Math.max(0, parsedCount) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      likeButton.classList.toggle('has-count', safeCount > 0);
+    }
+
     function collapseComments(postCard) {
       const commentsPanel = postCard.querySelector('.post-comments');
       const toggleButton = postCard.querySelector('.js-comment-toggle');
@@ -705,9 +726,8 @@
         return;
       }
 
-      const countNode = likeButton.querySelector('.like-count');
       const previousLiked = likeButton.dataset.liked === 'true';
-      const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
+      const previousCount = Number.parseInt((likeButton.querySelector('.like-count') || {}).textContent || '0', 10) || 0;
       const optimisticLiked = !previousLiked;
       const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
 
@@ -716,9 +736,7 @@
       likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
       likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
       likeButton.classList.toggle('active', optimisticLiked);
-      if (countNode) {
-        countNode.textContent = String(optimisticCount);
-      }
+      updateLikeBadge(likeButton, optimisticCount);
 
       try {
         const response = await fetch(`/feed/posts/${postId}/like`, {
@@ -736,16 +754,12 @@
         likeButton.dataset.liked = payload.liked ? 'true' : 'false';
         likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
         likeButton.classList.toggle('active', Boolean(payload.liked));
-        if (countNode) {
-          countNode.textContent = String(payload.likeCount || 0);
-        }
+        updateLikeBadge(likeButton, payload.likeCount);
       } catch (_err) {
         likeButton.dataset.liked = previousLiked ? 'true' : 'false';
         likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
         likeButton.classList.toggle('active', previousLiked);
-        if (countNode) {
-          countNode.textContent = String(previousCount);
-        }
+        updateLikeBadge(likeButton, previousCount);
       } finally {
         likeButton.dataset.pending = 'false';
         likeButton.classList.remove('pending');

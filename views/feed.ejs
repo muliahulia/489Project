@@ -521,7 +521,11 @@
       const canDelete = isOwner || isAdmin;
       const commentCount = Number.isInteger(post && post.commentCount) ? post.commentCount : comments.length;
       const likeCount = Number.isInteger(post && post.likeCount) ? post.likeCount : 0;
+      const hasCommentCount = commentCount > 0;
+      const hasLikeCount = likeCount > 0;
       const liked = Boolean(post && post.liked);
+      const authorRole = post && typeof post.authorRole === 'string' ? post.authorRole.trim().toLowerCase() : '';
+      const authorRoleLabel = post && typeof post.authorRoleLabel === 'string' ? post.authorRoleLabel.trim() : '';
       const imageHtml = post && post.imageUrl
         ? `<div class="post-image">
             <button
@@ -567,25 +571,50 @@
         <div class="post-card feed-enter" data-post-id="${escapeHtml(postId)}">
           <div class="post-actions">
             <button
-              class="post-action-btn like-btn js-like-btn ${liked ? 'active' : ''}"
+              class="post-action-btn like-btn js-like-btn ${liked ? 'active' : ''} ${hasLikeCount ? 'has-count' : ''}"
               title="Like"
               data-post-id="${escapeHtml(postId)}"
               data-liked="${liked ? 'true' : 'false'}"
               aria-pressed="${liked ? 'true' : 'false'}"
             >
-              👍 <span class="like-count">${likeCount}</span>
+              👍 <span class="like-count ${hasLikeCount ? '' : 'is-hidden'}">${likeCount}</span>
             </button>
-            <button class="post-action-btn comment-btn js-comment-toggle" title="Comment" type="button" data-post-id="${escapeHtml(postId)}">
-              💬 <span class="comment-count ${commentCount ? '' : 'is-hidden'}">${commentCount || 0}</span>
+            <button class="post-action-btn comment-btn js-comment-toggle ${hasCommentCount ? 'has-count' : ''}" title="Comment" type="button" data-post-id="${escapeHtml(postId)}">
+              💬 <span class="comment-count ${hasCommentCount ? '' : 'is-hidden'}">${commentCount || 0}</span>
             </button>
-            <button class="post-action-btn js-report-btn" title="Report" type="button" data-post-id="${escapeHtml(postId)}">🚩</button>
-            ${canDelete ? `<button class="post-action-btn js-delete-btn" title="Delete" type="button" data-post-id="${escapeHtml(postId)}" style="color: var(--error);">🗑️</button>` : ''}
+            <div class="post-menu">
+              <button
+                class="post-action-btn post-menu-toggle js-post-menu-toggle"
+                type="button"
+                title="More actions"
+                aria-haspopup="true"
+                aria-expanded="false"
+                data-post-id="${escapeHtml(postId)}"
+              >⋯</button>
+              <div class="post-menu-list" data-post-id="${escapeHtml(postId)}" hidden>
+                <button class="post-menu-item js-report-btn" type="button" data-post-id="${escapeHtml(postId)}">
+                  <span class="post-menu-emoji" aria-hidden="true">🚩</span>
+                  <span>Report</span>
+                </button>
+                ${canDelete
+                  ? `<button class="post-menu-item is-danger js-delete-btn" type="button" data-post-id="${escapeHtml(postId)}">
+                       <span class="post-menu-emoji" aria-hidden="true">🗑️</span>
+                       <span>Delete</span>
+                     </button>`
+                  : ''}
+              </div>
+            </div>
           </div>
 
           <div class="post-author">
             ${renderAvatarHtml('post-avatar-initials', post.authorAvatarUrl, post.authorInitials, `${post.authorName || 'User'} profile photo`)}
             <div class="post-author-info">
-              <span class="post-author-name"><a href="${escapeHtml(post.authorProfileHref || '/profile')}">${escapeHtml(post.authorName || 'Unknown User')}</a></span>
+              <div class="post-author-name-row">
+                <span class="post-author-name"><a href="${escapeHtml(post.authorProfileHref || '/profile')}">${escapeHtml(post.authorName || 'Unknown User')}</a></span>
+                ${authorRoleLabel
+                  ? `<span class="post-author-role-pill ${authorRole === 'admin' ? 'is-admin' : 'is-official'}">${escapeHtml(authorRoleLabel)}</span>`
+                  : ''}
+              </div>
               <span class="post-meta"><a href="/post/${escapeHtml(postId)}">${escapeHtml(post.createdAtLabel || '')}</a></span>
               <span class="post-community"><a href="${escapeHtml(post.scopeHref || '#')}">${escapeHtml(post.scopeLabel || 'General')}</a></span>
             </div>
@@ -617,6 +646,22 @@
           </div>
         </div>
       `;
+    }
+
+    function updateLikeBadge(likeButton, count) {
+      if (!likeButton) return;
+      let countNode = likeButton.querySelector('.like-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'like-count';
+        likeButton.appendChild(document.createTextNode(' '));
+        likeButton.appendChild(countNode);
+      }
+
+      const safeCount = Number.isInteger(count) ? Math.max(0, count) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      likeButton.classList.toggle('has-count', safeCount > 0);
     }
 
     async function loadMorePosts() {
@@ -756,6 +801,7 @@
 
       countNode.textContent = String(count || 0);
       countNode.classList.toggle('is-hidden', !(count > 0));
+      toggleButton.classList.toggle('has-count', count > 0);
     }
 
     function clearLatestCommentHighlight(postCard) {
@@ -824,9 +870,11 @@
       const postId = likeButton.dataset.postId;
       if (!postId || likeButton.dataset.pending === 'true') return;
 
-      const countNode = likeButton.querySelector('.like-count');
       const previousLiked = likeButton.dataset.liked === 'true';
-      const previousCount = countNode ? Number.parseInt(countNode.textContent, 10) || 0 : 0;
+      const previousCount = Number.parseInt(
+        (likeButton.querySelector('.like-count') || {}).textContent || '0',
+        10
+      ) || 0;
       const optimisticLiked = !previousLiked;
       const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
 
@@ -835,7 +883,7 @@
       likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
       likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
       likeButton.classList.toggle('active', optimisticLiked);
-      if (countNode) countNode.textContent = String(optimisticCount);
+      updateLikeBadge(likeButton, optimisticCount);
 
       try {
         const response = await fetch(`/feed/posts/${postId}/like`, {
@@ -849,12 +897,12 @@
         likeButton.dataset.liked = payload.liked ? 'true' : 'false';
         likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
         likeButton.classList.toggle('active', Boolean(payload.liked));
-        if (countNode) countNode.textContent = String(payload.likeCount || 0);
+        updateLikeBadge(likeButton, Number.isInteger(payload.likeCount) ? payload.likeCount : 0);
       } catch (_err) {
         likeButton.dataset.liked = previousLiked ? 'true' : 'false';
         likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
         likeButton.classList.toggle('active', previousLiked);
-        if (countNode) countNode.textContent = String(previousCount);
+        updateLikeBadge(likeButton, previousCount);
       } finally {
         likeButton.dataset.pending = 'false';
         likeButton.classList.remove('pending');

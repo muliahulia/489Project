@@ -8,28 +8,46 @@
   <% const postAuthorHref = post.authorProfileHref || '/profile'; %>
   <% const postAuthorRole = typeof post.authorRole === 'string' ? post.authorRole.trim().toLowerCase() : ''; %>
   <% const postAuthorRoleLabel = typeof post.authorRoleLabel === 'string' ? post.authorRoleLabel.trim() : ''; %>
+  <% const likeCountValue = Number(post.likeCount) || 0; %>
+  <% const commentCountValue = Number(post.commentCount) || 0; %>
+  <% const hasLikeCount = likeCountValue > 0; %>
+  <% const hasCommentCount = commentCountValue > 0; %>
 
   <div class="post-actions">
     <button
-      class="post-action-btn like-btn js-like-btn <%= post.liked ? 'active' : '' %>"
+      class="post-action-btn like-btn js-like-btn <%= post.liked ? 'active' : '' %> <%= hasLikeCount ? 'has-count' : '' %>"
       title="Like"
       data-post-id="<%= post.id %>"
       data-liked="<%= post.liked ? 'true' : 'false' %>"
       aria-pressed="<%= post.liked ? 'true' : 'false' %>"
     >
-      👍 <span class="like-count"><%= post.likeCount || 0 %></span>
+      👍 <span class="like-count <%= hasLikeCount ? '' : 'is-hidden' %>"><%= likeCountValue %></span>
     </button>
-    <button class="post-action-btn comment-btn js-comment-toggle" title="Comment" type="button" data-post-id="<%= post.id %>">
-      💬 <span class="comment-count <%= post.commentCount ? '' : 'is-hidden' %>"><%= post.commentCount || 0 %></span>
+    <button class="post-action-btn comment-btn js-comment-toggle <%= hasCommentCount ? 'has-count' : '' %>" title="Comment" type="button" data-post-id="<%= post.id %>">
+      💬 <span class="comment-count <%= hasCommentCount ? '' : 'is-hidden' %>"><%= commentCountValue %></span>
     </button>
-    <button class="post-action-btn js-report-btn" title="Report" type="button" data-post-id="<%= post.id %>">
-      🚩
-    </button>
-    <% if (isOwner || isAdmin) { %>
-      <button class="post-action-btn js-delete-btn" title="Delete" type="button" data-post-id="<%= post.id %>" style="color: var(--error);">
-        🗑️
-      </button>
-    <% } %>
+    <div class="post-menu">
+      <button
+        class="post-action-btn post-menu-toggle js-post-menu-toggle"
+        type="button"
+        title="More actions"
+        aria-haspopup="true"
+        aria-expanded="false"
+        data-post-id="<%= post.id %>"
+      >⋯</button>
+      <div class="post-menu-list" data-post-id="<%= post.id %>" hidden>
+        <button class="post-menu-item js-report-btn" type="button" data-post-id="<%= post.id %>">
+          <span class="post-menu-emoji" aria-hidden="true">🚩</span>
+          <span>Report</span>
+        </button>
+        <% if (isOwner || isAdmin) { %>
+          <button class="post-menu-item is-danger js-delete-btn" type="button" data-post-id="<%= post.id %>">
+            <span class="post-menu-emoji" aria-hidden="true">🗑️</span>
+            <span>Delete</span>
+          </button>
+        <% } %>
+      </div>
+    </div>
   </div>
 
   <div class="post-author">
@@ -286,10 +304,42 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         window.closePostImage();
+        document.querySelectorAll('.post-menu-list').forEach((menu) => {
+          menu.hidden = true;
+        });
+        document.querySelectorAll('.js-post-menu-toggle').forEach((toggle) => {
+          toggle.setAttribute('aria-expanded', 'false');
+        });
       }
     });
 
+    function closeAllPostMenus() {
+      document.querySelectorAll('.post-menu-list').forEach((menu) => {
+        menu.hidden = true;
+      });
+      document.querySelectorAll('.js-post-menu-toggle').forEach((toggle) => {
+        toggle.setAttribute('aria-expanded', 'false');
+      });
+    }
+
     document.addEventListener('click', async (e) => {
+      const menuToggle = e.target.closest('.js-post-menu-toggle');
+      if (menuToggle) {
+        const postId = menuToggle.dataset.postId || '';
+        const menu = document.querySelector(`.post-menu-list[data-post-id="${postId}"]`);
+        const isExpanded = menuToggle.getAttribute('aria-expanded') === 'true';
+        closeAllPostMenus();
+        if (menu && !isExpanded) {
+          menu.hidden = false;
+          menuToggle.setAttribute('aria-expanded', 'true');
+        }
+        return;
+      }
+
+      if (!e.target.closest('.post-menu')) {
+        closeAllPostMenus();
+      }
+
       const imageTrigger = e.target.closest('.js-post-image-trigger');
       if (imageTrigger) {
         const imageUrl = imageTrigger.dataset.imageUrl || '';
@@ -307,6 +357,7 @@
 
       const reportBtn = e.target.closest('.js-report-btn');
       if (reportBtn) {
+        closeAllPostMenus();
         const postId = reportBtn.dataset.postId;
         const modal = document.getElementById('report-modal-' + postId);
         if (modal) {
@@ -319,6 +370,7 @@
 
       const deleteBtn = e.target.closest('.js-delete-btn');
       if (deleteBtn) {
+        closeAllPostMenus();
         const postId = deleteBtn.dataset.postId;
         const confirmed = await window.confirmUi('Delete this post?');
         if (!confirmed) return;
