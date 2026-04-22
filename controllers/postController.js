@@ -170,6 +170,14 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
     const course = courseById.get(post.course_id);
     const community = communityById.get(post.community_id);
     const authorEmail = (author && author.email) || '';
+    const normalizedAuthorRole =
+      author && typeof author.role === 'string' ? author.role.trim().toLowerCase() : '';
+    let authorRoleLabel = null;
+    if (normalizedAuthorRole === 'admin') {
+      authorRoleLabel = 'UniConnect Admin';
+    } else if (normalizedAuthorRole === 'official') {
+      authorRoleLabel = 'School Official';
+    }
     let scopeLabel = 'General';
     let scopeHref = '#';
 
@@ -190,6 +198,8 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
         author && author.last_name
       ),
       authorName: displayName(author),
+      authorRole: normalizedAuthorRole,
+      authorRoleLabel,
       authorInitials: buildInitials(
         author && author.first_name,
         author && author.last_name,

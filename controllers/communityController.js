@@ -244,6 +244,14 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
     const author = postAuthorById.get(row.author_id);
     const authorName = displayName(author);
     const authorMedia = postAuthorMediaById.get(row.author_id);
+    const normalizedAuthorRole =
+      author && typeof author.role === 'string' ? author.role.trim().toLowerCase() : '';
+    let authorRoleLabel = null;
+    if (normalizedAuthorRole === 'admin') {
+      authorRoleLabel = 'UniConnect Admin';
+    } else if (normalizedAuthorRole === 'official') {
+      authorRoleLabel = 'School Official';
+    }
     const content = row.content && String(row.content).trim() ? String(row.content).trim() : '';
 
     return {
@@ -255,6 +263,8 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
         author && author.last_name
       ),
       authorName,
+      authorRole: normalizedAuthorRole,
+      authorRoleLabel,
       authorInitials: buildInitials(
         author && author.first_name,
         author && author.last_name,

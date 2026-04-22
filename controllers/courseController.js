@@ -257,6 +257,14 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
     const author = profileById.get(post.author_id);
     const authorEmail = (author && author.email) || '';
     const authorMedia = profileMediaById.get(post.author_id);
+    const normalizedAuthorRole =
+      author && typeof author.role === 'string' ? author.role.trim().toLowerCase() : '';
+    let authorRoleLabel = null;
+    if (normalizedAuthorRole === 'admin') {
+      authorRoleLabel = 'UniConnect Admin';
+    } else if (normalizedAuthorRole === 'official') {
+      authorRoleLabel = 'School Official';
+    }
 
     return {
       id: post.id,
@@ -267,6 +275,8 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
         author && author.last_name
       ),
       authorName: displayName(author),
+      authorRole: normalizedAuthorRole,
+      authorRoleLabel,
       authorInitials: buildInitials(
         author && author.first_name,
         author && author.last_name,

@@ -6,6 +6,8 @@
   <% const isOwner = currentUser.id && post.authorId === currentUser.id; %>
   <% const isAdmin = currentUser.role === 'admin'; %>
   <% const postAuthorHref = post.authorProfileHref || '/profile'; %>
+  <% const postAuthorRole = typeof post.authorRole === 'string' ? post.authorRole.trim().toLowerCase() : ''; %>
+  <% const postAuthorRoleLabel = typeof post.authorRoleLabel === 'string' ? post.authorRoleLabel.trim() : ''; %>
 
   <div class="post-actions">
     <button
@@ -39,7 +41,12 @@
       <% } %>
     </div>
     <div class="post-author-info">
-      <span class="post-author-name"><a href="<%= postAuthorHref %>"><%= post.authorName %></a></span>
+      <div class="post-author-name-row">
+        <span class="post-author-name"><a href="<%= postAuthorHref %>"><%= post.authorName %></a></span>
+        <% if (postAuthorRoleLabel) { %>
+          <span class="post-author-role-pill <%= postAuthorRole === 'admin' ? 'is-admin' : 'is-official' %>"><%= postAuthorRoleLabel %></span>
+        <% } %>
+      </div>
       <span class="post-meta"><a href="/post/<%= post.id %>"><%= post.createdAtLabel %></a></span>
       <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
     </div>

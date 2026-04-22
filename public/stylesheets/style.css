@@ -831,6 +831,38 @@ body {
   color: var(--text-dark);
 }
 
+.post-author-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.post-author-role-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.14rem 0.5rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 1.2;
+  border: 1px solid transparent;
+}
+
+.post-author-role-pill.is-admin {
+  background: rgba(13, 27, 42, 0.1);
+  color: var(--navy);
+  border-color: rgba(13, 27, 42, 0.22);
+}
+
+.post-author-role-pill.is-official {
+  background: rgba(201, 168, 76, 0.18);
+  color: #6b4f08;
+  border-color: rgba(201, 168, 76, 0.38);
+}
+
 .post-author-name a {
   color: var(--text-dark);
   text-decoration: none;
