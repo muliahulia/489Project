@@ -89,6 +89,27 @@ async function fetchGlobalFeedPosts(supabase, options = {}) {
   };
 }
 
+async function fetchGlobalPostsByAuthorId(supabase, authorId) {
+  if (!authorId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id,author_id,content,image_url,is_official,community_id,course_id,created_at,is_deleted')
+    .eq('author_id', authorId)
+    .eq('is_deleted', false)
+    .is('community_id', null)
+    .is('course_id', null)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data;
+}
+
 async function fetchVisiblePostById(supabase, postId, visibilityFilter) {
   const { data, error } = await supabase
     .from('posts')
@@ -327,6 +348,7 @@ module.exports = {
   fetchCoursesByIds,
   fetchCommunitiesByIds,
   fetchGlobalFeedPosts,
+  fetchGlobalPostsByAuthorId,
   fetchVisiblePostById,
   fetchActivePostById,
   createFeedPost,

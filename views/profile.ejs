@@ -131,22 +131,19 @@
         </div>
       </div>
 
-      <!-- OPTIONAL POSTS SECTION -->
+      <!-- GLOBAL POSTS SECTION -->
       <div class="card" style="padding: 1.5rem;">
         <h3>Posts</h3>
 
         <% const feedPosts = Array.isArray(posts) ? posts : []; %>
 
         <% if (feedPosts.length === 0) { %>
-          <p>No posts yet.</p>
+          <p>No global posts yet.</p>
+        <% } else { %>
+          <% feedPosts.forEach((post) => { %>
+            <%- include('partials/post-card', { post }) %>
+          <% }) %>
         <% } %>
-
-        <% feedPosts.forEach(post => { %>
-          <div style="margin-bottom: 1rem;">
-            <strong><%= post.title || 'Untitled' %></strong>
-            <p><%= post.content || '' %></p>
-          </div>
-        <% }) %>
 
       </div>
 
