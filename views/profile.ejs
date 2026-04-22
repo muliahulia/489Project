@@ -522,6 +522,299 @@
       }
     });
   })();
+
+  (function initProfilePostInteractions() {
+    const latestCommentTimers = new WeakMap();
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function buildCommentHtml(comment) {
+      const authorName = comment && comment.authorName ? comment.authorName : 'Unknown User';
+      const authorInitials = comment && comment.authorInitials ? comment.authorInitials : 'UC';
+      const createdAtLabel = comment && comment.createdAtLabel ? comment.createdAtLabel : '';
+      const content = comment && comment.content ? comment.content : '';
+      const avatarUrl = comment && comment.authorAvatarUrl ? comment.authorAvatarUrl : '';
+
+      if (avatarUrl) {
+        return `
+          <div class="post-comment" data-comment-id="${escapeHtml(comment.id)}">
+            <div class="post-comment-avatar">
+              <img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(authorName)} profile photo" loading="lazy" referrerpolicy="no-referrer" />
+            </div>
+            <div class="post-comment-body">
+              <div class="post-comment-meta">
+                <strong>${escapeHtml(authorName)}</strong>
+                <span>${escapeHtml(createdAtLabel)}</span>
+              </div>
+              <div class="post-comment-text">${escapeHtml(content)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="post-comment" data-comment-id="${escapeHtml(comment.id)}">
+          <div class="post-comment-avatar">${escapeHtml(authorInitials)}</div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong>${escapeHtml(authorName)}</strong>
+              <span>${escapeHtml(createdAtLabel)}</span>
+            </div>
+            <div class="post-comment-text">${escapeHtml(content)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateLikeBadge(likeButton, count) {
+      if (!likeButton) return;
+
+      let countNode = likeButton.querySelector('.like-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'like-count';
+        likeButton.appendChild(document.createTextNode(' '));
+        likeButton.appendChild(countNode);
+      }
+
+      const parsed = Number.parseInt(String(count), 10);
+      const safeCount = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      likeButton.classList.toggle('has-count', safeCount > 0);
+    }
+
+    function updateCommentBadge(postCard, count) {
+      if (!postCard) return;
+
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      if (!toggleButton) return;
+
+      let countNode = toggleButton.querySelector('.comment-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'comment-count';
+        toggleButton.appendChild(document.createTextNode(' '));
+        toggleButton.appendChild(countNode);
+      }
+
+      const parsed = Number.parseInt(String(count), 10);
+      const safeCount = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      toggleButton.classList.toggle('has-count', safeCount > 0);
+    }
+
+    function clearLatestCommentHighlight(postCard) {
+      const highlightedComment = postCard.querySelector('.post-comment.focused');
+      if (highlightedComment) highlightedComment.classList.remove('focused');
+    }
+
+    function flashLatestComment(postCard) {
+      clearLatestCommentHighlight(postCard);
+      const latestComment = postCard.querySelector('.post-comment[data-comment-id]:last-child');
+      if (!latestComment) return;
+
+      latestComment.classList.add('focused');
+      const existingTimer = latestCommentTimers.get(postCard);
+      if (existingTimer) window.clearTimeout(existingTimer);
+
+      const timerId = window.setTimeout(() => {
+        latestComment.classList.remove('focused');
+        latestCommentTimers.delete(postCard);
+      }, 1200);
+
+      latestCommentTimers.set(postCard, timerId);
+      latestComment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function openComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) return;
+
+      commentsPanel.hidden = false;
+      toggleButton.classList.add('active');
+      toggleButton.setAttribute('aria-expanded', 'true');
+      if (preview) preview.hidden = true;
+
+      const input = commentsPanel.querySelector('.post-comment-input');
+      if (input) input.focus();
+    }
+
+    function collapseComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton) return;
+
+      commentsPanel.hidden = true;
+      toggleButton.classList.remove('active');
+      toggleButton.setAttribute('aria-expanded', 'false');
+      clearLatestCommentHighlight(postCard);
+
+      const timerId = latestCommentTimers.get(postCard);
+      if (timerId) {
+        window.clearTimeout(timerId);
+        latestCommentTimers.delete(postCard);
+      }
+
+      if (preview) preview.hidden = false;
+    }
+
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) return;
+
+      event.preventDefault();
+      const postId = likeButton.dataset.postId;
+      if (!postId || likeButton.dataset.pending === 'true') return;
+
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = Number.parseInt(
+        (likeButton.querySelector('.like-count') || {}).textContent || '0',
+        10
+      ) || 0;
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      updateLikeBadge(likeButton, optimisticCount);
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        updateLikeBadge(likeButton, payload.likeCount);
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        updateLikeBadge(likeButton, previousCount);
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const commentTrigger = event.target.closest('.js-comment-toggle, .js-comment-expand');
+      if (!commentTrigger) return;
+
+      const postCard = commentTrigger.closest('.post-card');
+      if (!postCard) return;
+
+      const isToggleButton = commentTrigger.classList.contains('js-comment-toggle');
+      const isExpandButton = commentTrigger.classList.contains('js-comment-expand');
+      const commentsPanel = postCard.querySelector('.post-comments');
+      if (!commentsPanel) return;
+
+      if (isToggleButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        } else {
+          collapseComments(postCard);
+        }
+        return;
+      }
+
+      if (isExpandButton) {
+        if (commentsPanel.hidden) openComments(postCard);
+        flashLatestComment(postCard);
+      }
+    });
+
+    document.addEventListener('submit', async (event) => {
+      const commentForm = event.target.closest('.js-comment-form');
+      if (!commentForm) return;
+
+      event.preventDefault();
+
+      const postId = commentForm.dataset.postId;
+      const input = commentForm.querySelector('.post-comment-input');
+      const submitButton = commentForm.querySelector('.post-comment-submit');
+      const commentList = commentForm.parentElement.querySelector('.post-comment-list');
+      const postCard = commentForm.closest('.post-card');
+      const commentsPanel = postCard ? postCard.querySelector('.post-comments') : null;
+      const content = input ? input.value.trim() : '';
+
+      if (!postId || !input || !submitButton || !commentList) return;
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Posting...';
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to save comment.');
+        }
+
+        const comments = Array.isArray(payload.comments) ? payload.comments : [];
+        commentList.innerHTML = comments.map(buildCommentHtml).join('');
+
+        if (commentsPanel) commentsPanel.hidden = false;
+
+        const preview = postCard ? postCard.querySelector('.post-comment-preview') : null;
+        if (preview) preview.hidden = true;
+
+        if (postCard) {
+          const toggleButton = postCard.querySelector('.js-comment-toggle');
+          if (toggleButton) {
+            toggleButton.classList.add('active');
+            toggleButton.setAttribute('aria-expanded', 'true');
+          }
+        }
+
+        if (postCard && typeof payload.commentCount !== 'undefined') {
+          updateCommentBadge(postCard, payload.commentCount);
+        }
+
+        if (postCard) {
+          const panel = postCard.querySelector('.post-comments');
+          if (panel && panel.hidden) openComments(postCard);
+        }
+
+        input.value = '';
+      } catch (_err) {
+        // no-op
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Comment';
+      }
+    });
+  })();
 </script>
 
 </body>
