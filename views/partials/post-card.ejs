@@ -3,8 +3,9 @@
   <% const latestComment = postComments.length > 0 ? postComments[postComments.length - 1] : null; %>
   <% const showExpandedComments = Boolean(typeof expandComments !== 'undefined' ? expandComments : false); %>
   <% const currentUser = locals.user || {}; %>
+  <% const currentUserRole = typeof currentUser.role === 'string' ? currentUser.role.trim().toLowerCase() : ''; %>
   <% const isOwner = currentUser.id && post.authorId === currentUser.id; %>
-  <% const isAdmin = currentUser.role === 'admin'; %>
+  <% const isAdmin = currentUserRole === 'admin'; %>
   <% const postAuthorHref = post.authorProfileHref || '/profile'; %>
   <% const postAuthorRole = typeof post.authorRole === 'string' ? post.authorRole.trim().toLowerCase() : ''; %>
   <% const postAuthorRoleLabel = typeof post.authorRoleLabel === 'string' ? post.authorRoleLabel.trim() : ''; %>

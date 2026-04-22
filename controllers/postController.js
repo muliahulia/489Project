@@ -10,6 +10,10 @@ const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileM
 const postModel = require('../models/postModel');
 const FEED_PAGE_SIZE = 10;
 
+function normalizeRole(role) {
+  return typeof role === 'string' ? role.trim().toLowerCase() : '';
+}
+
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -21,8 +25,10 @@ function toNonNegativeInteger(value) {
 }
 
 function buildFallbackUser(sessionUser) {
+  const normalizedRole = normalizeRole(sessionUser.role) || 'student';
   return {
     id: sessionUser.id,
+    role: normalizedRole,
     firstName: sessionUser.firstName || null,
     lastName: sessionUser.lastName || null,
     fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
@@ -47,10 +53,14 @@ async function buildCurrentUserViewModel(supabase, sessionUser) {
       ? currentProfile.last_name
       : sessionUser.lastName || null;
   const email = (currentProfile && currentProfile.email) || sessionUser.email;
+  const role = normalizeRole(
+    (currentProfile && currentProfile.role) || sessionUser.role || 'student'
+  );
   const media = currentProfile ? await resolveProfileMedia(supabase, currentProfile) : null;
 
   return {
     id: sessionUser.id,
+    role,
     firstName,
     lastName,
     fullName: buildDisplayName(firstName, lastName, email),
@@ -599,7 +609,15 @@ async function deletePost(req, res) {
     if (!post) return res.status(404).json({ error: 'Post not found.' });
 
     const isOwner = post.author_id === sessionUser.id;
-    const isAdmin = sessionUser.role === 'admin';
+    let isAdmin = normalizeRole(sessionUser.role) === 'admin';
+
+    if (!isAdmin) {
+      const actorProfile = await postModel.fetchProfileById(supabase, sessionUser.id);
+      isAdmin = normalizeRole(actorProfile && actorProfile.role) === 'admin';
+      if (isAdmin) {
+        sessionUser.role = 'admin';
+      }
+    }
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ error: 'Not allowed.' });

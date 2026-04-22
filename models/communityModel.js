@@ -131,6 +131,27 @@ async function updateCommunityForCreator(supabase, updatePayload) {
   return data;
 }
 
+async function updateCommunityById(supabase, updatePayload) {
+  const { data, error } = await supabase
+    .from('communities')
+    .update({
+      name: updatePayload.name,
+      description: updatePayload.description || null,
+      is_private: Boolean(updatePayload.isPrivate),
+      logo_bucket: updatePayload.logoBucket || DEFAULT_STORAGE_BUCKET,
+      logo_path: updatePayload.logoPath || null,
+    })
+    .eq('id', updatePayload.communityId)
+    .select('id')
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
 async function fetchCommunityOwnerRecord(supabase, communityId) {
   const { data, error } = await supabase
     .from('communities')
@@ -151,6 +172,15 @@ async function deleteCommunityForCreator(supabase, communityId, creatorId) {
     .delete()
     .eq('id', communityId)
     .eq('creator_id', creatorId);
+
+  return !error;
+}
+
+async function deleteCommunityById(supabase, communityId) {
+  const { error } = await supabase
+    .from('communities')
+    .delete()
+    .eq('id', communityId);
 
   return !error;
 }
@@ -325,7 +355,7 @@ async function fetchCommunityPageData(supabase, communityId) {
     communityRow.creator_id
       ? supabase
           .from('profiles')
-          .select('id,first_name,last_name,email')
+          .select('id,first_name,last_name,email,school_id')
           .eq('id', communityRow.creator_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -478,8 +508,10 @@ module.exports = {
   upsertCommunityMembership,
   fetchCommunityForManage,
   updateCommunityForCreator,
+  updateCommunityById,
   fetchCommunityOwnerRecord,
   deleteCommunityForCreator,
+  deleteCommunityById,
   removeCommunityWithDependencies,
   fetchCommunityIdentity,
   fetchProfileById,

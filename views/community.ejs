@@ -448,9 +448,9 @@
           <div class="course-header">
             <div class="course-header-top">
               <h1 class="course-title"><%= activeCommunity.name %></h1>
-              <% if (activeCommunity.isCreator) { %>
+              <% if (activeCommunity.canManage) { %>
                 <div class="membership-owner-actions">
-                  <span class="membership-owner">Owner</span>
+                  <span class="membership-owner"><%= activeCommunity.isCreator ? 'Owner' : 'Manager' %></span>
                   <a href="/communities/manage/<%= activeCommunity.id %>" class="membership-manage">Manage</a>
                 </div>
               <% } else if (activeCommunity.canLeave) { %>

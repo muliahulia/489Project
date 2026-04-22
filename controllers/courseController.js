@@ -79,6 +79,18 @@ function buildCurrentUserViewModel(profile, sessionUser) {
   };
 }
 
+function buildAccessProfile(profile, sessionUser) {
+  if (profile) {
+    return profile;
+  }
+
+  return {
+    id: sessionUser.id,
+    role: sessionUser.role || 'student',
+    school_id: sessionUser.schoolId || null,
+  };
+}
+
 function buildSafeRedirectPath(value, fallbackPath) {
   if (typeof value !== 'string') {
     return fallbackPath;
@@ -98,6 +110,13 @@ function fallbackRedirectForCourse(courseId) {
 
 function normalizeRole(role) {
   return typeof role === 'string' ? role.trim().toLowerCase() : '';
+}
+
+function idsMatch(left, right) {
+  if (!left || !right) {
+    return false;
+  }
+  return String(left) === String(right);
 }
 
 function normalizeCoursePayload(body) {
@@ -125,11 +144,11 @@ function buildCourseCreationAccess(profile) {
   const role = normalizeRole(profile && profile.role);
   const schoolId = profile && profile.school_id ? profile.school_id : null;
 
-  if (role !== 'official') {
+  if (role !== 'official' && role !== 'admin') {
     return {
       allowed: false,
       schoolId,
-      reason: 'Only school officials can create courses.',
+      reason: 'Only school officials and admins can create courses.',
     };
   }
 
@@ -151,11 +170,27 @@ function buildCourseCreationAccess(profile) {
 function buildCourseManageAccess(profile, course) {
   const role = normalizeRole(profile && profile.role);
   const profileId = profile && profile.id ? profile.id : null;
+  const profileSchoolId = profile && profile.school_id ? profile.school_id : null;
+  const courseSchoolId = course && course.school_id ? course.school_id : null;
   const isCreator = Boolean(
     course && course.created_by && profileId && course.created_by === profileId
   );
 
-  if (role === 'official' || role === 'admin' || isCreator) {
+  if (role === 'admin') {
+    return {
+      allowed: true,
+      reason: null,
+    };
+  }
+
+  if (role === 'official' && idsMatch(profileSchoolId, courseSchoolId)) {
+    return {
+      allowed: true,
+      reason: null,
+    };
+  }
+
+  if (isCreator) {
     return {
       allowed: true,
       reason: null,
@@ -332,6 +367,7 @@ async function listCourses(req, res) {
       profile.profileAvatarUrl = profileMedia && profileMedia.avatarUrl ? profileMedia.avatarUrl : null;
     }
     const user = buildCurrentUserViewModel(profile, sessionUser);
+    const accessProfile = buildAccessProfile(profile, sessionUser);
     const schoolId = profile && profile.school_id ? profile.school_id : null;
     const userEnrollmentByCourseId = new Map(
       userEnrollments.map((row) => [row.course_id, row])
@@ -384,7 +420,7 @@ async function listCourses(req, res) {
           manageHref: `/courses/manage/${course.id}`,
           isEnrolled: Boolean(enrollment),
           isInstructor,
-          canManage: buildCourseManageAccess(profile, course).allowed,
+          canManage: buildCourseManageAccess(accessProfile, course).allowed,
           membershipLabel,
         };
       });
@@ -411,7 +447,7 @@ async function listCourses(req, res) {
       schoolName: school && school.name ? school.name : null,
       myCourses,
       availableCourses,
-      canCreateCourse: buildCourseCreationAccess(profile).allowed,
+      canCreateCourse: buildCourseCreationAccess(accessProfile).allowed,
       pageError: typeof req.query.error === 'string' ? req.query.error : null,
       directoryMessage: schoolId
         ? null
@@ -438,7 +474,7 @@ async function showCreateCourse(req, res) {
     const supabase = createSupabaseAdminClient();
     const profile = await courseModel.fetchProfileById(supabase, sessionUser.id);
     const user = buildCurrentUserViewModel(profile, sessionUser);
-    const creationAccess = buildCourseCreationAccess(profile);
+    const creationAccess = buildCourseCreationAccess(buildAccessProfile(profile, sessionUser));
 
     if (!creationAccess.allowed) {
       return res.redirect(
@@ -499,7 +535,10 @@ async function showManageCourse(req, res) {
       return res.redirect('/courses');
     }
 
-    const manageAccess = buildCourseManageAccess(profile, course);
+    const manageAccess = buildCourseManageAccess(
+      buildAccessProfile(profile, sessionUser),
+      course
+    );
     if (!manageAccess.allowed) {
       return res.redirect(
         `/courses/${courseId}?error=${encodeURIComponent(manageAccess.reason)}`
@@ -648,7 +687,7 @@ async function showCourseById(req, res) {
       memberLabel: `${memberCount} ${memberCount === 1 ? 'student' : 'students'}`,
       isEnrolled: Boolean(viewerEnrollment),
       isInstructor: viewerIsInstructor,
-      canManage: buildCourseManageAccess(profile, courseRow).allowed,
+      canManage: buildCourseManageAccess(buildAccessProfile(profile, sessionUser), courseRow).allowed,
       manageHref: `/courses/manage/${courseRow.id}`,
       canPost: canViewPosts,
     };
@@ -850,7 +889,7 @@ async function createCourse(req, res) {
   try {
     const supabase = createSupabaseAdminClient();
     const profile = await courseModel.fetchProfileById(supabase, sessionUser.id);
-    const creationAccess = buildCourseCreationAccess(profile);
+    const creationAccess = buildCourseCreationAccess(buildAccessProfile(profile, sessionUser));
 
     if (!creationAccess.allowed) {
       return res.redirect(
@@ -950,7 +989,10 @@ async function updateCourse(req, res) {
       return res.redirect('/courses');
     }
 
-    const manageAccess = buildCourseManageAccess(profile, course);
+    const manageAccess = buildCourseManageAccess(
+      buildAccessProfile(profile, sessionUser),
+      course
+    );
     if (!manageAccess.allowed) {
       return res.redirect(
         `/courses/${courseId}?error=${encodeURIComponent(manageAccess.reason)}`

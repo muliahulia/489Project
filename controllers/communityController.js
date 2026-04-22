@@ -73,6 +73,56 @@ function fallbackRedirectForCommunity(communityId) {
   return `/communities/${communityId}`;
 }
 
+function normalizeRole(role) {
+  return typeof role === 'string' ? role.trim().toLowerCase() : '';
+}
+
+function idsMatch(left, right) {
+  if (!left || !right) {
+    return false;
+  }
+  return String(left) === String(right);
+}
+
+async function buildCommunityManageAccess(supabase, profile, community, creatorProfile) {
+  const role = normalizeRole(profile && profile.role);
+  const profileId = profile && profile.id ? profile.id : null;
+  const profileSchoolId = profile && profile.school_id ? profile.school_id : null;
+  const isCreator = Boolean(
+    community && community.creator_id && profileId && idsMatch(community.creator_id, profileId)
+  );
+
+  if (role === 'admin' || isCreator) {
+    return { allowed: true, reason: null, isCreator };
+  }
+
+  if (role !== 'official' || !profileSchoolId) {
+    return {
+      allowed: false,
+      reason: 'You do not have permission to manage this community.',
+      isCreator,
+    };
+  }
+
+  let affiliatedSchoolId = creatorProfile && creatorProfile.school_id
+    ? creatorProfile.school_id
+    : null;
+  if (!affiliatedSchoolId && community && community.creator_id) {
+    const creator = await communityModel.fetchProfileById(supabase, community.creator_id);
+    affiliatedSchoolId = creator && creator.school_id ? creator.school_id : null;
+  }
+
+  if (idsMatch(profileSchoolId, affiliatedSchoolId)) {
+    return { allowed: true, reason: null, isCreator };
+  }
+
+  return {
+    allowed: false,
+    reason: 'You do not have permission to manage this community.',
+    isCreator,
+  };
+}
+
 function buildFallbackUser(sessionUser) {
   return {
     id: sessionUser.id,
@@ -157,7 +207,8 @@ async function buildCommentState(supabase, postIds) {
   };
 }
 
-async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
+async function buildCommunityPageModel(supabase, communityId, viewerProfile) {
+  const viewerUserId = viewerProfile && viewerProfile.id ? viewerProfile.id : null;
   if (!communityId) {
     return {
       community: null,
@@ -186,7 +237,13 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
   const memberIds = communityData.memberIds;
   const postRows = communityData.postRows;
   const memberIdSet = new Set(memberIds);
-  const isCreator = Boolean(viewerUserId && communityRow.creator_id && viewerUserId === communityRow.creator_id);
+  const manageAccess = await buildCommunityManageAccess(
+    supabase,
+    viewerProfile,
+    communityRow,
+    creatorProfile
+  );
+  const isCreator = Boolean(manageAccess.isCreator);
   const isMember = Boolean(viewerUserId && memberIdSet.has(viewerUserId));
 
   const memberProfiles = await communityModel.fetchProfilesByIds(supabase, memberIds);
@@ -303,6 +360,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerUserId) {
       metaLine: metadataParts.join(' · '),
       isPrivate: Boolean(communityRow.is_private),
       isCreator,
+      canManage: manageAccess.allowed,
       isMember,
       canJoin: !isMember,
       canLeave: isMember && !isCreator,
@@ -348,12 +406,18 @@ async function renderCommunity(req, res, explicitCommunityId) {
       profileAvatarUrl: currentMedia && currentMedia.avatarUrl ? currentMedia.avatarUrl : null,
     };
 
+    const viewerAccessProfile = currentProfile || {
+      id: sessionUser.id,
+      role: sessionUser.role || 'student',
+      school_id: sessionUser.schoolId || null,
+    };
+
     const communityId = await communityModel.resolveCommunityId(
       supabase,
       sessionUser.id,
       explicitCommunityId
     );
-    const viewModel = await buildCommunityPageModel(supabase, communityId, sessionUser.id);
+    const viewModel = await buildCommunityPageModel(supabase, communityId, viewerAccessProfile);
 
     return res.render('community', {
       user,
@@ -502,14 +566,30 @@ async function showManageCommunity(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const community = await communityModel.fetchCommunityForManage(supabase, communityId);
+    const [community, profile] = await Promise.all([
+      communityModel.fetchCommunityForManage(supabase, communityId),
+      communityModel.fetchProfileById(supabase, sessionUser.id),
+    ]);
 
     if (!community) {
       return res.redirect('/communities');
     }
 
-    if (!community.creator_id || community.creator_id !== sessionUser.id) {
-      return res.redirect(`/communities/${communityId}`);
+    const viewerAccessProfile = profile || {
+      id: sessionUser.id,
+      role: sessionUser.role || 'student',
+      school_id: sessionUser.schoolId || null,
+    };
+    const manageAccess = await buildCommunityManageAccess(
+      supabase,
+      viewerAccessProfile,
+      community
+    );
+
+    if (!manageAccess.allowed) {
+      return res.redirect(
+        `/communities/${communityId}?error=${encodeURIComponent(manageAccess.reason)}`
+      );
     }
 
     const logoSignedUrl = await communityModel.createSignedImageUrl(
@@ -555,9 +635,32 @@ async function updateCommunity(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const updatedCommunity = await communityModel.updateCommunityForCreator(supabase, {
+    const [community, profile] = await Promise.all([
+      communityModel.fetchCommunityForManage(supabase, communityId),
+      communityModel.fetchProfileById(supabase, sessionUser.id),
+    ]);
+    if (!community) {
+      return res.redirect('/communities');
+    }
+
+    const viewerAccessProfile = profile || {
+      id: sessionUser.id,
+      role: sessionUser.role || 'student',
+      school_id: sessionUser.schoolId || null,
+    };
+    const manageAccess = await buildCommunityManageAccess(
+      supabase,
+      viewerAccessProfile,
+      community
+    );
+    if (!manageAccess.allowed) {
+      return res.redirect(
+        `/communities/${communityId}?error=${encodeURIComponent(manageAccess.reason)}`
+      );
+    }
+
+    const updatedCommunity = await communityModel.updateCommunityById(supabase, {
       communityId,
-      creatorId: sessionUser.id,
       name: communityName,
       description,
       isPrivate,
@@ -594,14 +697,29 @@ async function deleteCommunity(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const community = await communityModel.fetchCommunityOwnerRecord(supabase, communityId);
+    const [community, profile] = await Promise.all([
+      communityModel.fetchCommunityForManage(supabase, communityId),
+      communityModel.fetchProfileById(supabase, sessionUser.id),
+    ]);
 
     if (!community) {
       return res.redirect('/communities');
     }
 
-    if (!community.creator_id || community.creator_id !== sessionUser.id) {
-      return res.redirect(`/communities/${communityId}`);
+    const viewerAccessProfile = profile || {
+      id: sessionUser.id,
+      role: sessionUser.role || 'student',
+      school_id: sessionUser.schoolId || null,
+    };
+    const manageAccess = await buildCommunityManageAccess(
+      supabase,
+      viewerAccessProfile,
+      community
+    );
+    if (!manageAccess.allowed) {
+      return res.redirect(
+        `/communities/${communityId}?error=${encodeURIComponent(manageAccess.reason)}`
+      );
     }
 
     const cleanupSucceeded = await communityModel.removeCommunityWithDependencies(
@@ -615,11 +733,7 @@ async function deleteCommunity(req, res) {
       );
     }
 
-    const deleted = await communityModel.deleteCommunityForCreator(
-      supabase,
-      communityId,
-      sessionUser.id
-    );
+    const deleted = await communityModel.deleteCommunityById(supabase, communityId);
     if (!deleted) {
       return res.redirect(
         `/communities/manage/${communityId}?error=` +
