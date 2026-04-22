@@ -6,6 +6,18 @@ const {
   formatCreatedAt,
 } = require('../lib/utils');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
+const { toPositiveInteger } = require('../lib/numberUtils');
+const {
+  buildBubbleText,
+  buildProfileDisplayName,
+  buildSessionFallbackUser,
+  buildAuthorRoleMeta,
+} = require('../lib/profileView');
+const {
+  fetchLikeState,
+  buildCommentCollections,
+} = require('../lib/postEngagement');
+const { normalizeRole, idsMatch } = require('../lib/schoolScope');
 const courseModel = require('../models/courseModel');
 
 const PREVIEW_MEMBER_COUNT = 5;
@@ -16,48 +28,6 @@ const MAX_COURSE_DESCRIPTION_LENGTH = 1000;
 const MAX_COURSE_PREFIX_LENGTH = 16;
 const MAX_COURSE_NUMBER = 32767;
 const MAX_INSTRUCTOR_LENGTH = 120;
-
-function toPositiveInteger(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function buildBubbleText(name) {
-  if (!name || typeof name !== 'string') {
-    return 'N/A';
-  }
-
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-
-  return parts[0].slice(0, 4).toUpperCase();
-}
-
-function displayName(profile) {
-  if (!profile) {
-    return 'Unknown User';
-  }
-
-  return buildDisplayName(profile.first_name, profile.last_name, profile.email);
-}
-
-function buildFallbackUser(sessionUser) {
-  return {
-    id: sessionUser.id,
-    firstName: sessionUser.firstName || null,
-    lastName: sessionUser.lastName || null,
-    fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
-    email: sessionUser.email,
-    initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
-    profileAvatarUrl: sessionUser.profileAvatarUrl || null,
-  };
-}
 
 function buildCurrentUserViewModel(profile, sessionUser) {
   const firstName = (profile && profile.first_name) || sessionUser.firstName || null;
@@ -106,17 +76,6 @@ function buildSafeRedirectPath(value, fallbackPath) {
 
 function fallbackRedirectForCourse(courseId) {
   return `/courses/${courseId}`;
-}
-
-function normalizeRole(role) {
-  return typeof role === 'string' ? role.trim().toLowerCase() : '';
-}
-
-function idsMatch(left, right) {
-  if (!left || !right) {
-    return false;
-  }
-  return String(left) === String(right);
 }
 
 function normalizeCoursePayload(body) {
@@ -211,36 +170,18 @@ function buildCourseManageAccess(profile, course) {
 }
 
 async function buildLikeState(supabase, postIds, userId) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return {
-      likeCountByPostId: new Map(),
-      likedPostIds: new Set(),
-    };
-  }
-
-  const [likes, userLikes] = await Promise.all([
-    courseModel.fetchLikeRowsByPostIds(supabase, postIds),
-    courseModel.fetchUserLikeRowsByPostIds(supabase, postIds, userId),
-  ]);
-
-  const likeCountByPostId = new Map();
-  likes.forEach((row) => {
-    const count = likeCountByPostId.get(row.post_id) || 0;
-    likeCountByPostId.set(row.post_id, count + 1);
+  return fetchLikeState({
+    postIds,
+    userId,
+    fetchLikeRows: (ids) => courseModel.fetchLikeRowsByPostIds(supabase, ids),
+    fetchUserLikeRows: (ids, viewerUserId) =>
+      courseModel.fetchUserLikeRowsByPostIds(supabase, ids, viewerUserId),
   });
-
-  return {
-    likeCountByPostId,
-    likedPostIds: new Set(userLikes.map((row) => row.post_id)),
-  };
 }
 
 async function buildCommentState(supabase, postIds, options = {}) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
-    return {
-      commentCountByPostId: new Map(),
-      commentsByPostId: new Map(),
-    };
+    return buildCommentCollections();
   }
 
   const comments = await courseModel.fetchCommentsByPostIds(supabase, postIds);
@@ -250,40 +191,13 @@ async function buildCommentState(supabase, postIds, options = {}) {
     profiles = profiles.filter((profile) => idsMatch(profile.school_id, options.schoolId));
   }
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
-  const profileById = new Map(profiles.map((row) => [row.id, row]));
-  const commentCountByPostId = new Map();
-  const commentsByPostId = new Map();
-
-  comments.forEach((comment) => {
-    const author = profileById.get(comment.author_id);
-    if (!author) {
-      return;
-    }
-    const authorEmail = (author && author.email) || '';
-    const authorMedia = profileMediaById.get(comment.author_id);
-    const list = commentsByPostId.get(comment.post_id) || [];
-
-    list.push({
-      id: comment.id,
-      authorName: displayName(author),
-      authorInitials: buildInitials(
-        author && author.first_name,
-        author && author.last_name,
-        authorEmail
-      ),
-      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
-      createdAtLabel: formatCreatedAt(comment.created_at),
-      content: comment.content,
-    });
-
-    commentsByPostId.set(comment.post_id, list);
-    commentCountByPostId.set(comment.post_id, list.length);
+  return buildCommentCollections({
+    comments,
+    profiles,
+    profileMediaById,
+    formatDateLabel: formatCreatedAt,
+    skipUnknownAuthors: true,
   });
-
-  return {
-    commentCountByPostId,
-    commentsByPostId,
-  };
 }
 
 async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserId, options = {}) {
@@ -310,14 +224,7 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
     const author = profileById.get(post.author_id);
     const authorEmail = (author && author.email) || '';
     const authorMedia = profileMediaById.get(post.author_id);
-    const normalizedAuthorRole =
-      author && typeof author.role === 'string' ? author.role.trim().toLowerCase() : '';
-    let authorRoleLabel = null;
-    if (normalizedAuthorRole === 'admin') {
-      authorRoleLabel = 'UniConnect Admin';
-    } else if (normalizedAuthorRole === 'official') {
-      authorRoleLabel = 'School Official';
-    }
+    const roleMeta = buildAuthorRoleMeta(author && author.role);
 
     return {
       id: post.id,
@@ -327,9 +234,9 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
         author && author.first_name,
         author && author.last_name
       ),
-      authorName: displayName(author),
-      authorRole: normalizedAuthorRole,
-      authorRoleLabel,
+      authorName: buildProfileDisplayName(author),
+      authorRole: roleMeta.normalizedRole,
+      authorRoleLabel: roleMeta.roleLabel,
       authorInitials: buildInitials(
         author && author.first_name,
         author && author.last_name,
@@ -351,7 +258,7 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
 function buildMemberViewModel(profile) {
   return {
     id: profile && profile.id ? profile.id : null,
-    name: displayName(profile),
+    name: buildProfileDisplayName(profile),
     profileHref: buildProfilePath(
       profile && profile.id,
       profile && profile.first_name,
@@ -372,7 +279,7 @@ function compareCoursesByName(left, right) {
 
 async function listCourses(req, res) {
   const sessionUser = req.session.auth.user;
-  const fallbackUser = buildFallbackUser(sessionUser);
+  const fallbackUser = buildSessionFallbackUser(sessionUser);
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -486,7 +393,7 @@ async function listCourses(req, res) {
 
 async function showCreateCourse(req, res) {
   const sessionUser = req.session.auth.user;
-  const fallbackUser = buildFallbackUser(sessionUser);
+  const fallbackUser = buildSessionFallbackUser(sessionUser);
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -535,7 +442,7 @@ async function showCreateCourse(req, res) {
 
 async function showManageCourse(req, res) {
   const sessionUser = req.session.auth.user;
-  const fallbackUser = buildFallbackUser(sessionUser);
+  const fallbackUser = buildSessionFallbackUser(sessionUser);
   const courseId = toPositiveInteger(req.params.id);
 
   if (!courseId) {
@@ -621,7 +528,7 @@ async function showManageCourse(req, res) {
 
 async function showCourseById(req, res) {
   const sessionUser = req.session.auth.user;
-  const fallbackUser = buildFallbackUser(sessionUser);
+  const fallbackUser = buildSessionFallbackUser(sessionUser);
   const courseId = toPositiveInteger(req.params.id);
 
   if (!courseId) {

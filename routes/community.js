@@ -10,9 +10,4 @@ router.get('/manage/:id', requireAuth, communityController.showManageCommunity);
 router.post('/manage/:id', requireAuth, communityController.updateCommunity);
 router.post('/manage/:id/delete', requireAuth, communityController.deleteCommunity);
 
-  
-router.get('/', (req, res) => {
-    res.render('community');
-});
-
 module.exports = router;

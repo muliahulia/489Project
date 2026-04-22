@@ -4,6 +4,8 @@ const {
   normalizeStoragePath,
   resolveProfileMedia,
 } = require('../lib/profileMedia');
+const { buildPublicStorageUrl, createSignedStorageUrl } = require('../lib/storage');
+const { pickFirstStringField } = require('../lib/fieldUtils');
 
 const SCHOOL_LOGO_COLUMN_CANDIDATES = [
   'logo_url',
@@ -20,36 +22,6 @@ const SCHOOL_BUCKET_COLUMN_CANDIDATES = [
   'storage_bucket',
 ];
 const SIGNED_MEDIA_TTL_SECONDS = 120;
-
-function pickFirstStringField(row, candidateColumns) {
-  if (!row || !Array.isArray(candidateColumns)) {
-    return '';
-  }
-
-  for (const columnName of candidateColumns) {
-    const value = row[columnName];
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return '';
-}
-
-function buildPublicStorageUrl(bucket, path) {
-  const supabaseUrl = typeof process.env.SUPABASE_URL === 'string'
-    ? process.env.SUPABASE_URL.trim()
-    : '';
-  if (!supabaseUrl || !bucket || !path) {
-    return null;
-  }
-
-  const encodedPath = path
-    .split('/')
-    .map((part) => encodeURIComponent(part))
-    .join('/');
-  return `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodedPath}`;
-}
 
 async function resolveSchoolBranding(supabase, schoolId) {
   if (!schoolId) {
@@ -101,14 +73,15 @@ async function resolveSchoolBranding(supabase, schoolId) {
 
     const explicitBucket = pickFirstStringField(data, SCHOOL_BUCKET_COLUMN_CANDIDATES);
     const bucketName = explicitBucket || DEFAULT_STORAGE_BUCKET;
-    const signedUrlResult = await supabase.storage
-      .from(bucketName)
-      .createSignedUrl(normalizedLogoPath, SIGNED_MEDIA_TTL_SECONDS);
+    const signedUrl = await createSignedStorageUrl(supabase, normalizedLogoPath, {
+      bucket: bucketName,
+      ttlSeconds: SIGNED_MEDIA_TTL_SECONDS,
+    });
 
-    if (!signedUrlResult.error && signedUrlResult.data && signedUrlResult.data.signedUrl) {
+    if (signedUrl) {
       return {
         schoolName,
-        schoolLogoUrl: signedUrlResult.data.signedUrl,
+        schoolLogoUrl: signedUrl,
       };
     }
 

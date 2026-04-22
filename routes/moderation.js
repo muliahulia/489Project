@@ -2,23 +2,14 @@ var express = require('express');
 var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
-
-function requireGlobalAdmin(req, res, next) {
-  const role = req.session
-    && req.session.auth
-    && req.session.auth.user
-    && typeof req.session.auth.user.role === 'string'
-    ? req.session.auth.user.role.trim().toLowerCase()
-    : '';
-
-  if (role === 'admin') {
-    return next();
-  }
-
-  const err = new Error('Forbidden');
-  err.status = 403;
-  return next(err);
-}
+const { requireGlobalAdmin, logAdminAction } = require('../lib/adminHelpers');
+const { toPositiveInteger } = require('../lib/numberUtils');
+const {
+  DEFAULT_STORAGE_BUCKET,
+  normalizeStoragePath,
+  buildPublicStorageUrl,
+} = require('../lib/storage');
+const { pickFirstStringField, firstExistingColumn } = require('../lib/fieldUtils');
 
 function normalizeText(value, maxLength) {
   if (typeof value !== 'string') {
@@ -46,31 +37,6 @@ function normalizeDomain(value) {
   return normalized;
 }
 
-function normalizeStoragePath(value) {
-  const raw = normalizeText(value, 500);
-  if (!raw) {
-    return '';
-  }
-  const noLeadingSlash = raw.replace(/^\/+/, '');
-  if (!noLeadingSlash || noLeadingSlash.includes('..')) {
-    return '';
-  }
-  return noLeadingSlash;
-}
-
-function pickFirstStringField(row, fieldNames) {
-  if (!row || !Array.isArray(fieldNames)) {
-    return '';
-  }
-
-  for (const fieldName of fieldNames) {
-    if (typeof row[fieldName] === 'string' && row[fieldName].trim()) {
-      return row[fieldName].trim();
-    }
-  }
-  return '';
-}
-
 async function fetchSchoolColumnSet(supabase) {
   const defaultColumns = new Set(['id', 'name', 'domain', 'logo_url']);
   const { data, error } = await supabase
@@ -86,51 +52,8 @@ async function fetchSchoolColumnSet(supabase) {
   return new Set(data.map((row) => row.column_name).filter(Boolean));
 }
 
-function firstExistingColumn(columnSet, preferredColumns) {
-  for (const columnName of preferredColumns) {
-    if (columnSet.has(columnName)) {
-      return columnName;
-    }
-  }
-  return null;
-}
-
-function parseSchoolId(value) {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return null;
-  }
-  return parsed;
-}
-
-function buildStoragePublicUrl(path) {
-  const supabaseUrl = process.env.SUPABASE_URL || '';
-  const storageBucket = 'media';
-  const encodedPath = path.split('/').map((part) => encodeURIComponent(part)).join('/');
-  return `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(storageBucket)}/${encodedPath}`;
-}
-
-async function logAdminAction(supabase, payload) {
-  const { error } = await supabase.from('admin_actions').insert({
-    admin_id: payload.adminId || null,
-    action_type: payload.actionType || 'unknown',
-    target_type: payload.targetType || null,
-    target_id: Number.isInteger(payload.targetId) ? payload.targetId : null,
-    target_user_id: payload.targetUserId || null,
-    description: payload.description || null,
-  });
-
-  if (error) {
-    throw error;
-  }
-}
-
-router.get('/', (req, res) => {
-    res.render('accountmoderation');
-  });
-
-router.get('/', (req, res) => {
-  res.render('communitymoderator');
+router.get('/', requireAuth, requireGlobalAdmin, (_req, res) => {
+  return res.redirect('/moderation/school');
 });
 
 router.get('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
@@ -162,14 +85,14 @@ router.get('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
     successMessage: typeof req.query.success === 'string' ? req.query.success : '',
     errorMessage: typeof req.query.error === 'string' ? req.query.error : '',
     supabaseUrl: process.env.SUPABASE_URL || '',
-    storageBucket: 'media',
+    storageBucket: DEFAULT_STORAGE_BUCKET,
   });
 });
 
 router.post('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
   const name = normalizeText(req.body.name, 160);
   const domain = normalizeDomain(req.body.domain);
-  const logoPath = normalizeStoragePath(req.body.logoPath);
+  const logoPath = normalizeStoragePath(normalizeText(req.body.logoPath, 500)) || '';
 
   if (!name) {
     return res.redirect('/moderation/school?error=School%20name%20is%20required');
@@ -200,7 +123,7 @@ router.post('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
       let resolvedLogoUrl = '';
 
       if (logoPath) {
-        resolvedLogoUrl = buildStoragePublicUrl(logoPath);
+        resolvedLogoUrl = buildPublicStorageUrl(DEFAULT_STORAGE_BUCKET, logoPath);
       }
 
       if (resolvedLogoUrl) {
@@ -233,10 +156,10 @@ router.post('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
 });
 
 router.post('/school/:id', requireAuth, requireGlobalAdmin, async (req, res) => {
-  const schoolId = parseSchoolId(req.params.id);
+  const schoolId = toPositiveInteger(req.params.id);
   const name = normalizeText(req.body.name, 160);
   const domain = normalizeDomain(req.body.domain);
-  const logoPath = normalizeStoragePath(req.body.logoPath);
+  const logoPath = normalizeStoragePath(normalizeText(req.body.logoPath, 500)) || '';
 
   if (!schoolId) {
     return res.redirect('/moderation/school?error=Invalid%20school%20id');
@@ -268,7 +191,7 @@ router.post('/school/:id', requireAuth, requireGlobalAdmin, async (req, res) => 
 
     const logoColumn = firstExistingColumn(columnSet, ['logo_url', 'logo', 'logo_path', 'image_url']);
     if (logoColumn && logoPath) {
-      payload[logoColumn] = buildStoragePublicUrl(logoPath);
+      payload[logoColumn] = buildPublicStorageUrl(DEFAULT_STORAGE_BUCKET, logoPath);
     }
 
     const { data: updatedSchool, error } = await supabase

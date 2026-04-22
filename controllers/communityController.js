@@ -6,6 +6,17 @@ const {
   formatCreatedAt: formatPostDate,
 } = require('../lib/utils');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
+const { toPositiveInteger } = require('../lib/numberUtils');
+const {
+  buildBubbleText,
+  buildProfileDisplayName,
+  buildSessionFallbackUser,
+  buildAuthorRoleMeta,
+} = require('../lib/profileView');
+const {
+  fetchLikeState,
+  buildCommentCollections,
+} = require('../lib/postEngagement');
 const {
   normalizeRole,
   idsMatch,
@@ -17,28 +28,6 @@ const userActivityLogModel = require('../models/userActivityLogModel');
 
 const PREVIEW_MEMBER_COUNT = 5;
 const DEFAULT_DESCRIPTION = 'No description has been added for this community yet.';
-
-function toPositiveInteger(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function buildBubbleText(name) {
-  if (!name || typeof name !== 'string') {
-    return 'N/A';
-  }
-
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-
-  return parts[0].slice(0, 4).toUpperCase();
-}
 
 function normalizeCreatePayload(body) {
   const source = body || {};
@@ -53,14 +42,6 @@ function normalizeCreatePayload(body) {
     isPrivate: visibility === 'private',
     logoPath,
   };
-}
-
-function displayName(profile) {
-  if (!profile) {
-    return 'Unknown User';
-  }
-
-  return buildDisplayName(profile.first_name, profile.last_name, profile.email);
 }
 
 function formatFoundingLabel(timestamp) {
@@ -141,49 +122,19 @@ async function fetchCommunitySchoolAccess(supabase, communityId, viewerContext) 
   return { exists: true, allowed, community, creatorProfile };
 }
 
-function buildFallbackUser(sessionUser) {
-  return {
-    id: sessionUser.id,
-    firstName: sessionUser.firstName || null,
-    lastName: sessionUser.lastName || null,
-    fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
-    email: sessionUser.email,
-    initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
-    profileAvatarUrl: sessionUser.profileAvatarUrl || null,
-  };
-}
-
 async function buildLikeState(supabase, postIds, userId) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return {
-      likeCountByPostId: new Map(),
-      likedPostIds: new Set(),
-    };
-  }
-
-  const [likes, userLikes] = await Promise.all([
-    communityModel.fetchLikeRowsByPostIds(supabase, postIds),
-    communityModel.fetchUserLikeRowsByPostIds(supabase, postIds, userId),
-  ]);
-
-  const likeCountByPostId = new Map();
-  likes.forEach((row) => {
-    const count = likeCountByPostId.get(row.post_id) || 0;
-    likeCountByPostId.set(row.post_id, count + 1);
+  return fetchLikeState({
+    postIds,
+    userId,
+    fetchLikeRows: (ids) => communityModel.fetchLikeRowsByPostIds(supabase, ids),
+    fetchUserLikeRows: (ids, viewerUserId) =>
+      communityModel.fetchUserLikeRowsByPostIds(supabase, ids, viewerUserId),
   });
-
-  return {
-    likeCountByPostId,
-    likedPostIds: new Set(userLikes.map((row) => row.post_id)),
-  };
 }
 
 async function buildCommentState(supabase, postIds, scopeOptions) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
-    return {
-      commentCountByPostId: new Map(),
-      commentsByPostId: new Map(),
-    };
+    return buildCommentCollections();
   }
 
   const comments = await communityModel.fetchCommentsByPostIds(supabase, postIds);
@@ -196,42 +147,13 @@ async function buildCommentState(supabase, postIds, scopeOptions) {
     );
   }
   const commentAuthorMediaById = await resolveProfileMediaMap(supabase, commentAuthorProfiles);
-  const commentAuthorById = new Map(commentAuthorProfiles.map((row) => [row.id, row]));
-
-  const commentCountByPostId = new Map();
-  const commentsByPostId = new Map();
-
-  comments.forEach((comment) => {
-    const author = commentAuthorById.get(comment.author_id);
-    if (!author) {
-      return;
-    }
-    const authorName = displayName(author);
-    const authorMedia = commentAuthorMediaById.get(comment.author_id);
-    const authorEmail = (author && author.email) || '';
-    const list = commentsByPostId.get(comment.post_id) || [];
-
-    list.push({
-      id: comment.id,
-      authorName,
-      authorInitials: buildInitials(
-        author && author.first_name,
-        author && author.last_name,
-        authorEmail
-      ),
-      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
-      createdAtLabel: formatPostDate(comment.created_at),
-      content: comment.content,
-    });
-
-    commentsByPostId.set(comment.post_id, list);
-    commentCountByPostId.set(comment.post_id, list.length);
+  return buildCommentCollections({
+    comments,
+    profiles: commentAuthorProfiles,
+    profileMediaById: commentAuthorMediaById,
+    formatDateLabel: formatPostDate,
+    skipUnknownAuthors: true,
   });
-
-  return {
-    commentCountByPostId,
-    commentsByPostId,
-  };
 }
 
 async function buildCommunityPageModel(supabase, communityId, viewerProfile, scopeOptions) {
@@ -297,7 +219,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
       if (!profile && creatorProfile && creatorProfile.id === memberId) {
         return {
           id: memberId,
-          name: displayName(creatorProfile),
+          name: buildProfileDisplayName(creatorProfile),
           initials: buildInitials(creatorProfile.first_name, creatorProfile.last_name, creatorProfile.email),
           profileAvatarUrl: creatorMedia && creatorMedia.avatarUrl ? creatorMedia.avatarUrl : null,
           profileHref: buildProfilePath(
@@ -310,7 +232,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
 
       return {
         id: memberId,
-        name: displayName(profile),
+        name: buildProfileDisplayName(profile),
         initials: buildInitials(
           profile && profile.first_name,
           profile && profile.last_name,
@@ -346,16 +268,9 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
     .filter((row) => postAuthorById.has(row.author_id))
     .map((row) => {
     const author = postAuthorById.get(row.author_id);
-    const authorName = displayName(author);
+    const authorName = buildProfileDisplayName(author);
     const authorMedia = postAuthorMediaById.get(row.author_id);
-    const normalizedAuthorRole =
-      author && typeof author.role === 'string' ? author.role.trim().toLowerCase() : '';
-    let authorRoleLabel = null;
-    if (normalizedAuthorRole === 'admin') {
-      authorRoleLabel = 'UniConnect Admin';
-    } else if (normalizedAuthorRole === 'official') {
-      authorRoleLabel = 'School Official';
-    }
+    const roleMeta = buildAuthorRoleMeta(author && author.role);
     const content = row.content && String(row.content).trim() ? String(row.content).trim() : '';
 
     return {
@@ -367,8 +282,8 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
         author && author.last_name
       ),
       authorName,
-      authorRole: normalizedAuthorRole,
-      authorRoleLabel,
+      authorRole: roleMeta.normalizedRole,
+      authorRoleLabel: roleMeta.roleLabel,
       authorInitials: buildInitials(
         author && author.first_name,
         author && author.last_name,
@@ -387,7 +302,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
     });
 
   const memberCount = members.length;
-  const creatorName = displayName(creatorProfile);
+  const creatorName = buildProfileDisplayName(creatorProfile);
   const memberLabel = `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`;
   const metadataParts = [memberLabel, formatFoundingLabel(communityRow.created_at)];
 
@@ -423,7 +338,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
 
 async function renderCommunity(req, res, explicitCommunityId) {
   const sessionUser = req.session.auth.user;
-  const fallbackUser = buildFallbackUser(sessionUser);
+  const fallbackUser = buildSessionFallbackUser(sessionUser);
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -985,7 +900,7 @@ async function showCommunityById(req, res) {
 
   if (!explicitCommunityId) {
     return res.status(404).render('community', {
-      user: buildFallbackUser(sessionUser),
+      user: buildSessionFallbackUser(sessionUser),
       community: null,
       members: [],
       memberPreview: [],

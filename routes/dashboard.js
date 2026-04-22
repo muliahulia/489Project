@@ -4,8 +4,13 @@ const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 const { buildDisplayName, buildInitials } = require('../lib/utils');
 const { fetchViewerSchoolContext, buildSchoolScopeOptions, idsMatch } = require('../lib/schoolScope');
+const { buildBubbleText } = require('../lib/profileView');
+const {
+  DEFAULT_STORAGE_BUCKET,
+  normalizeStoragePath,
+  createSignedStorageUrl,
+} = require('../lib/storage');
 
-const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'media';
 const SIGNED_IMAGE_TTL_SECONDS = 120;
 
 function buildFirstName(firstName, email) {
@@ -24,60 +29,6 @@ function buildFirstName(firstName, email) {
   return 'there';
 }
 
-function bubbleTextFromName(name) {
-  if (!name) {
-    return 'N/A';
-  }
-
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-
-  return parts[0].slice(0, 3).toUpperCase();
-}
-
-function normalizeStoragePath(value) {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed || /^https?:\/\//i.test(trimmed)) {
-    return null;
-  }
-
-  return trimmed;
-}
-
-async function buildSignedImageUrl(supabase, bucket, objectPath) {
-  const path = normalizeStoragePath(objectPath);
-  if (!path) {
-    return null;
-  }
-
-  const storageBucket =
-    typeof bucket === 'string' && bucket.trim() ? bucket.trim() : DEFAULT_STORAGE_BUCKET;
-
-  try {
-    const { data, error } = await supabase.storage
-      .from(storageBucket)
-      .createSignedUrl(path, SIGNED_IMAGE_TTL_SECONDS);
-
-    if (error || !data || !data.signedUrl) {
-      return null;
-    }
-
-    return data.signedUrl;
-  } catch (_err) {
-    return null;
-  }
-}
-
 function normalizeCourse(row) {
   const name = (row && row.name && String(row.name).trim()) || 'Untitled Course';
 
@@ -85,7 +36,7 @@ function normalizeCourse(row) {
     id: row.id || name,
     name,
     imageUrl: null,
-    bubbleText: bubbleTextFromName(name),
+    bubbleText: buildBubbleText(name),
   };
 }
 
@@ -98,7 +49,7 @@ function normalizeCommunity(row, index) {
     imageUrl: null,
     logoBucket: row && row.logo_bucket ? row.logo_bucket : DEFAULT_STORAGE_BUCKET,
     logoPath: normalizeStoragePath(row && row.logo_path),
-    bubbleText: bubbleTextFromName(name),
+    bubbleText: buildBubbleText(name, { singleWordLength: 3 }),
     colorClass: `community-${(index % 5) + 1}`,
   };
 }
@@ -196,7 +147,10 @@ async function fetchAffiliatedCommunities(supabase, userId, scopeOptions) {
     const communities = visibleCommunities.map((row, index) => normalizeCommunity(row, index));
     const signedUrls = await Promise.all(
       communities.map((community) =>
-        buildSignedImageUrl(supabase, community.logoBucket, community.logoPath)
+        createSignedStorageUrl(supabase, community.logoPath, {
+          bucket: community.logoBucket,
+          ttlSeconds: SIGNED_IMAGE_TTL_SECONDS,
+        })
       )
     );
 

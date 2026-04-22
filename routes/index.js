@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+const pool = require('../db');
 
 /* Home */
 router.get('/', function(req, res) {
@@ -11,9 +12,6 @@ router.get('/login', function(req, res) {
     error: req.query.error || null,
   });
 });
-
-module.exports = router;
-const pool = require('../db');
 
 /* DB test */
 router.get('/db-test', async (req, res) => {

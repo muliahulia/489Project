@@ -7,6 +7,16 @@ const {
   fetchAffiliations,
 } = require('../lib/utils');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
+const { toPositiveInteger, toNonNegativeInteger } = require('../lib/numberUtils');
+const {
+  buildProfileDisplayName,
+  buildSessionFallbackUser,
+  buildAuthorRoleMeta,
+} = require('../lib/profileView');
+const {
+  fetchLikeState,
+  buildCommentCollections,
+} = require('../lib/postEngagement');
 const {
   normalizeRole,
   fetchViewerSchoolContext,
@@ -14,37 +24,6 @@ const {
 } = require('../lib/schoolScope');
 const postModel = require('../models/postModel');
 const FEED_PAGE_SIZE = 10;
-
-function toPositiveInteger(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function toNonNegativeInteger(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
-}
-
-function buildFallbackUser(sessionUser) {
-  const normalizedRole = normalizeRole(sessionUser.role) || 'student';
-  return {
-    id: sessionUser.id,
-    role: normalizedRole,
-    firstName: sessionUser.firstName || null,
-    lastName: sessionUser.lastName || null,
-    fullName: buildDisplayName(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
-    email: sessionUser.email,
-    initials: buildInitials(sessionUser.firstName, sessionUser.lastName, sessionUser.email),
-    profileAvatarUrl: sessionUser.profileAvatarUrl || null,
-  };
-}
-
-function displayName(profile) {
-  if (!profile) {
-    return 'Unknown User';
-  }
-  return buildDisplayName(profile.first_name, profile.last_name, profile.email);
-}
 
 async function buildCurrentUserViewModel(supabase, sessionUser, viewerContext) {
   const scopeOptions = {
@@ -77,35 +56,19 @@ async function buildCurrentUserViewModel(supabase, sessionUser, viewerContext) {
 }
 
 async function buildLikeState(supabase, postIds, userId) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return {
-      likeCountByPostId: new Map(),
-      likedPostIds: new Set(),
-    };
-  }
-
-  const [likes, userLikes] = await Promise.all([
-    postModel.fetchLikeRowsByPostIds(supabase, postIds),
-    postModel.fetchUserLikeRowsByPostIds(supabase, postIds, userId),
-  ]);
-
-  const likeCountByPostId = new Map();
-  likes.forEach((row) => {
-    const count = likeCountByPostId.get(row.post_id) || 0;
-    likeCountByPostId.set(row.post_id, count + 1);
+  return fetchLikeState({
+    postIds,
+    userId,
+    fetchLikeRows: (ids) => postModel.fetchLikeRowsByPostIds(supabase, ids),
+    fetchUserLikeRows: (ids, viewerUserId) =>
+      postModel.fetchUserLikeRowsByPostIds(supabase, ids, viewerUserId),
   });
-
-  return {
-    likeCountByPostId,
-    likedPostIds: new Set(userLikes.map((row) => row.post_id)),
-  };
 }
 
 async function buildCommentState(supabase, postIds, scopeOptions) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
     return {
-      commentCountByPostId: new Map(),
-      commentsByPostId: new Map(),
+      ...buildCommentCollections(),
       hasError: false,
     };
   }
@@ -117,8 +80,7 @@ async function buildCommentState(supabase, postIds, scopeOptions) {
   );
   if (error) {
     return {
-      commentCountByPostId: new Map(),
-      commentsByPostId: new Map(),
+      ...buildCommentCollections(),
       hasError: true,
     };
   }
@@ -126,36 +88,14 @@ async function buildCommentState(supabase, postIds, scopeOptions) {
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
   const profiles = await postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions);
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
-  const profileById = new Map(profiles.map((row) => [row.id, row]));
-  const commentCountByPostId = new Map();
-  const commentsByPostId = new Map();
-
-  comments.forEach((comment) => {
-    const author = profileById.get(comment.author_id);
-    const authorEmail = (author && author.email) || '';
-    const authorMedia = profileMediaById.get(comment.author_id);
-    const list = commentsByPostId.get(comment.post_id) || [];
-
-    list.push({
-      id: comment.id,
-      authorName: displayName(author),
-      authorInitials: buildInitials(
-        author && author.first_name,
-        author && author.last_name,
-        authorEmail
-      ),
-      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
-      createdAtLabel: formatCreatedAt(comment.created_at),
-      content: comment.content,
-    });
-
-    commentsByPostId.set(comment.post_id, list);
-    commentCountByPostId.set(comment.post_id, list.length);
-  });
-
   return {
-    commentCountByPostId,
-    commentsByPostId,
+    ...buildCommentCollections({
+      comments,
+      profiles,
+      profileMediaById,
+      formatDateLabel: formatCreatedAt,
+      skipUnknownAuthors: false,
+    }),
     hasError: false,
   };
 }
@@ -202,14 +142,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOption
     const course = courseById.get(post.course_id);
     const community = communityById.get(post.community_id);
     const authorEmail = (author && author.email) || '';
-    const normalizedAuthorRole =
-      author && typeof author.role === 'string' ? author.role.trim().toLowerCase() : '';
-    let authorRoleLabel = null;
-    if (normalizedAuthorRole === 'admin') {
-      authorRoleLabel = 'UniConnect Admin';
-    } else if (normalizedAuthorRole === 'official') {
-      authorRoleLabel = 'School Official';
-    }
+    const roleMeta = buildAuthorRoleMeta(author && author.role);
     let scopeLabel = 'General';
     let scopeHref = '#';
 
@@ -229,9 +162,9 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOption
         author && author.first_name,
         author && author.last_name
       ),
-      authorName: displayName(author),
-      authorRole: normalizedAuthorRole,
-      authorRoleLabel,
+      authorName: buildProfileDisplayName(author),
+      authorRole: roleMeta.normalizedRole,
+      authorRoleLabel: roleMeta.roleLabel,
       authorInitials: buildInitials(
         author && author.first_name,
         author && author.last_name,
@@ -285,7 +218,7 @@ function jsonOrRedirect(req, res, statusCode, payload, redirectPath) {
 
 async function showFeed(req, res) {
   const sessionUser = req.session.auth.user;
-  const fallbackUser = buildFallbackUser(sessionUser);
+  const fallbackUser = buildSessionFallbackUser(sessionUser, { includeRole: true });
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -543,7 +476,7 @@ function redirectToFeed(req, res) {
 async function showPostById(req, res) {
   const sessionUser = req.session.auth.user;
   const postId = toPositiveInteger(req.params.id);
-  const fallbackUser = buildFallbackUser(sessionUser);
+  const fallbackUser = buildSessionFallbackUser(sessionUser, { includeRole: true });
 
   if (!postId) {
     return res.status(404).render('post', {

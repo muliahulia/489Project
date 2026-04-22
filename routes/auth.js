@@ -1,11 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const { createSupabaseAnonClient, createSupabaseAdminClient } = require('../lib/supabase');
-
-function wantsJson(req) {
-  const accept = req.get('accept') || '';
-  return req.is('application/json') || accept.includes('application/json');
-}
+const { wantsJson } = require('../lib/http');
 
 function getRequestBody(req, fields) {
   const source = req.body || {};
@@ -17,7 +13,7 @@ function getRequestBody(req, fields) {
 }
 
 function sendFailure(req, res, status, message) {
-  if (wantsJson(req)) {
+  if (wantsJson(req, { includeContentType: true, includeXhr: false })) {
     return res.status(status).json({ error: message });
   }
   return res.redirect(`/login?error=${encodeURIComponent(message)}`);
@@ -107,7 +103,7 @@ router.post('/login', async (req, res) => {
     refreshToken: loginData.session.refresh_token,
   };
 
-  if (wantsJson(req)) {
+  if (wantsJson(req, { includeContentType: true, includeXhr: false })) {
     return res.json({ ok: true, redirectTo: '/dashboard' });
   }
   return res.redirect('/dashboard');
@@ -140,7 +136,7 @@ router.post('/signup', async (req, res) => {
     return sendFailure(req, res, 400, error.message);
   }
 
-  if (wantsJson(req)) {
+  if (wantsJson(req, { includeContentType: true, includeXhr: false })) {
     return res.status(201).json({ ok: true, message: 'Check your email to confirm.' });
   }
   return res.redirect('/login');
@@ -157,7 +153,7 @@ router.post('/logout', async (req, res) => {
   }
 
   req.session.destroy(() => {
-    if (wantsJson(req)) return res.json({ ok: true });
+    if (wantsJson(req, { includeContentType: true, includeXhr: false })) return res.json({ ok: true });
     return res.redirect('/login');
   });
 });
@@ -171,7 +167,7 @@ router.post('/forgotpassword', async (req, res) => {
 
   if (error) return sendFailure(req, res, 400, error.message);
 
-  if (wantsJson(req)) return res.json({ ok: true });
+  if (wantsJson(req, { includeContentType: true, includeXhr: false })) return res.json({ ok: true });
   return res.redirect('/login');
 });
 

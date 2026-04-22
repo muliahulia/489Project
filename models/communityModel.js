@@ -1,13 +1,17 @@
-const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'media';
+const { idsMatch } = require('../lib/schoolScope');
+const {
+  DEFAULT_STORAGE_BUCKET,
+  normalizeStoragePath,
+  createSignedStorageUrl,
+} = require('../lib/storage');
+const { fetchProfileById, fetchProfilesByIds } = require('./shared/profileQueries');
+const {
+  fetchLikeRowsByPostIds,
+  fetchUserLikeRowsByPostIds,
+  fetchCommentRowsByPostIds,
+} = require('./shared/postInteractions');
+
 const SIGNED_IMAGE_TTL_SECONDS = 120;
-
-function idsMatch(left, right) {
-  if (!left || !right) {
-    return false;
-  }
-
-  return String(left) === String(right);
-}
 
 function isSchoolScoped(options = {}) {
   return !Boolean(options.isGlobalAdmin);
@@ -72,45 +76,11 @@ async function fetchCreatorSchoolIdByCommunityId(supabase, communityIds) {
   return schoolByCommunityId;
 }
 
-function normalizeStoragePath(value) {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    return null;
-  }
-
-  return trimmed;
-}
-
 async function createSignedImageUrl(supabase, bucket, objectPath) {
-  const path = normalizeStoragePath(objectPath);
-  if (!path) {
-    return null;
-  }
-
-  const storageBucket =
-    typeof bucket === 'string' && bucket.trim() ? bucket.trim() : DEFAULT_STORAGE_BUCKET;
-
-  try {
-    const { data, error } = await supabase.storage
-      .from(storageBucket)
-      .createSignedUrl(path, SIGNED_IMAGE_TTL_SECONDS);
-
-    if (error || !data || !data.signedUrl) {
-      return null;
-    }
-
-    return data.signedUrl;
-  } catch (_err) {
-    return null;
-  }
+  return createSignedStorageUrl(supabase, objectPath, {
+    bucket,
+    ttlSeconds: SIGNED_IMAGE_TTL_SECONDS,
+  });
 }
 
 async function fetchCommunityDirectoryData(supabase) {
@@ -350,37 +320,6 @@ async function fetchCommunityIdentity(supabase, communityId) {
   return data;
 }
 
-async function fetchProfileById(supabase, userId) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data;
-}
-
-async function fetchProfilesByIds(supabase, ids) {
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .in('id', ids);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
-
 async function resolveCommunityId(supabase, userId, explicitCommunityId, options = {}) {
   const schoolScoped = isSchoolScoped(options);
   const schoolId = options.schoolId || null;
@@ -526,59 +465,8 @@ async function fetchCommunityPageData(supabase, communityId, options = {}) {
 }
 
 async function fetchCommentsByPostIds(supabase, postIds) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('comments')
-    .select('id,post_id,author_id,content,created_at,is_deleted')
-    .eq('is_deleted', false)
-    .in('post_id', postIds)
-    .order('created_at', { ascending: true });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
-
-async function fetchLikeRowsByPostIds(supabase, postIds) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('reactions')
-    .select('post_id')
-    .eq('type', 'like')
-    .in('post_id', postIds);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
-
-async function fetchUserLikeRowsByPostIds(supabase, postIds, userId) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('reactions')
-    .select('post_id')
-    .eq('type', 'like')
-    .eq('user_id', userId)
-    .in('post_id', postIds);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
+  const { rows } = await fetchCommentRowsByPostIds(supabase, postIds);
+  return rows;
 }
 
 async function userCanPostInCommunity(supabase, communityId, userId) {

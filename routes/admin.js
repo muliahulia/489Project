@@ -2,6 +2,8 @@ var express = require('express');
 var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
+const { requireGlobalAdmin, logAdminAction } = require('../lib/adminHelpers');
+const { buildDisplayName } = require('../lib/utils');
 
 const ACTIVE_USERS_TIMEZONE = process.env.ACTIVE_USERS_TIMEZONE || 'America/Los_Angeles';
 const USERS_PAGE_SIZE = 1000;
@@ -14,23 +16,6 @@ const REPORT_TYPE_MAP = {
   user: 'user',
   community: 'community',
 };
-
-function requireGlobalAdmin(req, res, next) {
-  const role = req.session
-    && req.session.auth
-    && req.session.auth.user
-    && typeof req.session.auth.user.role === 'string'
-    ? req.session.auth.user.role.trim().toLowerCase()
-    : '';
-
-  if (role === 'admin') {
-    return next();
-  }
-
-  const err = new Error('Forbidden');
-  err.status = 403;
-  return next(err);
-}
 
 function dateKeyForTimeZone(date, timeZone) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -55,22 +40,11 @@ function isDateTodayInTimeZone(value, todayKey, timeZone) {
 }
 
 function formatProfileLabel(row) {
-  if (!row) {
-    return 'Unknown User';
-  }
-
-  const first = typeof row.first_name === 'string' ? row.first_name.trim() : '';
-  const last = typeof row.last_name === 'string' ? row.last_name.trim() : '';
-  const fullName = [first, last].filter(Boolean).join(' ').trim();
-  if (fullName) {
-    return fullName;
-  }
-
-  if (row.email && typeof row.email === 'string') {
-    return row.email;
-  }
-
-  return 'Unknown User';
+  return buildDisplayName(
+    row && row.first_name,
+    row && row.last_name,
+    row && row.email
+  );
 }
 
 function fallbackUserLabel(userId) {
@@ -128,26 +102,6 @@ function tableNameForReportType(reportType) {
     return 'community_reports';
   }
   return null;
-}
-
-async function logAdminAction(supabase, payload) {
-  if (!supabase || !payload || typeof payload !== 'object') {
-    return;
-  }
-
-  const insertPayload = {
-    admin_id: payload.adminId || null,
-    action_type: payload.actionType || 'unknown',
-    target_type: payload.targetType || null,
-    target_id: Number.isInteger(payload.targetId) ? payload.targetId : null,
-    description: payload.description || null,
-    target_user_id: payload.targetUserId || null,
-  };
-
-  const { error } = await supabase.from('admin_actions').insert(insertPayload);
-  if (error) {
-    throw error;
-  }
 }
 
 async function fetchActiveUsersToday() {

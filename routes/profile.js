@@ -2,13 +2,21 @@ var express = require('express');
 var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
+const { wantsJson } = require('../lib/http');
 const {
-  buildDisplayName,
   buildInitials,
   buildProfilePath,
   buildProfileSlug,
   formatCreatedAt,
 } = require('../lib/utils');
+const {
+  buildProfileDisplayName,
+  buildAuthorRoleMeta,
+} = require('../lib/profileView');
+const {
+  fetchLikeState,
+  buildCommentCollections,
+} = require('../lib/postEngagement');
 const {
   fetchViewerSchoolContext,
   buildSchoolScopeOptions,
@@ -16,11 +24,6 @@ const {
 } = require('../lib/schoolScope');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
 const postModel = require('../models/postModel');
-
-function wantsJson(req) {
-  const accept = req.get('accept') || '';
-  return req.xhr || accept.includes('application/json');
-}
 
 async function fetchProfileById(supabase, userId) {
   if (!userId) {
@@ -190,7 +193,7 @@ async function fetchFollowersList(supabase, viewedProfileId, scopeOptions) {
       const media = followerMediaById.get(followerId);
       return {
         id: follower.id,
-        name: displayName(follower),
+        name: buildProfileDisplayName(follower),
         initials: buildInitials(follower.first_name, follower.last_name, followerEmail),
         avatarUrl: media && media.avatarUrl ? media.avatarUrl : null,
         href: buildProfilePath(follower.id, follower.first_name, follower.last_name),
@@ -207,47 +210,20 @@ function renderProfileNotFound(req, res) {
   });
 }
 
-function displayName(profile) {
-  if (!profile) {
-    return 'Unknown User';
-  }
-
-  return buildDisplayName(profile.first_name, profile.last_name, profile.email);
-}
-
 async function buildLikeState(supabase, postIds, viewerUserId) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return {
-      likeCountByPostId: new Map(),
-      likedPostIds: new Set(),
-    };
-  }
-
-  const [likes, userLikes] = await Promise.all([
-    postModel.fetchLikeRowsByPostIds(supabase, postIds),
-    viewerUserId
-      ? postModel.fetchUserLikeRowsByPostIds(supabase, postIds, viewerUserId)
-      : Promise.resolve([]),
-  ]);
-
-  const likeCountByPostId = new Map();
-  likes.forEach((row) => {
-    const count = likeCountByPostId.get(row.post_id) || 0;
-    likeCountByPostId.set(row.post_id, count + 1);
+  return fetchLikeState({
+    postIds,
+    userId: viewerUserId,
+    fetchLikeRows: (ids) => postModel.fetchLikeRowsByPostIds(supabase, ids),
+    fetchUserLikeRows: (ids, userId) =>
+      postModel.fetchUserLikeRowsByPostIds(supabase, ids, userId),
+    skipUserLikesWithoutUserId: true,
   });
-
-  return {
-    likeCountByPostId,
-    likedPostIds: new Set(userLikes.map((row) => row.post_id)),
-  };
 }
 
 async function buildCommentState(supabase, postIds, scopeOptions) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
-    return {
-      commentCountByPostId: new Map(),
-      commentsByPostId: new Map(),
-    };
+    return buildCommentCollections();
   }
 
   const { comments, error } = await postModel.fetchCommentsByPostIds(
@@ -256,49 +232,19 @@ async function buildCommentState(supabase, postIds, scopeOptions) {
     scopeOptions
   );
   if (error) {
-    return {
-      commentCountByPostId: new Map(),
-      commentsByPostId: new Map(),
-    };
+    return buildCommentCollections();
   }
 
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
   const profiles = await postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions);
-  const profileById = new Map(profiles.map((row) => [row.id, row]));
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
-  const commentCountByPostId = new Map();
-  const commentsByPostId = new Map();
-
-  comments.forEach((comment) => {
-    const author = profileById.get(comment.author_id);
-    if (!author) {
-      return;
-    }
-    const authorEmail = author && author.email ? author.email : '';
-    const authorMedia = profileMediaById.get(comment.author_id);
-    const list = commentsByPostId.get(comment.post_id) || [];
-
-    list.push({
-      id: comment.id,
-      authorName: displayName(author),
-      authorInitials: buildInitials(
-        author && author.first_name,
-        author && author.last_name,
-        authorEmail
-      ),
-      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
-      createdAtLabel: formatCreatedAt(comment.created_at),
-      content: comment.content,
-    });
-
-    commentsByPostId.set(comment.post_id, list);
-    commentCountByPostId.set(comment.post_id, list.length);
+  return buildCommentCollections({
+    comments,
+    profiles,
+    profileMediaById,
+    formatDateLabel: formatCreatedAt,
+    skipUnknownAuthors: true,
   });
-
-  return {
-    commentCountByPostId,
-    commentsByPostId,
-  };
 }
 
 async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOptions) {
@@ -340,14 +286,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOption
     const author = profileById.get(post.author_id);
     const authorEmail = author && author.email ? author.email : '';
     const authorMedia = profileMediaById.get(post.author_id);
-    const normalizedAuthorRole =
-      author && typeof author.role === 'string' ? author.role.trim().toLowerCase() : '';
-    let authorRoleLabel = null;
-    if (normalizedAuthorRole === 'admin') {
-      authorRoleLabel = 'UniConnect Admin';
-    } else if (normalizedAuthorRole === 'official') {
-      authorRoleLabel = 'School Official';
-    }
+    const roleMeta = buildAuthorRoleMeta(author && author.role);
     const course = courseById.get(post.course_id);
     const community = communityById.get(post.community_id);
     let scopeLabel = 'General';
@@ -369,9 +308,9 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOption
         author && author.first_name,
         author && author.last_name
       ),
-      authorName: displayName(author),
-      authorRole: normalizedAuthorRole,
-      authorRoleLabel,
+      authorName: buildProfileDisplayName(author),
+      authorRole: roleMeta.normalizedRole,
+      authorRoleLabel: roleMeta.roleLabel,
       authorInitials: buildInitials(
         author && author.first_name,
         author && author.last_name,

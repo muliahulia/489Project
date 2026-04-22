@@ -1,10 +1,9 @@
-function idsMatch(left, right) {
-  if (!left || !right) {
-    return false;
-  }
-
-  return String(left) === String(right);
-}
+const { idsMatch } = require('../lib/schoolScope');
+const {
+  fetchLikeRowsByPostIds,
+  fetchUserLikeRowsByPostIds,
+  fetchCommentRowsByPostIds,
+} = require('./shared/postInteractions');
 
 function isSchoolScoped(options = {}) {
   return !Boolean(options.isGlobalAdmin);
@@ -375,56 +374,10 @@ async function createFeedPost(supabase, payload) {
   return !error;
 }
 
-async function fetchLikeRowsByPostIds(supabase, postIds) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('reactions')
-    .select('post_id')
-    .eq('type', 'like')
-    .in('post_id', postIds);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
-
-async function fetchUserLikeRowsByPostIds(supabase, postIds, userId) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('reactions')
-    .select('post_id')
-    .eq('type', 'like')
-    .eq('user_id', userId)
-    .in('post_id', postIds);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
-
 async function fetchCommentsByPostIds(supabase, postIds, options = {}) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return { comments: [], error: null };
-  }
+  const { rows, error } = await fetchCommentRowsByPostIds(supabase, postIds);
 
-  const { data, error } = await supabase
-    .from('comments')
-    .select('id,post_id,author_id,content,created_at,is_deleted')
-    .eq('is_deleted', false)
-    .in('post_id', postIds)
-    .order('created_at', { ascending: true });
-
-  if (error || !Array.isArray(data)) {
+  if (error || !Array.isArray(rows)) {
     return {
       comments: [],
       error,
@@ -433,7 +386,7 @@ async function fetchCommentsByPostIds(supabase, postIds, options = {}) {
 
   if (!isSchoolScoped(options)) {
     return {
-      comments: data,
+      comments: rows,
       error: null,
     };
   }
@@ -446,7 +399,7 @@ async function fetchCommentsByPostIds(supabase, postIds, options = {}) {
     };
   }
 
-  const authorIds = [...new Set(data.map((comment) => comment.author_id).filter(Boolean))];
+  const authorIds = [...new Set(rows.map((comment) => comment.author_id).filter(Boolean))];
   if (authorIds.length === 0) {
     return {
       comments: [],
@@ -469,7 +422,7 @@ async function fetchCommentsByPostIds(supabase, postIds, options = {}) {
 
   const allowedAuthorIds = new Set(profileRows.map((row) => row.id));
   return {
-    comments: data.filter((comment) => allowedAuthorIds.has(comment.author_id)),
+    comments: rows.filter((comment) => allowedAuthorIds.has(comment.author_id)),
     error: null,
   };
 }

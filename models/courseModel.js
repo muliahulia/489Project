@@ -1,33 +1,9 @@
-async function fetchProfileById(supabase, userId) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data;
-}
-
-async function fetchProfilesByIds(supabase, ids) {
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .in('id', ids);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
+const { fetchProfileById, fetchProfilesByIds } = require('./shared/profileQueries');
+const {
+  fetchLikeRowsByPostIds,
+  fetchUserLikeRowsByPostIds,
+  fetchCommentRowsByPostIds,
+} = require('./shared/postInteractions');
 
 async function fetchSchoolById(supabase, schoolId) {
   if (!schoolId) {
@@ -240,60 +216,9 @@ async function updateCourseRecord(supabase, payload) {
   return data;
 }
 
-async function fetchLikeRowsByPostIds(supabase, postIds) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('reactions')
-    .select('post_id')
-    .eq('type', 'like')
-    .in('post_id', postIds);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
-
-async function fetchUserLikeRowsByPostIds(supabase, postIds, userId) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('reactions')
-    .select('post_id')
-    .eq('type', 'like')
-    .eq('user_id', userId)
-    .in('post_id', postIds);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
-}
-
 async function fetchCommentsByPostIds(supabase, postIds) {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('comments')
-    .select('id,post_id,author_id,content,created_at,is_deleted')
-    .eq('is_deleted', false)
-    .in('post_id', postIds)
-    .order('created_at', { ascending: true });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
+  const { rows } = await fetchCommentRowsByPostIds(supabase, postIds);
+  return rows;
 }
 
 async function userCanPostInCourse(supabase, courseId, userId) {
