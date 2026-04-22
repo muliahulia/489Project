@@ -52,11 +52,17 @@ async function fetchSchoolColumnSet(supabase) {
   return new Set(data.map((row) => row.column_name).filter(Boolean));
 }
 
-router.get('/', requireAuth, requireGlobalAdmin, (_req, res) => {
+router.get('/reports', (req, res) => {
+  res.redirect('/admin/reports');
+});
+
+router.use(requireAuth, requireGlobalAdmin);
+
+router.get('/', (_req, res) => {
   return res.redirect('/moderation/school');
 });
 
-router.get('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
+router.get('/school', async (req, res) => {
   const supabase = createSupabaseAdminClient();
   let rows = [];
 
@@ -89,7 +95,7 @@ router.get('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
   });
 });
 
-router.post('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
+router.post('/school', async (req, res) => {
   const name = normalizeText(req.body.name, 160);
   const domain = normalizeDomain(req.body.domain);
   const logoPath = normalizeStoragePath(normalizeText(req.body.logoPath, 500)) || '';
@@ -155,7 +161,7 @@ router.post('/school', requireAuth, requireGlobalAdmin, async (req, res) => {
   }
 });
 
-router.post('/school/:id', requireAuth, requireGlobalAdmin, async (req, res) => {
+router.post('/school/:id', async (req, res) => {
   const schoolId = toPositiveInteger(req.params.id);
   const name = normalizeText(req.body.name, 160);
   const domain = normalizeDomain(req.body.domain);
@@ -221,10 +227,5 @@ router.post('/school/:id', requireAuth, requireGlobalAdmin, async (req, res) => 
     return res.redirect('/moderation/school?error=Unable%20to%20update%20school');
   }
 });
-
-router.get('/reports', (req, res) => {
-  res.redirect('/admin/reports');
-});
-
 
 module.exports = router;

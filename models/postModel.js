@@ -562,10 +562,6 @@ async function createFeedPostWithImage(supabase, payload) {
       community_id: null,
     });
 
-  if (error) {
-    console.error('CREATE POST DB ERROR:', error);
-  }
-
   return !error;
 }
 

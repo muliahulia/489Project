@@ -330,6 +330,42 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOption
     });
 }
 
+function shouldRedirectToCanonicalProfile(options, canonicalSlug) {
+  const requestedSlug = typeof options.requestedSlug === 'string'
+    ? options.requestedSlug.trim().toLowerCase()
+    : '';
+  return Boolean(options.forceCanonicalRedirect) || requestedSlug !== canonicalSlug;
+}
+
+function buildProfileWithSessionFallbacks(profile, sessionUser) {
+  const profileWithFallbacks = { ...profile };
+  if (profile.id === sessionUser.id && !profileWithFallbacks.email) {
+    profileWithFallbacks.email = sessionUser.email || null;
+  }
+  return profileWithFallbacks;
+}
+
+async function buildProfileRenderData(supabase, profile, sessionUser, scopeOptions) {
+  const [media, schoolName, membershipData, postRows, followState, followers] = await Promise.all([
+    resolveProfileMedia(supabase, profile),
+    fetchSchoolNameById(supabase, profile.school_id),
+    fetchMembershipCollections(supabase, profile.id, scopeOptions),
+    fetchProfilePostsByAuthorId(supabase, profile.id),
+    fetchFollowState(supabase, sessionUser.id, profile.id, scopeOptions),
+    fetchFollowersList(supabase, profile.id, scopeOptions),
+  ]);
+  const posts = await buildPostsViewModel(supabase, postRows, sessionUser.id, scopeOptions);
+
+  return {
+    media,
+    schoolName,
+    membershipData,
+    followState,
+    followers,
+    posts,
+  };
+}
+
 async function renderProfileByUserId(req, res, userId, options = {}) {
   const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
   if (!normalizedUserId) {
@@ -359,51 +395,38 @@ async function renderProfileByUserId(req, res, userId, options = {}) {
 
   const canonicalPath = buildProfilePath(profile.id, profile.first_name, profile.last_name);
   const canonicalSlug = buildProfileSlug(profile.first_name, profile.last_name);
-  const requestedSlug = typeof options.requestedSlug === 'string'
-    ? options.requestedSlug.trim().toLowerCase()
-    : '';
-  const shouldRedirectToCanonical = Boolean(options.forceCanonicalRedirect)
-    || requestedSlug !== canonicalSlug;
-
-  if (shouldRedirectToCanonical) {
+  if (shouldRedirectToCanonicalProfile(options, canonicalSlug)) {
     return res.redirect(canonicalPath);
   }
 
   const isOwnProfile = profile.id === sessionUser.id;
-  const profileWithFallbacks = { ...profile };
-  if (profile.id === sessionUser.id && !profileWithFallbacks.email) {
-    profileWithFallbacks.email = sessionUser.email || null;
-  }
-
-  const [media, schoolName, membershipData, postRows, followState, followers] = await Promise.all([
-    resolveProfileMedia(supabase, profileWithFallbacks),
-    fetchSchoolNameById(supabase, profileWithFallbacks.school_id),
-    fetchMembershipCollections(supabase, profile.id, scopeOptions),
-    fetchProfilePostsByAuthorId(supabase, profile.id),
-    fetchFollowState(supabase, sessionUser.id, profile.id, scopeOptions),
-    fetchFollowersList(supabase, profile.id, scopeOptions),
-  ]);
-  const posts = await buildPostsViewModel(supabase, postRows, sessionUser.id, scopeOptions);
+  const profileWithFallbacks = buildProfileWithSessionFallbacks(profile, sessionUser);
+  const renderData = await buildProfileRenderData(
+    supabase,
+    profileWithFallbacks,
+    sessionUser,
+    scopeOptions
+  );
 
   return res.render('profile', {
     user: sessionUser,
     currentUser: sessionUser,
     profile: profileWithFallbacks,
-    profileAvatarUrl: media.avatarUrl,
-    profileBannerUrl: media.bannerUrl,
-    profileSchoolName: schoolName || 'Washington State University',
+    profileAvatarUrl: renderData.media.avatarUrl,
+    profileBannerUrl: renderData.media.bannerUrl,
+    profileSchoolName: renderData.schoolName || 'Washington State University',
     isOwnProfile,
-    isFollowing: followState.isFollowing,
+    isFollowing: renderData.followState.isFollowing,
     counts: {
-      posts: posts.length,
-      courses: membershipData.courses.length,
-      communities: membershipData.communities.length,
-      followers: followState.followersCount,
+      posts: renderData.posts.length,
+      courses: renderData.membershipData.courses.length,
+      communities: renderData.membershipData.communities.length,
+      followers: renderData.followState.followersCount,
     },
-    courses: membershipData.courses,
-    communities: membershipData.communities,
-    followers,
-    posts,
+    courses: renderData.membershipData.courses,
+    communities: renderData.membershipData.communities,
+    followers: renderData.followers,
+    posts: renderData.posts,
   });
 }
 

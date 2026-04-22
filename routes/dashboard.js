@@ -189,8 +189,8 @@ router.get('/', requireAuth, async (req, res) => {
 
     courses = await fetchAffiliatedCourses(supabase, userId, scopeOptions);
     communities = await fetchAffiliatedCommunities(supabase, userId, scopeOptions);
-  } catch (err) {
-    console.log('DASHBOARD ERROR:', err);
+  } catch (_err) {
+    // Keep safe dashboard defaults when lookups fail.
   }
 
   const profileFirstName = profile?.first_name || sessionUser.firstName || null;

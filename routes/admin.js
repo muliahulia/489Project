@@ -349,27 +349,6 @@ async function fetchProfileLabelsById(userIds) {
   }, {});
 }
 
-async function fetchCommunityNamesById(communityIds) {
-  if (!Array.isArray(communityIds) || communityIds.length === 0) {
-    return {};
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('communities')
-    .select('id,name')
-    .in('id', communityIds);
-
-  if (error || !Array.isArray(data)) {
-    return {};
-  }
-
-  return data.reduce((acc, row) => {
-    acc[row.id] = row.name || `Community #${row.id}`;
-    return acc;
-  }, {});
-}
-
 async function fetchCommunityMetaById(communityIds) {
   if (!Array.isArray(communityIds) || communityIds.length === 0) {
     return {};
@@ -856,170 +835,210 @@ async function fetchReportDetail(reportType, reportId) {
   return null;
 }
 
+async function addPenaltyFromReport(supabase, report, adminUserId) {
+  if (!report || !report.reportedUserId) {
+    return;
+  }
+
+  const penaltyReason = `Report ${report.reportType} #${report.id}: ${report.reason}`;
+  const penaltyInsert = await supabase
+    .from('user_penalties')
+    .insert({
+      user_id: report.reportedUserId,
+      issued_by: adminUserId || null,
+      reason: penaltyReason,
+    });
+
+  if (penaltyInsert.error) {
+    throw penaltyInsert.error;
+  }
+
+  await logAdminAction(supabase, {
+    adminId: adminUserId,
+    actionType: 'penalty_added_from_report',
+    targetType: 'user_penalty',
+    targetUserId: report.reportedUserId,
+    description: `Added penalty from ${report.reportTypeSlug} report #${report.id}`,
+  });
+}
+
+async function removePostReportContent(supabase, report, adminUserId) {
+  if (!report || report.reportTypeSlug !== 'post') {
+    return;
+  }
+
+  if (report.commentId) {
+    const commentUpdate = await supabase
+      .from('comments')
+      .update({ is_deleted: true })
+      .eq('id', report.commentId);
+    if (commentUpdate.error) {
+      throw commentUpdate.error;
+    }
+
+    await logAdminAction(supabase, {
+      adminId: adminUserId,
+      actionType: 'comment_removed_from_report',
+      targetType: 'comment',
+      targetId: report.commentId,
+      targetUserId: report.reportedUserId || null,
+      description: `Removed comment from report #${report.id}`,
+    });
+    return;
+  }
+
+  if (report.postId) {
+    const postUpdate = await supabase
+      .from('posts')
+      .update({ is_deleted: true })
+      .eq('id', report.postId);
+    if (postUpdate.error) {
+      throw postUpdate.error;
+    }
+
+    await logAdminAction(supabase, {
+      adminId: adminUserId,
+      actionType: 'post_removed_from_report',
+      targetType: 'post',
+      targetId: report.postId,
+      targetUserId: report.reportedUserId || null,
+      description: `Removed post from report #${report.id}`,
+    });
+  }
+}
+
+async function removeUserReportContent(supabase, report, adminUserId) {
+  if (!report || report.reportTypeSlug !== 'user' || !report.reportedUserId) {
+    return;
+  }
+
+  const [postsUpdate, commentsUpdate] = await Promise.all([
+    supabase.from('posts').update({ is_deleted: true }).eq('author_id', report.reportedUserId),
+    supabase.from('comments').update({ is_deleted: true }).eq('author_id', report.reportedUserId),
+  ]);
+
+  if (postsUpdate.error) {
+    throw postsUpdate.error;
+  }
+  if (commentsUpdate.error) {
+    throw commentsUpdate.error;
+  }
+
+  await logAdminAction(supabase, {
+    adminId: adminUserId,
+    actionType: 'user_content_removed_from_report',
+    targetType: 'user_content',
+    targetUserId: report.reportedUserId,
+    description: `Removed posts/comments for user from report #${report.id}`,
+  });
+}
+
+async function removeCommunityReportContent(supabase, report, adminUserId) {
+  if (!report || report.reportTypeSlug !== 'community' || !report.communityId) {
+    return;
+  }
+
+  const postsResult = await supabase
+    .from('posts')
+    .select('id')
+    .eq('community_id', report.communityId);
+
+  if (postsResult.error) {
+    throw postsResult.error;
+  }
+
+  const postIds = Array.isArray(postsResult.data)
+    ? postsResult.data.map((row) => row.id).filter(Boolean)
+    : [];
+
+  const postUpdate = await supabase
+    .from('posts')
+    .update({ is_deleted: true })
+    .eq('community_id', report.communityId);
+  if (postUpdate.error) {
+    throw postUpdate.error;
+  }
+
+  if (postIds.length > 0) {
+    const commentsUpdate = await supabase
+      .from('comments')
+      .update({ is_deleted: true })
+      .in('post_id', postIds);
+    if (commentsUpdate.error) {
+      throw commentsUpdate.error;
+    }
+  }
+
+  await logAdminAction(supabase, {
+    adminId: adminUserId,
+    actionType: 'community_content_removed_from_report',
+    targetType: 'community',
+    targetId: report.communityId,
+    targetUserId: report.reportedUserId || null,
+    description: `Removed community content from report #${report.id}`,
+  });
+}
+
+async function removeContentFromReport(supabase, report, adminUserId) {
+  if (!report) {
+    return;
+  }
+
+  if (report.reportTypeSlug === 'post') {
+    await removePostReportContent(supabase, report, adminUserId);
+    return;
+  }
+
+  if (report.reportTypeSlug === 'user') {
+    await removeUserReportContent(supabase, report, adminUserId);
+    return;
+  }
+
+  if (report.reportTypeSlug === 'community') {
+    await removeCommunityReportContent(supabase, report, adminUserId);
+  }
+}
+
 async function applyModerationActions(supabase, report, actions, adminUserId) {
   if (!Array.isArray(actions) || actions.length === 0) {
     return;
   }
 
   if (actions.includes('penalize_user') && report.reportedUserId) {
-    const penaltyReason = `Report ${report.reportType} #${report.id}: ${report.reason}`;
-    const penaltyInsert = await supabase
-      .from('user_penalties')
-      .insert({
-        user_id: report.reportedUserId,
-        issued_by: adminUserId || null,
-        reason: penaltyReason,
-      });
-
-    if (penaltyInsert.error) {
-      throw penaltyInsert.error;
-    }
-
-    await logAdminAction(supabase, {
-      adminId: adminUserId,
-      actionType: 'penalty_added_from_report',
-      targetType: 'user_penalty',
-      targetUserId: report.reportedUserId,
-      description: `Added penalty from ${report.reportTypeSlug} report #${report.id}`,
-    });
+    await addPenaltyFromReport(supabase, report, adminUserId);
   }
 
   if (actions.includes('remove_content')) {
-    if (report.reportTypeSlug === 'post') {
-      if (report.commentId) {
-        const commentUpdate = await supabase
-          .from('comments')
-          .update({ is_deleted: true })
-          .eq('id', report.commentId);
-        if (commentUpdate.error) {
-          throw commentUpdate.error;
-        }
+    await removeContentFromReport(supabase, report, adminUserId);
+  }
+}
 
-        await logAdminAction(supabase, {
-          adminId: adminUserId,
-          actionType: 'comment_removed_from_report',
-          targetType: 'comment',
-          targetId: report.commentId,
-          targetUserId: report.reportedUserId || null,
-          description: `Removed comment from report #${report.id}`,
-        });
-      } else if (report.postId) {
-        const postUpdate = await supabase
-          .from('posts')
-          .update({ is_deleted: true })
-          .eq('id', report.postId);
-        if (postUpdate.error) {
-          throw postUpdate.error;
-        }
-
-        await logAdminAction(supabase, {
-          adminId: adminUserId,
-          actionType: 'post_removed_from_report',
-          targetType: 'post',
-          targetId: report.postId,
-          targetUserId: report.reportedUserId || null,
-          description: `Removed post from report #${report.id}`,
-        });
-      }
-    } else if (report.reportTypeSlug === 'user' && report.reportedUserId) {
-      const [postsUpdate, commentsUpdate] = await Promise.all([
-        supabase.from('posts').update({ is_deleted: true }).eq('author_id', report.reportedUserId),
-        supabase.from('comments').update({ is_deleted: true }).eq('author_id', report.reportedUserId),
-      ]);
-
-      if (postsUpdate.error) {
-        throw postsUpdate.error;
-      }
-      if (commentsUpdate.error) {
-        throw commentsUpdate.error;
-      }
-
-      await logAdminAction(supabase, {
-        adminId: adminUserId,
-        actionType: 'user_content_removed_from_report',
-        targetType: 'user_content',
-        targetUserId: report.reportedUserId,
-        description: `Removed posts/comments for user from report #${report.id}`,
-      });
-    } else if (report.reportTypeSlug === 'community' && report.communityId) {
-      const postsResult = await supabase
-        .from('posts')
-        .select('id')
-        .eq('community_id', report.communityId);
-
-      if (postsResult.error) {
-        throw postsResult.error;
-      }
-
-      const postIds = Array.isArray(postsResult.data)
-        ? postsResult.data.map((row) => row.id).filter(Boolean)
-        : [];
-
-      const postUpdate = await supabase
-        .from('posts')
-        .update({ is_deleted: true })
-        .eq('community_id', report.communityId);
-      if (postUpdate.error) {
-        throw postUpdate.error;
-      }
-
-      if (postIds.length > 0) {
-        const commentsUpdate = await supabase
-          .from('comments')
-          .update({ is_deleted: true })
-          .in('post_id', postIds);
-        if (commentsUpdate.error) {
-          throw commentsUpdate.error;
-        }
-      }
-
-      await logAdminAction(supabase, {
-        adminId: adminUserId,
-        actionType: 'community_content_removed_from_report',
-        targetType: 'community',
-        targetId: report.communityId,
-        targetUserId: report.reportedUserId || null,
-        description: `Removed community content from report #${report.id}`,
-      });
-    }
+async function resolveDashboardMetric(loader) {
+  try {
+    return await loader();
+  } catch (_err) {
+    return 0;
   }
 }
 
 router.use(requireAuth, requireGlobalAdmin);
 
-router.get('/', requireAuth, (_req, res) => {
+router.get('/', (_req, res) => {
   res.redirect('/admin/dashboard');
 });
 
-router.get('/dashboard', requireAuth, async (req, res) => {
-  let activeUsersToday = 0;
-  let reportsToday = 0;
-  let accountsUnderPenalty = 0;
-  let flaggedCommunities = 0;
-
-  try {
-    activeUsersToday = await fetchActiveUsersToday();
-  } catch (_err) {
-    // Keep a safe default when user activity lookup fails.
-  }
-
-  try {
-    reportsToday = await fetchReportsToday();
-  } catch (_err) {
-    // Keep a safe default when report lookup fails.
-  }
-
-  try {
-    accountsUnderPenalty = await fetchAccountsUnderPenalty();
-  } catch (_err) {
-    // Keep a safe default when penalty lookup fails.
-  }
-
-  try {
-    flaggedCommunities = await fetchFlaggedCommunities();
-  } catch (_err) {
-    // Keep a safe default when community report lookup fails.
-  }
+router.get('/dashboard', async (req, res) => {
+  const [
+    activeUsersToday,
+    reportsToday,
+    accountsUnderPenalty,
+    flaggedCommunities,
+  ] = await Promise.all([
+    resolveDashboardMetric(fetchActiveUsersToday),
+    resolveDashboardMetric(fetchReportsToday),
+    resolveDashboardMetric(fetchAccountsUnderPenalty),
+    resolveDashboardMetric(fetchFlaggedCommunities),
+  ]);
 
   res.render('adminDashboard', {
     activeUsersToday,
@@ -1029,7 +1048,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   });
 });
 
-router.get('/users', requireAuth, async (req, res) => {
+router.get('/users', async (req, res) => {
   const searchQuery = sanitizeSearchQuery(req.query.q);
   let users = [];
 
@@ -1045,7 +1064,7 @@ router.get('/users', requireAuth, async (req, res) => {
   });
 });
 
-router.get('/users/:id', requireAuth, async (req, res, next) => {
+router.get('/users/:id', async (req, res, next) => {
   const userId = typeof req.params.id === 'string' ? req.params.id.trim() : '';
   const tab = typeof req.query.tab === 'string' && req.query.tab.trim().toLowerCase() === 'activity'
     ? 'activity'
@@ -1090,7 +1109,7 @@ router.get('/users/:id', requireAuth, async (req, res, next) => {
   }
 });
 
-router.post('/users/:id/update-email', requireAuth, async (req, res, next) => {
+router.post('/users/:id/update-email', async (req, res, next) => {
   const userId = typeof req.params.id === 'string' ? req.params.id.trim() : '';
   const nextEmail = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
 
@@ -1149,7 +1168,7 @@ router.post('/users/:id/update-email', requireAuth, async (req, res, next) => {
   }
 });
 
-router.post('/users/:id/penalize', requireAuth, async (req, res, next) => {
+router.post('/users/:id/penalize', async (req, res, next) => {
   const userId = typeof req.params.id === 'string' ? req.params.id.trim() : '';
   const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
   const expiresAtRaw = typeof req.body.expiresAt === 'string' ? req.body.expiresAt.trim() : '';
@@ -1217,7 +1236,7 @@ router.post('/users/:id/penalize', requireAuth, async (req, res, next) => {
   }
 });
 
-router.get('/reports', requireAuth, async (req, res) => {
+router.get('/reports', async (req, res) => {
   let reportData = {
     combinedReports: [],
     totalReports: 0,
@@ -1235,7 +1254,7 @@ router.get('/reports', requireAuth, async (req, res) => {
   res.render('reportDashboard', reportData);
 });
 
-router.get('/reports/:type/:id', requireAuth, async (req, res, next) => {
+router.get('/reports/:type/:id', async (req, res, next) => {
   const reportType = normalizeReportType(req.params.type);
   const reportId = Number.parseInt(req.params.id, 10);
 
@@ -1265,7 +1284,7 @@ router.get('/reports/:type/:id', requireAuth, async (req, res, next) => {
   }
 });
 
-router.post('/reports/:type/:id', requireAuth, async (req, res, next) => {
+router.post('/reports/:type/:id', async (req, res, next) => {
   const reportType = normalizeReportType(req.params.type);
   const reportId = Number.parseInt(req.params.id, 10);
   const tableName = tableNameForReportType(reportType);

@@ -156,49 +156,23 @@ async function buildCommentState(supabase, postIds, scopeOptions) {
   });
 }
 
-async function buildCommunityPageModel(supabase, communityId, viewerProfile, scopeOptions) {
-  const viewerUserId = viewerProfile && viewerProfile.id ? viewerProfile.id : null;
-  if (!communityId) {
-    return {
-      community: null,
-      members: [],
-      memberPreview: [],
-      remainingMemberCount: 0,
-      posts: [],
-      notFoundMessage: 'No communities are available yet.',
-    };
-  }
+function buildEmptyCommunityPageModel(notFoundMessage) {
+  return {
+    community: null,
+    members: [],
+    memberPreview: [],
+    remainingMemberCount: 0,
+    posts: [],
+    notFoundMessage,
+  };
+}
 
-  const communityData = await communityModel.fetchCommunityPageData(
-    supabase,
-    communityId,
-    scopeOptions
-  );
-  if (!communityData || !communityData.community) {
-    return {
-      community: null,
-      members: [],
-      memberPreview: [],
-      remainingMemberCount: 0,
-      posts: [],
-      notFoundMessage: 'Community not found.',
-    };
-  }
-
-  const communityRow = communityData.community;
-  const creatorProfile = communityData.creatorProfile;
-  const memberIds = communityData.memberIds;
-  const postRows = communityData.postRows;
-  const memberIdSet = new Set(memberIds);
-  const manageAccess = await buildCommunityManageAccess(
-    supabase,
-    viewerProfile,
-    communityRow,
-    creatorProfile
-  );
-  const isCreator = Boolean(manageAccess.isCreator);
-  const isMember = Boolean(viewerUserId && memberIdSet.has(viewerUserId));
-
+async function buildCommunityMembersViewModel(
+  supabase,
+  memberIds,
+  creatorProfile,
+  scopeOptions
+) {
   let memberProfiles = await communityModel.fetchProfilesByIds(supabase, memberIds);
   if (scopeOptions && !scopeOptions.isGlobalAdmin) {
     const schoolId = scopeOptions.schoolId || null;
@@ -212,6 +186,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
     profileById.has(memberId)
     || (creatorProfile && creatorProfile.id === memberId)
   );
+
   const members = visibleMemberIds
     .map((memberId) => {
       const profile = profileById.get(memberId);
@@ -248,6 +223,16 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
 
+  return members;
+}
+
+async function buildCommunityPostsViewModel(
+  supabase,
+  postRows,
+  communityRow,
+  viewerUserId,
+  scopeOptions
+) {
   const postIds = postRows.map((row) => row.id).filter(Boolean);
   const postAuthorIds = [...new Set(postRows.map((row) => row.author_id).filter(Boolean))];
   let [postAuthorProfiles, likeState, commentState] = await Promise.all([
@@ -264,42 +249,94 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile, sco
   const postAuthorMediaById = await resolveProfileMediaMap(supabase, postAuthorProfiles);
   const postAuthorById = new Map(postAuthorProfiles.map((row) => [row.id, row]));
 
-  const posts = postRows
+  return postRows
     .filter((row) => postAuthorById.has(row.author_id))
     .map((row) => {
-    const author = postAuthorById.get(row.author_id);
-    const authorName = buildProfileDisplayName(author);
-    const authorMedia = postAuthorMediaById.get(row.author_id);
-    const roleMeta = buildAuthorRoleMeta(author && author.role);
-    const content = row.content && String(row.content).trim() ? String(row.content).trim() : '';
+      const author = postAuthorById.get(row.author_id);
+      const authorName = buildProfileDisplayName(author);
+      const authorMedia = postAuthorMediaById.get(row.author_id);
+      const roleMeta = buildAuthorRoleMeta(author && author.role);
+      const content = row.content && String(row.content).trim() ? String(row.content).trim() : '';
 
-    return {
-      id: row.id,
-      authorId: row.author_id,
-      authorProfileHref: buildProfilePath(
-        row.author_id,
-        author && author.first_name,
-        author && author.last_name
-      ),
-      authorName,
-      authorRole: roleMeta.normalizedRole,
-      authorRoleLabel: roleMeta.roleLabel,
-      authorInitials: buildInitials(
-        author && author.first_name,
-        author && author.last_name,
-        author && author.email
-      ),
-      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
-      createdAtLabel: formatPostDate(row.created_at),
-      scopeLabel: communityRow.name || 'Community',
-      scopeHref: `/communities/${communityRow.id}`,
-      content: content || 'No content',
-      likeCount: likeState.likeCountByPostId.get(row.id) || 0,
-      liked: likeState.likedPostIds.has(row.id),
-      commentCount: commentState.commentCountByPostId.get(row.id) || 0,
-      comments: commentState.commentsByPostId.get(row.id) || [],
-    };
+      return {
+        id: row.id,
+        authorId: row.author_id,
+        authorProfileHref: buildProfilePath(
+          row.author_id,
+          author && author.first_name,
+          author && author.last_name
+        ),
+        authorName,
+        authorRole: roleMeta.normalizedRole,
+        authorRoleLabel: roleMeta.roleLabel,
+        authorInitials: buildInitials(
+          author && author.first_name,
+          author && author.last_name,
+          author && author.email
+        ),
+        authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
+        createdAtLabel: formatPostDate(row.created_at),
+        scopeLabel: communityRow.name || 'Community',
+        scopeHref: `/communities/${communityRow.id}`,
+        content: content || 'No content',
+        likeCount: likeState.likeCountByPostId.get(row.id) || 0,
+        liked: likeState.likedPostIds.has(row.id),
+        commentCount: commentState.commentCountByPostId.get(row.id) || 0,
+        comments: commentState.commentsByPostId.get(row.id) || [],
+      };
     });
+}
+
+function buildViewerAccessProfile(profile, sessionUser, options = {}) {
+  if (profile) {
+    return profile;
+  }
+
+  return {
+    id: sessionUser.id,
+    role: options.role || sessionUser.role || 'student',
+    school_id: options.schoolId || sessionUser.schoolId || null,
+  };
+}
+
+async function buildCommunityPageModel(supabase, communityId, viewerProfile, scopeOptions) {
+  const viewerUserId = viewerProfile && viewerProfile.id ? viewerProfile.id : null;
+  if (!communityId) {
+    return buildEmptyCommunityPageModel('No communities are available yet.');
+  }
+
+  const communityData = await communityModel.fetchCommunityPageData(
+    supabase,
+    communityId,
+    scopeOptions
+  );
+  if (!communityData || !communityData.community) {
+    return buildEmptyCommunityPageModel('Community not found.');
+  }
+
+  const communityRow = communityData.community;
+  const creatorProfile = communityData.creatorProfile;
+  const memberIds = communityData.memberIds;
+  const postRows = communityData.postRows;
+  const memberIdSet = new Set(memberIds);
+  const manageAccess = await buildCommunityManageAccess(
+    supabase,
+    viewerProfile,
+    communityRow,
+    creatorProfile
+  );
+  const isCreator = Boolean(manageAccess.isCreator);
+  const isMember = Boolean(viewerUserId && memberIdSet.has(viewerUserId));
+  const [members, posts] = await Promise.all([
+    buildCommunityMembersViewModel(supabase, memberIds, creatorProfile, scopeOptions),
+    buildCommunityPostsViewModel(
+      supabase,
+      postRows,
+      communityRow,
+      viewerUserId,
+      scopeOptions
+    ),
+  ]);
 
   const memberCount = members.length;
   const creatorName = buildProfileDisplayName(creatorProfile);
@@ -370,11 +407,10 @@ async function renderCommunity(req, res, explicitCommunityId) {
       profileAvatarUrl: currentMedia && currentMedia.avatarUrl ? currentMedia.avatarUrl : null,
     };
 
-    const viewerAccessProfile = currentProfile || {
-      id: sessionUser.id,
+    const viewerAccessProfile = buildViewerAccessProfile(currentProfile, sessionUser, {
       role: viewerContext.role || sessionUser.role || 'student',
-      school_id: viewerContext.schoolId || sessionUser.schoolId || null,
-    };
+      schoolId: viewerContext.schoolId || sessionUser.schoolId || null,
+    });
 
     const communityId = await communityModel.resolveCommunityId(
       supabase,
@@ -714,11 +750,7 @@ async function showManageCommunity(req, res) {
       return res.redirect('/communities');
     }
 
-    const viewerAccessProfile = profile || {
-      id: sessionUser.id,
-      role: sessionUser.role || 'student',
-      school_id: sessionUser.schoolId || null,
-    };
+    const viewerAccessProfile = buildViewerAccessProfile(profile, sessionUser);
     const manageAccess = await buildCommunityManageAccess(
       supabase,
       viewerAccessProfile,
@@ -782,11 +814,7 @@ async function updateCommunity(req, res) {
       return res.redirect('/communities');
     }
 
-    const viewerAccessProfile = profile || {
-      id: sessionUser.id,
-      role: sessionUser.role || 'student',
-      school_id: sessionUser.schoolId || null,
-    };
+    const viewerAccessProfile = buildViewerAccessProfile(profile, sessionUser);
     const manageAccess = await buildCommunityManageAccess(
       supabase,
       viewerAccessProfile,
@@ -845,11 +873,7 @@ async function deleteCommunity(req, res) {
       return res.redirect('/communities');
     }
 
-    const viewerAccessProfile = profile || {
-      id: sessionUser.id,
-      role: sessionUser.role || 'student',
-      school_id: sessionUser.schoolId || null,
-    };
+    const viewerAccessProfile = buildViewerAccessProfile(profile, sessionUser);
     const manageAccess = await buildCommunityManageAccess(
       supabase,
       viewerAccessProfile,
@@ -887,11 +911,6 @@ async function deleteCommunity(req, res) {
       encodeURIComponent('Unable to delete this community right now.')
     );
   }
-}
-
-function showCommunityHome(req, res) {
-  const explicitCommunityId = toPositiveInteger(req.query.id);
-  return renderCommunity(req, res, explicitCommunityId);
 }
 
 async function showCommunityById(req, res) {
@@ -1048,7 +1067,6 @@ module.exports = {
   showManageCommunity,
   updateCommunity,
   deleteCommunity,
-  showCommunityHome,
   showCommunityById,
   joinCommunity,
   leaveCommunity,

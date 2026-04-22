@@ -8,6 +8,7 @@ const {
 } = require('../lib/utils');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
 const { toPositiveInteger, toNonNegativeInteger } = require('../lib/numberUtils');
+const { DEFAULT_STORAGE_BUCKET } = require('../lib/storage');
 const {
   buildProfileDisplayName,
   buildSessionFallbackUser,
@@ -216,6 +217,47 @@ function jsonOrRedirect(req, res, statusCode, payload, redirectPath) {
   return res.redirect(redirectPath);
 }
 
+function buildFeedErrorRedirect(message) {
+  return '/feed?error=' + encodeURIComponent(message);
+}
+
+async function uploadFeedImage(supabase, sessionUser, file) {
+  if (!file) {
+    return { imageUrl: null, errorMessage: null };
+  }
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(file.mimetype)) {
+    return {
+      imageUrl: null,
+      errorMessage: 'Only JPEG, PNG, GIF and WebP images are supported.',
+    };
+  }
+
+  const ext = file.originalname.split('.').pop();
+  const fileName = `${sessionUser.id}-${Date.now()}.${ext}`;
+  const objectPath = `posts/${fileName}`;
+  const { error: uploadError } = await supabase.storage
+    .from(DEFAULT_STORAGE_BUCKET)
+    .upload(objectPath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    return { imageUrl: null, errorMessage: null };
+  }
+
+  const { data: urlData } = supabase.storage
+    .from(DEFAULT_STORAGE_BUCKET)
+    .getPublicUrl(objectPath);
+
+  return {
+    imageUrl: urlData && urlData.publicUrl ? urlData.publicUrl : null,
+    errorMessage: null,
+  };
+}
+
 async function showFeed(req, res) {
   const sessionUser = req.session.auth.user;
   const fallbackUser = buildSessionFallbackUser(sessionUser, { includeRole: true });
@@ -285,52 +327,29 @@ async function createFeedPost(req, res) {
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
 
   if (!content) {
-    return res.redirect('/feed?error=' + encodeURIComponent('Post content cannot be empty.'));
+    return res.redirect(buildFeedErrorRedirect('Post content cannot be empty.'));
   }
 
   if (content.length > 4000) {
-    return res.redirect('/feed?error=' + encodeURIComponent('Post content is too long.'));
+    return res.redirect(buildFeedErrorRedirect('Post content is too long.'));
   }
 
   try {
     const supabase = createSupabaseAdminClient();
     const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
     if (!viewerContext.isGlobalAdmin && !viewerContext.schoolId) {
-      return res.redirect('/feed?error=' + encodeURIComponent('Link your account to a school to post.'));
+      return res.redirect(buildFeedErrorRedirect('Link your account to a school to post.'));
     }
-    let imageUrl = null;
 
-    if (req.file) {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(req.file.mimetype)) {
-       return res.redirect('/feed?error=' + encodeURIComponent('Only JPEG, PNG, GIF and WebP images are supported.'));
-      }
-      const ext = req.file.originalname.split('.').pop();
-      const fileName = `${sessionUser.id}-${Date.now()}.${ext}`;
-      
-      console.log('UPLOADING FILE:', fileName, req.file.mimetype, req.file.size);
+    const { imageUrl, errorMessage: imageUploadError } = await uploadFeedImage(
+      supabase,
+      sessionUser,
+      req.file
+    );
 
-      
-      
-      const { error: uploadError } = await supabase.storage
-        .from(process.env.SUPABASE_STORAGE_BUCKET || 'media')
-        .upload(`posts/${fileName}`, req.file.buffer, {
-          contentType: req.file.mimetype,
-          upsert: false,
-        });
-    
-      console.log('UPLOAD ERROR:', uploadError);
-    
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage
-          .from(process.env.SUPABASE_STORAGE_BUCKET || 'media')
-          .getPublicUrl(`posts/${fileName}`);
-        imageUrl = urlData?.publicUrl || null;
-        console.log('IMAGE URL:', imageUrl);
-      }
+    if (imageUploadError) {
+      return res.redirect(buildFeedErrorRedirect(imageUploadError));
     }
-    
-    console.log('FINAL IMAGE URL:', imageUrl);
 
     const created = await postModel.createFeedPostWithImage(supabase, {
       authorId: sessionUser.id,
@@ -339,13 +358,13 @@ async function createFeedPost(req, res) {
     });
 
     if (!created) {
-      return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post.'));
+      return res.redirect(buildFeedErrorRedirect('Unable to publish post.'));
     }
 
     return res.redirect('/feed');
   } catch (_err) {
     console.error('CREATE POST ERROR:', _err);
-    return res.redirect('/feed?error=' + encodeURIComponent('Unable to publish post.'));
+    return res.redirect(buildFeedErrorRedirect('Unable to publish post.'));
   }
 }
 
