@@ -50,10 +50,41 @@ body {
 }
 
 .topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-family: 'Playfair Display', serif;
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--gold);
+  flex-shrink: 0;
+}
+
+.topbar-brand-label {
+  line-height: 1;
+}
+
+.topbar-school-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.topbar-school-logo {
+  display: block;
+  max-height: 24px;
+  max-width: 132px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.topbar-school-name {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #f4e7bf;
 }
 
 .topbar-search {
@@ -120,6 +151,42 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    padding: 0 0.9rem;
+    gap: 0.6rem;
+  }
+
+  .topbar-brand {
+    font-size: 1.1rem;
+  }
+
+  .topbar-school-mark {
+    height: auto;
+  }
+
+  .topbar-school-logo {
+    max-height: 21px;
+    max-width: 116px;
+  }
+
+  .topbar-search {
+    max-width: 285px;
+    margin-left: 0.7rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar-brand-label {
+    display: none;
+  }
+
+  .topbar-search {
+    max-width: none;
+    margin-left: 0.4rem;
+  }
 }
 
 /* Shared sidebar styles used by views/sidebar.ejs */

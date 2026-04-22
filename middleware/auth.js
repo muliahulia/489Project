@@ -1,5 +1,128 @@
 const { createSupabaseAdminClient } = require('../lib/supabase');
-const { resolveProfileMedia } = require('../lib/profileMedia');
+const {
+  DEFAULT_STORAGE_BUCKET,
+  normalizeStoragePath,
+  resolveProfileMedia,
+} = require('../lib/profileMedia');
+
+const SCHOOL_LOGO_COLUMN_CANDIDATES = [
+  'logo_url',
+  'logo',
+  'logo_path',
+  'image_url',
+  'logomark_url',
+  'logomark',
+];
+const SCHOOL_BUCKET_COLUMN_CANDIDATES = [
+  'logo_bucket',
+  'image_bucket',
+  'media_bucket',
+  'storage_bucket',
+];
+const SIGNED_MEDIA_TTL_SECONDS = 120;
+
+function pickFirstStringField(row, candidateColumns) {
+  if (!row || !Array.isArray(candidateColumns)) {
+    return '';
+  }
+
+  for (const columnName of candidateColumns) {
+    const value = row[columnName];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return '';
+}
+
+function buildPublicStorageUrl(bucket, path) {
+  const supabaseUrl = typeof process.env.SUPABASE_URL === 'string'
+    ? process.env.SUPABASE_URL.trim()
+    : '';
+  if (!supabaseUrl || !bucket || !path) {
+    return null;
+  }
+
+  const encodedPath = path
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+  return `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodedPath}`;
+}
+
+async function resolveSchoolBranding(supabase, schoolId) {
+  if (!schoolId) {
+    return {
+      schoolName: null,
+      schoolLogoUrl: null,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('schools')
+      .select('*')
+      .eq('id', schoolId)
+      .maybeSingle();
+
+    if (error || !data) {
+      return {
+        schoolName: null,
+        schoolLogoUrl: null,
+      };
+    }
+
+    const schoolName = typeof data.name === 'string' && data.name.trim()
+      ? data.name.trim()
+      : null;
+    const rawLogoValue = pickFirstStringField(data, SCHOOL_LOGO_COLUMN_CANDIDATES);
+    if (!rawLogoValue) {
+      return {
+        schoolName,
+        schoolLogoUrl: null,
+      };
+    }
+
+    if (/^https?:\/\//i.test(rawLogoValue)) {
+      return {
+        schoolName,
+        schoolLogoUrl: rawLogoValue,
+      };
+    }
+
+    const normalizedLogoPath = normalizeStoragePath(rawLogoValue);
+    if (!normalizedLogoPath) {
+      return {
+        schoolName,
+        schoolLogoUrl: null,
+      };
+    }
+
+    const explicitBucket = pickFirstStringField(data, SCHOOL_BUCKET_COLUMN_CANDIDATES);
+    const bucketName = explicitBucket || DEFAULT_STORAGE_BUCKET;
+    const signedUrlResult = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(normalizedLogoPath, SIGNED_MEDIA_TTL_SECONDS);
+
+    if (!signedUrlResult.error && signedUrlResult.data && signedUrlResult.data.signedUrl) {
+      return {
+        schoolName,
+        schoolLogoUrl: signedUrlResult.data.signedUrl,
+      };
+    }
+
+    return {
+      schoolName,
+      schoolLogoUrl: buildPublicStorageUrl(bucketName, normalizedLogoPath),
+    };
+  } catch (_err) {
+    return {
+      schoolName: null,
+      schoolLogoUrl: null,
+    };
+  }
+}
 
 async function attachSessionUser(req, res, next) {
   const authSession = req.session && req.session.auth;
@@ -30,8 +153,13 @@ async function attachSessionUser(req, res, next) {
           authSession.user.email = data.email.trim();
         }
 
+        authSession.user.schoolId = data.school_id || null;
         const media = await resolveProfileMedia(supabase, data);
         authSession.user.profileAvatarUrl = media.avatarUrl || null;
+
+        const schoolBranding = await resolveSchoolBranding(supabase, data.school_id || null);
+        authSession.user.schoolName = schoolBranding.schoolName;
+        authSession.user.schoolLogoUrl = schoolBranding.schoolLogoUrl;
       }
     } catch (_err) {
       // Keep existing session role when profile lookup fails.
@@ -40,6 +168,8 @@ async function attachSessionUser(req, res, next) {
 
   res.locals.currentUser = authSession ? authSession.user : null;
   res.locals.user = authSession ? authSession.user : null;
+  res.locals.schoolName = authSession && authSession.user ? authSession.user.schoolName : null;
+  res.locals.schoolLogoUrl = authSession && authSession.user ? authSession.user.schoolLogoUrl : null;
   next();
 }
 

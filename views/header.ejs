@@ -46,9 +46,40 @@
   const explicitAvatarUrl = typeof avatarUrl === 'string' && avatarUrl.trim() ? avatarUrl.trim() : '';
   const headerAvatarUrl = routeUserAvatar || sessionUserAvatar || explicitAvatarUrl || '';
   const headerInitials = routeUserInitials || sessionUserInitials || explicitInitials || 'UC';
+  const explicitSchoolLogoUrl =
+    typeof schoolLogoUrl === 'string' && schoolLogoUrl.trim() ? schoolLogoUrl.trim() : '';
+  const routeUserSchoolLogo =
+    user && typeof user === 'object' && typeof user.schoolLogoUrl === 'string' && user.schoolLogoUrl.trim()
+      ? user.schoolLogoUrl.trim()
+      : '';
+  const sessionUserSchoolLogo =
+    currentUser && typeof currentUser === 'object' && typeof currentUser.schoolLogoUrl === 'string' && currentUser.schoolLogoUrl.trim()
+      ? currentUser.schoolLogoUrl.trim()
+      : '';
+  const headerSchoolLogoUrl = explicitSchoolLogoUrl || routeUserSchoolLogo || sessionUserSchoolLogo || '';
+  const explicitSchoolName = typeof schoolName === 'string' && schoolName.trim() ? schoolName.trim() : '';
+  const routeUserSchoolName =
+    user && typeof user === 'object' && typeof user.schoolName === 'string' && user.schoolName.trim()
+      ? user.schoolName.trim()
+      : '';
+  const sessionUserSchoolName =
+    currentUser && typeof currentUser === 'object' && typeof currentUser.schoolName === 'string' && currentUser.schoolName.trim()
+      ? currentUser.schoolName.trim()
+      : '';
+  const headerSchoolName = explicitSchoolName || routeUserSchoolName || sessionUserSchoolName || 'your school';
+  const headerSchoolLogoAlt = `${headerSchoolName} logo`;
 %>
 <nav class="topbar">
-  <div class="topbar-brand">UniConnect</div>
+  <div class="topbar-brand">
+    <span class="topbar-brand-label">UniConnect at</span>
+    <span class="topbar-school-mark">
+      <% if (headerSchoolLogoUrl) { %>
+        <img src="<%= headerSchoolLogoUrl %>" alt="<%= headerSchoolLogoAlt %>" class="topbar-school-logo" loading="lazy" referrerpolicy="no-referrer" />
+      <% } else { %>
+        <span class="topbar-school-name"><%= headerSchoolName %></span>
+      <% } %>
+    </span>
+  </div>
   <div class="topbar-search">
     <span>🔍</span>
     <input
