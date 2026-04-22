@@ -183,7 +183,14 @@ function buildCourseManageAccess(profile, course) {
     };
   }
 
-  if (role === 'official' && idsMatch(profileSchoolId, courseSchoolId)) {
+  if (!idsMatch(profileSchoolId, courseSchoolId)) {
+    return {
+      allowed: false,
+      reason: 'This course is not available to your school.',
+    };
+  }
+
+  if (role === 'official') {
     return {
       allowed: true,
       reason: null,
@@ -228,7 +235,7 @@ async function buildLikeState(supabase, postIds, userId) {
   };
 }
 
-async function buildCommentState(supabase, postIds) {
+async function buildCommentState(supabase, postIds, options = {}) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
     return {
       commentCountByPostId: new Map(),
@@ -238,7 +245,10 @@ async function buildCommentState(supabase, postIds) {
 
   const comments = await courseModel.fetchCommentsByPostIds(supabase, postIds);
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
-  const profiles = await courseModel.fetchProfilesByIds(supabase, authorIds);
+  let profiles = await courseModel.fetchProfilesByIds(supabase, authorIds);
+  if (!options.isGlobalAdmin && options.schoolId) {
+    profiles = profiles.filter((profile) => idsMatch(profile.school_id, options.schoolId));
+  }
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
   const commentCountByPostId = new Map();
@@ -246,6 +256,9 @@ async function buildCommentState(supabase, postIds) {
 
   comments.forEach((comment) => {
     const author = profileById.get(comment.author_id);
+    if (!author) {
+      return;
+    }
     const authorEmail = (author && author.email) || '';
     const authorMedia = profileMediaById.get(comment.author_id);
     const list = commentsByPostId.get(comment.post_id) || [];
@@ -273,22 +286,27 @@ async function buildCommentState(supabase, postIds) {
   };
 }
 
-async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserId) {
+async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserId, options = {}) {
   if (!Array.isArray(postRows) || postRows.length === 0) {
     return [];
   }
 
   const postIds = postRows.map((post) => post.id).filter(Boolean);
   const authorIds = [...new Set(postRows.map((post) => post.author_id).filter(Boolean))];
-  const [profiles, likeState, commentState] = await Promise.all([
+  let [profiles, likeState, commentState] = await Promise.all([
     courseModel.fetchProfilesByIds(supabase, authorIds),
     buildLikeState(supabase, postIds, viewerUserId),
-    buildCommentState(supabase, postIds),
+    buildCommentState(supabase, postIds, options),
   ]);
+  if (!options.isGlobalAdmin && options.schoolId) {
+    profiles = profiles.filter((profile) => idsMatch(profile.school_id, options.schoolId));
+  }
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
 
-  return postRows.map((post) => {
+  return postRows
+    .filter((post) => profileById.has(post.author_id))
+    .map((post) => {
     const author = profileById.get(post.author_id);
     const authorEmail = (author && author.email) || '';
     const authorMedia = profileMediaById.get(post.author_id);
@@ -327,7 +345,7 @@ async function buildCoursePostsViewModel(supabase, course, postRows, viewerUserI
       commentCount: commentState.commentCountByPostId.get(post.id) || 0,
       comments: commentState.commentsByPostId.get(post.id) || [],
     };
-  });
+    });
 }
 
 function buildMemberViewModel(profile) {
@@ -645,18 +663,45 @@ async function showCourseById(req, res) {
         formError: null,
       });
     }
+    const accessProfile = buildAccessProfile(profile, sessionUser);
+    const role = normalizeRole(accessProfile.role);
+    if (
+      role !== 'admin'
+      && !idsMatch(accessProfile.school_id, courseRow.school_id)
+    ) {
+      return res.status(404).render('course', {
+        user,
+        course: null,
+        members: [],
+        memberPreview: [],
+        remainingMemberCount: 0,
+        posts: [],
+        notFoundMessage: 'Course not found.',
+        membershipMessage: null,
+        formError: null,
+      });
+    }
 
     const [school, enrollments] = await Promise.all([
       courseRow.school_id ? courseModel.fetchSchoolById(supabase, courseRow.school_id) : Promise.resolve(null),
       courseModel.fetchCourseEnrollmentsByCourseIds(supabase, [courseId]),
     ]);
+    const scopeOptions = {
+      schoolId: courseRow.school_id || null,
+      isGlobalAdmin: role === 'admin',
+    };
     const viewerEnrollment = enrollments.find((row) => row.user_id === sessionUser.id) || null;
     const viewerIsInstructor = Boolean(
       courseRow.created_by && courseRow.created_by === sessionUser.id
     );
     const canViewPosts = Boolean(viewerEnrollment || viewerIsInstructor);
     const memberIds = [...new Set(enrollments.map((row) => row.user_id).filter(Boolean))];
-    const memberProfiles = await courseModel.fetchProfilesByIds(supabase, memberIds);
+    let memberProfiles = await courseModel.fetchProfilesByIds(supabase, memberIds);
+    if (!scopeOptions.isGlobalAdmin && scopeOptions.schoolId) {
+      memberProfiles = memberProfiles.filter((memberProfile) =>
+        idsMatch(memberProfile.school_id, scopeOptions.schoolId)
+      );
+    }
     const memberMediaById = await resolveProfileMediaMap(supabase, memberProfiles);
     memberProfiles.forEach((memberProfile) => {
       memberProfile.profileAvatarUrl = memberMediaById.get(memberProfile.id)?.avatarUrl || null;
@@ -670,7 +715,8 @@ async function showCourseById(req, res) {
           supabase,
           { id: courseRow.id, name: courseRow.name || 'Course' },
           postRows,
-          sessionUser.id
+          sessionUser.id,
+          scopeOptions
         )
       : [];
     const memberCount = members.length;
@@ -687,7 +733,7 @@ async function showCourseById(req, res) {
       memberLabel: `${memberCount} ${memberCount === 1 ? 'student' : 'students'}`,
       isEnrolled: Boolean(viewerEnrollment),
       isInstructor: viewerIsInstructor,
-      canManage: buildCourseManageAccess(buildAccessProfile(profile, sessionUser), courseRow).allowed,
+      canManage: buildCourseManageAccess(accessProfile, courseRow).allowed,
       manageHref: `/courses/manage/${courseRow.id}`,
       canPost: canViewPosts,
     };
@@ -730,9 +776,15 @@ async function joinCourse(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const course = await courseModel.fetchCourseById(supabase, courseId);
+    const [profile, course] = await Promise.all([
+      courseModel.fetchProfileById(supabase, sessionUser.id),
+      courseModel.fetchCourseById(supabase, courseId),
+    ]);
+    const accessProfile = buildAccessProfile(profile, sessionUser);
+    const canAccessCourse = normalizeRole(accessProfile.role) === 'admin'
+      || idsMatch(accessProfile.school_id, course && course.school_id);
 
-    if (course && (!course.created_by || course.created_by !== sessionUser.id)) {
+    if (course && canAccessCourse && (!course.created_by || course.created_by !== sessionUser.id)) {
       await courseModel.upsertCourseEnrollment(supabase, {
         userId: sessionUser.id,
         courseId,
@@ -761,9 +813,15 @@ async function leaveCourse(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const course = await courseModel.fetchCourseById(supabase, courseId);
+    const [profile, course] = await Promise.all([
+      courseModel.fetchProfileById(supabase, sessionUser.id),
+      courseModel.fetchCourseById(supabase, courseId),
+    ]);
+    const accessProfile = buildAccessProfile(profile, sessionUser);
+    const canAccessCourse = normalizeRole(accessProfile.role) === 'admin'
+      || idsMatch(accessProfile.school_id, course && course.school_id);
 
-    if (course && (!course.created_by || course.created_by !== sessionUser.id)) {
+    if (course && canAccessCourse && (!course.created_by || course.created_by !== sessionUser.id)) {
       await courseModel.deleteCourseEnrollment(supabase, sessionUser.id, courseId);
     }
   } catch (_err) {
@@ -802,6 +860,18 @@ async function createCoursePost(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const [profile, course] = await Promise.all([
+      courseModel.fetchProfileById(supabase, sessionUser.id),
+      courseModel.fetchCourseById(supabase, courseId),
+    ]);
+    const accessProfile = buildAccessProfile(profile, sessionUser);
+    const canAccessCourse = normalizeRole(accessProfile.role) === 'admin'
+      || idsMatch(accessProfile.school_id, course && course.school_id);
+
+    if (!course || !canAccessCourse) {
+      return res.redirect('/courses');
+    }
+
     const postAccess = await courseModel.userCanPostInCourse(
       supabase,
       courseId,

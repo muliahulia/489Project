@@ -6,6 +6,12 @@ const {
   formatCreatedAt: formatPostDate,
 } = require('../lib/utils');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
+const {
+  normalizeRole,
+  idsMatch,
+  fetchViewerSchoolContext,
+  buildSchoolScopeOptions,
+} = require('../lib/schoolScope');
 const communityModel = require('../models/communityModel');
 
 const PREVIEW_MEMBER_COUNT = 5;
@@ -73,17 +79,6 @@ function fallbackRedirectForCommunity(communityId) {
   return `/communities/${communityId}`;
 }
 
-function normalizeRole(role) {
-  return typeof role === 'string' ? role.trim().toLowerCase() : '';
-}
-
-function idsMatch(left, right) {
-  if (!left || !right) {
-    return false;
-  }
-  return String(left) === String(right);
-}
-
 async function buildCommunityManageAccess(supabase, profile, community, creatorProfile) {
   const role = normalizeRole(profile && profile.role);
   const profileId = profile && profile.id ? profile.id : null;
@@ -92,16 +87,8 @@ async function buildCommunityManageAccess(supabase, profile, community, creatorP
     community && community.creator_id && profileId && idsMatch(community.creator_id, profileId)
   );
 
-  if (role === 'admin' || isCreator) {
+  if (role === 'admin') {
     return { allowed: true, reason: null, isCreator };
-  }
-
-  if (role !== 'official' || !profileSchoolId) {
-    return {
-      allowed: false,
-      reason: 'You do not have permission to manage this community.',
-      isCreator,
-    };
   }
 
   let affiliatedSchoolId = creatorProfile && creatorProfile.school_id
@@ -112,7 +99,15 @@ async function buildCommunityManageAccess(supabase, profile, community, creatorP
     affiliatedSchoolId = creator && creator.school_id ? creator.school_id : null;
   }
 
-  if (idsMatch(profileSchoolId, affiliatedSchoolId)) {
+  if (!idsMatch(profileSchoolId, affiliatedSchoolId)) {
+    return {
+      allowed: false,
+      reason: 'This community is not available to your school.',
+      isCreator,
+    };
+  }
+
+  if (isCreator || role === 'official') {
     return { allowed: true, reason: null, isCreator };
   }
 
@@ -121,6 +116,28 @@ async function buildCommunityManageAccess(supabase, profile, community, creatorP
     reason: 'You do not have permission to manage this community.',
     isCreator,
   };
+}
+
+async function fetchCommunitySchoolAccess(supabase, communityId, viewerContext) {
+  const community = await communityModel.fetchCommunityIdentity(supabase, communityId);
+  if (!community) {
+    return { exists: false, allowed: false, community: null, creatorProfile: null };
+  }
+
+  if (viewerContext && viewerContext.isGlobalAdmin) {
+    return { exists: true, allowed: true, community, creatorProfile: null };
+  }
+
+  const creatorProfile = community.creator_id
+    ? await communityModel.fetchProfileById(supabase, community.creator_id)
+    : null;
+  const allowed = Boolean(
+    creatorProfile
+    && viewerContext
+    && idsMatch(viewerContext.schoolId, creatorProfile.school_id)
+  );
+
+  return { exists: true, allowed, community, creatorProfile };
 }
 
 function buildFallbackUser(sessionUser) {
@@ -160,7 +177,7 @@ async function buildLikeState(supabase, postIds, userId) {
   };
 }
 
-async function buildCommentState(supabase, postIds) {
+async function buildCommentState(supabase, postIds, scopeOptions) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
     return {
       commentCountByPostId: new Map(),
@@ -170,7 +187,13 @@ async function buildCommentState(supabase, postIds) {
 
   const comments = await communityModel.fetchCommentsByPostIds(supabase, postIds);
   const commentAuthorIds = [...new Set(comments.map((row) => row.author_id).filter(Boolean))];
-  const commentAuthorProfiles = await communityModel.fetchProfilesByIds(supabase, commentAuthorIds);
+  let commentAuthorProfiles = await communityModel.fetchProfilesByIds(supabase, commentAuthorIds);
+  if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+    const schoolId = scopeOptions.schoolId || null;
+    commentAuthorProfiles = commentAuthorProfiles.filter((profile) =>
+      idsMatch(profile.school_id, schoolId)
+    );
+  }
   const commentAuthorMediaById = await resolveProfileMediaMap(supabase, commentAuthorProfiles);
   const commentAuthorById = new Map(commentAuthorProfiles.map((row) => [row.id, row]));
 
@@ -179,6 +202,9 @@ async function buildCommentState(supabase, postIds) {
 
   comments.forEach((comment) => {
     const author = commentAuthorById.get(comment.author_id);
+    if (!author) {
+      return;
+    }
     const authorName = displayName(author);
     const authorMedia = commentAuthorMediaById.get(comment.author_id);
     const authorEmail = (author && author.email) || '';
@@ -207,7 +233,7 @@ async function buildCommentState(supabase, postIds) {
   };
 }
 
-async function buildCommunityPageModel(supabase, communityId, viewerProfile) {
+async function buildCommunityPageModel(supabase, communityId, viewerProfile, scopeOptions) {
   const viewerUserId = viewerProfile && viewerProfile.id ? viewerProfile.id : null;
   if (!communityId) {
     return {
@@ -220,7 +246,11 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile) {
     };
   }
 
-  const communityData = await communityModel.fetchCommunityPageData(supabase, communityId);
+  const communityData = await communityModel.fetchCommunityPageData(
+    supabase,
+    communityId,
+    scopeOptions
+  );
   if (!communityData || !communityData.community) {
     return {
       community: null,
@@ -246,12 +276,20 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile) {
   const isCreator = Boolean(manageAccess.isCreator);
   const isMember = Boolean(viewerUserId && memberIdSet.has(viewerUserId));
 
-  const memberProfiles = await communityModel.fetchProfilesByIds(supabase, memberIds);
+  let memberProfiles = await communityModel.fetchProfilesByIds(supabase, memberIds);
+  if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+    const schoolId = scopeOptions.schoolId || null;
+    memberProfiles = memberProfiles.filter((profile) => idsMatch(profile.school_id, schoolId));
+  }
   const memberMediaById = await resolveProfileMediaMap(supabase, memberProfiles);
   const profileById = new Map(memberProfiles.map((row) => [row.id, row]));
   const creatorMedia = creatorProfile ? await resolveProfileMedia(supabase, creatorProfile) : null;
 
-  const members = memberIds
+  const visibleMemberIds = memberIds.filter((memberId) =>
+    profileById.has(memberId)
+    || (creatorProfile && creatorProfile.id === memberId)
+  );
+  const members = visibleMemberIds
     .map((memberId) => {
       const profile = profileById.get(memberId);
 
@@ -289,15 +327,23 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile) {
 
   const postIds = postRows.map((row) => row.id).filter(Boolean);
   const postAuthorIds = [...new Set(postRows.map((row) => row.author_id).filter(Boolean))];
-  const [postAuthorProfiles, likeState, commentState] = await Promise.all([
+  let [postAuthorProfiles, likeState, commentState] = await Promise.all([
     communityModel.fetchProfilesByIds(supabase, postAuthorIds),
     buildLikeState(supabase, postIds, viewerUserId),
-    buildCommentState(supabase, postIds),
+    buildCommentState(supabase, postIds, scopeOptions),
   ]);
+  if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+    const schoolId = scopeOptions.schoolId || null;
+    postAuthorProfiles = postAuthorProfiles.filter((profile) =>
+      idsMatch(profile.school_id, schoolId)
+    );
+  }
   const postAuthorMediaById = await resolveProfileMediaMap(supabase, postAuthorProfiles);
   const postAuthorById = new Map(postAuthorProfiles.map((row) => [row.id, row]));
 
-  const posts = postRows.map((row) => {
+  const posts = postRows
+    .filter((row) => postAuthorById.has(row.author_id))
+    .map((row) => {
     const author = postAuthorById.get(row.author_id);
     const authorName = displayName(author);
     const authorMedia = postAuthorMediaById.get(row.author_id);
@@ -337,7 +383,7 @@ async function buildCommunityPageModel(supabase, communityId, viewerProfile) {
       commentCount: commentState.commentCountByPostId.get(row.id) || 0,
       comments: commentState.commentsByPostId.get(row.id) || [],
     };
-  });
+    });
 
   const memberCount = members.length;
   const creatorName = displayName(creatorProfile);
@@ -380,6 +426,8 @@ async function renderCommunity(req, res, explicitCommunityId) {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
     const currentProfile = await communityModel.fetchProfileById(supabase, sessionUser.id);
     const currentMedia = currentProfile ? await resolveProfileMedia(supabase, currentProfile) : null;
     const currentFirstName = (currentProfile && currentProfile.first_name) || sessionUser.firstName || null;
@@ -408,16 +456,22 @@ async function renderCommunity(req, res, explicitCommunityId) {
 
     const viewerAccessProfile = currentProfile || {
       id: sessionUser.id,
-      role: sessionUser.role || 'student',
-      school_id: sessionUser.schoolId || null,
+      role: viewerContext.role || sessionUser.role || 'student',
+      school_id: viewerContext.schoolId || sessionUser.schoolId || null,
     };
 
     const communityId = await communityModel.resolveCommunityId(
       supabase,
       sessionUser.id,
-      explicitCommunityId
+      explicitCommunityId,
+      scopeOptions
     );
-    const viewModel = await buildCommunityPageModel(supabase, communityId, viewerAccessProfile);
+    const viewModel = await buildCommunityPageModel(
+      supabase,
+      communityId,
+      viewerAccessProfile,
+      scopeOptions
+    );
 
     return res.render('community', {
       user,
@@ -444,12 +498,56 @@ async function renderCommunity(req, res, explicitCommunityId) {
 }
 
 async function listCommunities(req, res) {
+  const sessionUser = req.session && req.session.auth ? req.session.auth.user : null;
   try {
     const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
     const { communities, memberships } = await communityModel.fetchCommunityDirectoryData(supabase);
+    let visibleCommunities = communities;
+
+    if (!viewerContext.isGlobalAdmin) {
+      const schoolId = viewerContext.schoolId || null;
+      if (!schoolId) {
+        visibleCommunities = [];
+      } else {
+        const creatorIds = [...new Set(communities.map((row) => row.creator_id).filter(Boolean))];
+        const creatorProfiles = creatorIds.length > 0
+          ? await communityModel.fetchProfilesByIds(supabase, creatorIds)
+          : [];
+        const creatorSchoolById = new Map(
+          creatorProfiles.map((profile) => [profile.id, profile.school_id || null])
+        );
+        visibleCommunities = communities.filter((community) =>
+          idsMatch(creatorSchoolById.get(community.creator_id), schoolId)
+        );
+      }
+    }
+
+    const visibleCommunityIdSet = new Set(
+      visibleCommunities.map((community) => community.id).filter(Boolean)
+    );
+    let visibleMemberships = memberships.filter((membership) =>
+      membership && visibleCommunityIdSet.has(membership.community_id)
+    );
+    if (!viewerContext.isGlobalAdmin && viewerContext.schoolId) {
+      const memberUserIds = [...new Set(
+        visibleMemberships.map((membership) => membership.user_id).filter(Boolean)
+      )];
+      const memberProfiles = memberUserIds.length > 0
+        ? await communityModel.fetchProfilesByIds(supabase, memberUserIds)
+        : [];
+      const visibleMemberUserIds = new Set(
+        memberProfiles
+          .filter((profile) => idsMatch(profile.school_id, viewerContext.schoolId))
+          .map((profile) => profile.id)
+      );
+      visibleMemberships = visibleMemberships.filter((membership) =>
+        visibleMemberUserIds.has(membership.user_id)
+      );
+    }
     const memberSetByCommunityId = new Map();
 
-    memberships.forEach((membership) => {
+    visibleMemberships.forEach((membership) => {
       if (!membership || !membership.community_id || !membership.user_id) {
         return;
       }
@@ -459,7 +557,7 @@ async function listCommunities(req, res) {
       memberSetByCommunityId.set(membership.community_id, existing);
     });
 
-    const communityCards = communities.map((community, index) => {
+    const communityCards = visibleCommunities.map((community, index) => {
       const memberSet = memberSetByCommunityId.get(community.id) || new Set();
 
       if (community.creator_id) {
@@ -526,6 +624,13 @@ async function createCommunity(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    if (!viewerContext.isGlobalAdmin && !viewerContext.schoolId) {
+      return res.redirect(
+        '/communities/create-community?error='
+        + encodeURIComponent('Your profile must be linked to a school to create communities.')
+      );
+    }
     const createdCommunity = await communityModel.createCommunityRecord(supabase, {
       name: communityName,
       description,
@@ -785,9 +890,10 @@ async function joinCommunity(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const community = await communityModel.fetchCommunityIdentity(supabase, communityId);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const access = await fetchCommunitySchoolAccess(supabase, communityId, viewerContext);
 
-    if (!community) {
+    if (!access.exists || !access.allowed) {
       return res.redirect('/communities');
     }
 
@@ -813,13 +919,14 @@ async function leaveCommunity(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const community = await communityModel.fetchCommunityIdentity(supabase, communityId);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const access = await fetchCommunitySchoolAccess(supabase, communityId, viewerContext);
 
-    if (!community) {
+    if (!access.exists || !access.allowed) {
       return res.redirect('/communities');
     }
 
-    if (community.creator_id !== sessionUser.id) {
+    if (access.community.creator_id !== sessionUser.id) {
       await communityModel.leaveCommunity(supabase, sessionUser.id, communityId);
     }
   } catch (_err) {
@@ -857,6 +964,13 @@ async function createCommunityPost(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const access = await fetchCommunitySchoolAccess(supabase, communityId, viewerContext);
+
+    if (!access.exists || !access.allowed) {
+      return res.redirect('/communities');
+    }
+
     const postAccess = await communityModel.userCanPostInCommunity(
       supabase,
       communityId,

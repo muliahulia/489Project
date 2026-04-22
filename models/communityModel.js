@@ -1,6 +1,77 @@
 const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'media';
 const SIGNED_IMAGE_TTL_SECONDS = 120;
 
+function idsMatch(left, right) {
+  if (!left || !right) {
+    return false;
+  }
+
+  return String(left) === String(right);
+}
+
+function isSchoolScoped(options = {}) {
+  return !Boolean(options.isGlobalAdmin);
+}
+
+async function fetchSchoolProfileIds(supabase, schoolId) {
+  if (!schoolId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('school_id', schoolId);
+
+  if (error || !Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((row) => row.id).filter(Boolean);
+}
+
+async function fetchCreatorSchoolIdByCommunityId(supabase, communityIds) {
+  if (!Array.isArray(communityIds) || communityIds.length === 0) {
+    return new Map();
+  }
+
+  const { data: communities, error: communitiesError } = await supabase
+    .from('communities')
+    .select('id,creator_id')
+    .in('id', communityIds);
+
+  if (communitiesError || !Array.isArray(communities)) {
+    return new Map();
+  }
+
+  const creatorIds = [...new Set(communities.map((row) => row.creator_id).filter(Boolean))];
+  if (creatorIds.length === 0) {
+    return new Map();
+  }
+
+  const { data: creatorRows, error: creatorsError } = await supabase
+    .from('profiles')
+    .select('id,school_id')
+    .in('id', creatorIds);
+
+  if (creatorsError || !Array.isArray(creatorRows)) {
+    return new Map();
+  }
+
+  const creatorSchoolById = new Map(
+    creatorRows.map((row) => [row.id, row.school_id || null])
+  );
+  const schoolByCommunityId = new Map();
+  communities.forEach((community) => {
+    schoolByCommunityId.set(
+      community.id,
+      creatorSchoolById.get(community.creator_id) || null
+    );
+  });
+
+  return schoolByCommunityId;
+}
+
 function normalizeStoragePath(value) {
   if (typeof value !== 'string') {
     return null;
@@ -310,36 +381,97 @@ async function fetchProfilesByIds(supabase, ids) {
   return data;
 }
 
-async function resolveCommunityId(supabase, userId, explicitCommunityId) {
+async function resolveCommunityId(supabase, userId, explicitCommunityId, options = {}) {
+  const schoolScoped = isSchoolScoped(options);
+  const schoolId = options.schoolId || null;
+
   if (explicitCommunityId) {
-    return explicitCommunityId;
+    if (!schoolScoped) {
+      return explicitCommunityId;
+    }
+
+    if (!schoolId) {
+      return null;
+    }
+
+    const schoolByCommunityId = await fetchCreatorSchoolIdByCommunityId(
+      supabase,
+      [explicitCommunityId]
+    );
+    return idsMatch(schoolByCommunityId.get(explicitCommunityId), schoolId)
+      ? explicitCommunityId
+      : null;
+  }
+
+  if (schoolScoped && !schoolId) {
+    return null;
   }
 
   const membershipResult = await supabase
     .from('community_members')
     .select('community_id')
     .eq('user_id', userId)
-    .order('community_id', { ascending: true })
-    .limit(1);
+    .order('community_id', { ascending: true });
 
-  if (!membershipResult.error && membershipResult.data && membershipResult.data.length > 0) {
-    return membershipResult.data[0].community_id;
+  const membershipCommunityIds = !membershipResult.error && Array.isArray(membershipResult.data)
+    ? membershipResult.data.map((row) => row.community_id).filter(Boolean)
+    : [];
+  if (membershipCommunityIds.length > 0) {
+    if (!schoolScoped) {
+      return membershipCommunityIds[0];
+    }
+
+    const schoolByCommunityId = await fetchCreatorSchoolIdByCommunityId(
+      supabase,
+      membershipCommunityIds
+    );
+    const firstSchoolScopedMembershipId = membershipCommunityIds.find((communityId) =>
+      idsMatch(schoolByCommunityId.get(communityId), schoolId)
+    );
+    if (firstSchoolScopedMembershipId) {
+      return firstSchoolScopedMembershipId;
+    }
   }
 
-  const firstCommunityResult = await supabase
+  if (!schoolScoped) {
+    const firstCommunityResult = await supabase
+      .from('communities')
+      .select('id')
+      .order('id', { ascending: true })
+      .limit(1);
+    if (!firstCommunityResult.error
+      && Array.isArray(firstCommunityResult.data)
+      && firstCommunityResult.data.length > 0
+    ) {
+      return firstCommunityResult.data[0].id;
+    }
+    return null;
+  }
+
+  const schoolProfileIds = await fetchSchoolProfileIds(supabase, schoolId);
+  if (schoolProfileIds.length === 0) {
+    return null;
+  }
+
+  const firstSchoolCommunityResult = await supabase
     .from('communities')
     .select('id')
+    .in('creator_id', schoolProfileIds)
     .order('id', { ascending: true })
     .limit(1);
-
-  if (!firstCommunityResult.error && firstCommunityResult.data && firstCommunityResult.data.length > 0) {
-    return firstCommunityResult.data[0].id;
+  if (!firstSchoolCommunityResult.error
+    && Array.isArray(firstSchoolCommunityResult.data)
+    && firstSchoolCommunityResult.data.length > 0
+  ) {
+    return firstSchoolCommunityResult.data[0].id;
   }
 
   return null;
 }
 
-async function fetchCommunityPageData(supabase, communityId) {
+async function fetchCommunityPageData(supabase, communityId, options = {}) {
+  const schoolScoped = isSchoolScoped(options);
+  const schoolId = options.schoolId || null;
   const communityResult = await supabase
     .from('communities')
     .select('id,name,description,creator_id,is_private,created_at')
@@ -371,6 +503,12 @@ async function fetchCommunityPageData(supabase, communityId) {
       .order('created_at', { ascending: false })
       .limit(25),
   ]);
+  const creatorProfile = creatorResult.data || null;
+  if (schoolScoped) {
+    if (!schoolId || !creatorProfile || !idsMatch(creatorProfile.school_id, schoolId)) {
+      return null;
+    }
+  }
 
   const rawMemberIds = (memberRowsResult.data || []).map((row) => row.user_id).filter(Boolean);
   const memberIdSet = new Set(rawMemberIds);
@@ -381,7 +519,7 @@ async function fetchCommunityPageData(supabase, communityId) {
 
   return {
     community: communityRow,
-    creatorProfile: creatorResult.data || null,
+    creatorProfile,
     memberIds: [...memberIdSet],
     postRows: postsResult.error || !postsResult.data ? [] : postsResult.data,
   };

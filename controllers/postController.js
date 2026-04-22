@@ -7,12 +7,13 @@ const {
   fetchAffiliations,
 } = require('../lib/utils');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
+const {
+  normalizeRole,
+  fetchViewerSchoolContext,
+  buildSchoolScopeOptions,
+} = require('../lib/schoolScope');
 const postModel = require('../models/postModel');
 const FEED_PAGE_SIZE = 10;
-
-function normalizeRole(role) {
-  return typeof role === 'string' ? role.trim().toLowerCase() : '';
-}
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
@@ -45,8 +46,12 @@ function displayName(profile) {
   return buildDisplayName(profile.first_name, profile.last_name, profile.email);
 }
 
-async function buildCurrentUserViewModel(supabase, sessionUser) {
-  const currentProfile = await postModel.fetchProfileById(supabase, sessionUser.id);
+async function buildCurrentUserViewModel(supabase, sessionUser, viewerContext) {
+  const scopeOptions = {
+    ...buildSchoolScopeOptions(viewerContext),
+    viewerUserId: sessionUser.id,
+  };
+  const currentProfile = await postModel.fetchProfileById(supabase, sessionUser.id, scopeOptions);
   const firstName = (currentProfile && currentProfile.first_name) || sessionUser.firstName || null;
   const lastName =
     currentProfile && typeof currentProfile.last_name === 'string'
@@ -96,7 +101,7 @@ async function buildLikeState(supabase, postIds, userId) {
   };
 }
 
-async function buildCommentState(supabase, postIds) {
+async function buildCommentState(supabase, postIds, scopeOptions) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
     return {
       commentCountByPostId: new Map(),
@@ -105,7 +110,11 @@ async function buildCommentState(supabase, postIds) {
     };
   }
 
-  const { comments, error } = await postModel.fetchCommentsByPostIds(supabase, postIds);
+  const { comments, error } = await postModel.fetchCommentsByPostIds(
+    supabase,
+    postIds,
+    scopeOptions
+  );
   if (error) {
     return {
       commentCountByPostId: new Map(),
@@ -115,7 +124,7 @@ async function buildCommentState(supabase, postIds) {
   }
 
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
-  const profiles = await postModel.fetchProfilesByIds(supabase, authorIds);
+  const profiles = await postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions);
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
   const commentCountByPostId = new Map();
@@ -151,7 +160,7 @@ async function buildCommentState(supabase, postIds) {
   };
 }
 
-async function buildPostsViewModel(supabase, postRows, viewerUserId) {
+async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOptions) {
   if (!Array.isArray(postRows) || postRows.length === 0) {
     return [];
   }
@@ -162,11 +171,11 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
   const communityIds = [...new Set(postRows.map((post) => post.community_id).filter(Boolean))];
 
   const [profiles, courses, communities, likeState, commentState] = await Promise.all([
-    postModel.fetchProfilesByIds(supabase, authorIds),
-    postModel.fetchCoursesByIds(supabase, courseIds),
-    postModel.fetchCommunitiesByIds(supabase, communityIds),
+    postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions),
+    postModel.fetchCoursesByIds(supabase, courseIds, scopeOptions),
+    postModel.fetchCommunitiesByIds(supabase, communityIds, scopeOptions),
     buildLikeState(supabase, postIds, viewerUserId),
-    buildCommentState(supabase, postIds),
+    buildCommentState(supabase, postIds, scopeOptions),
   ]);
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
 
@@ -174,7 +183,20 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
   const courseById = new Map(courses.map((row) => [row.id, row]));
   const communityById = new Map(communities.map((row) => [row.id, row]));
 
-  return postRows.map((post) => {
+  return postRows
+    .filter((post) => {
+      if (!profileById.has(post.author_id)) {
+        return false;
+      }
+      if (post.course_id && !courseById.has(post.course_id)) {
+        return false;
+      }
+      if (post.community_id && !communityById.has(post.community_id)) {
+        return false;
+      }
+      return true;
+    })
+    .map((post) => {
     const author = profileById.get(post.author_id);
     const authorMedia = profileMediaById.get(post.author_id);
     const course = courseById.get(post.course_id);
@@ -226,18 +248,19 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
       commentCount: commentState.commentCountByPostId.get(post.id) || 0,
       comments: commentState.commentsByPostId.get(post.id) || [],
     };
-  });
+    });
 }
 
-async function buildFeedViewModel(supabase, sessionUser, options = {}) {
+async function buildFeedViewModel(supabase, sessionUser, viewerContext, options = {}) {
   const limit = FEED_PAGE_SIZE;
   const offset = toNonNegativeInteger(options.offset);
-  const affiliations = await fetchAffiliations(supabase, sessionUser.id);
+  const scopeOptions = buildSchoolScopeOptions(viewerContext);
+  const affiliations = await fetchAffiliations(supabase, sessionUser.id, scopeOptions);
   const [user, pagedPosts] = await Promise.all([
-    buildCurrentUserViewModel(supabase, sessionUser),
-    postModel.fetchGlobalFeedPosts(supabase, { limit, offset }),
+    buildCurrentUserViewModel(supabase, sessionUser, viewerContext),
+    postModel.fetchGlobalFeedPosts(supabase, { limit, offset, ...scopeOptions }),
   ]);
-  const posts = await buildPostsViewModel(supabase, pagedPosts.rows, sessionUser.id);
+  const posts = await buildPostsViewModel(supabase, pagedPosts.rows, sessionUser.id, scopeOptions);
 
   return {
     user,
@@ -266,7 +289,8 @@ async function showFeed(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const viewModel = await buildFeedViewModel(supabase, sessionUser);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const viewModel = await buildFeedViewModel(supabase, sessionUser, viewerContext);
 
     return res.render('feed', {
       user: viewModel.user,
@@ -299,11 +323,14 @@ async function listFeedPosts(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
     const pagedPosts = await postModel.fetchGlobalFeedPosts(supabase, {
       offset,
       limit: FEED_PAGE_SIZE,
+      ...scopeOptions,
     });
-    const posts = await buildPostsViewModel(supabase, pagedPosts.rows, sessionUser.id);
+    const posts = await buildPostsViewModel(supabase, pagedPosts.rows, sessionUser.id, scopeOptions);
 
     return res.json({
       ok: true,
@@ -334,6 +361,10 @@ async function createFeedPost(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    if (!viewerContext.isGlobalAdmin && !viewerContext.schoolId) {
+      return res.redirect('/feed?error=' + encodeURIComponent('Link your account to a school to post.'));
+    }
     let imageUrl = null;
 
     if (req.file) {
@@ -395,7 +426,9 @@ async function togglePostLike(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const visiblePost = await postModel.fetchActivePostById(supabase, postId);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
+    const visiblePost = await postModel.fetchActivePostById(supabase, postId, scopeOptions);
 
     if (!visiblePost) {
       return res.status(404).json({ error: 'Post not found.' });
@@ -469,7 +502,9 @@ async function createPostComment(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const visiblePost = await postModel.fetchActivePostById(supabase, postId);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
+    const visiblePost = await postModel.fetchActivePostById(supabase, postId, scopeOptions);
 
     if (!visiblePost) {
       return jsonOrRedirect(req, res, 404, { error: 'Post not found.' }, `/post/${postId}`);
@@ -485,7 +520,7 @@ async function createPostComment(req, res) {
       return jsonOrRedirect(req, res, 500, { error: 'Unable to save comment.' }, `/post/${postId}`);
     }
 
-    const commentState = await buildCommentState(supabase, [postId]);
+    const commentState = await buildCommentState(supabase, [postId], scopeOptions);
     const comments = commentState.commentsByPostId.get(postId) || [];
 
     if ((req.get('Accept') || '').includes('application/json') || req.xhr) {
@@ -522,8 +557,10 @@ async function showPostById(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const affiliations = await fetchAffiliations(supabase, sessionUser.id);
-    const rawPost = await postModel.fetchActivePostById(supabase, postId);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
+    const affiliations = await fetchAffiliations(supabase, sessionUser.id, scopeOptions);
+    const rawPost = await postModel.fetchActivePostById(supabase, postId, scopeOptions);
 
     if (!rawPost) {
       return res.status(404).render('post', {
@@ -536,8 +573,8 @@ async function showPostById(req, res) {
     }
 
     const [user, posts] = await Promise.all([
-      buildCurrentUserViewModel(supabase, sessionUser),
-      buildPostsViewModel(supabase, [rawPost], sessionUser.id),
+      buildCurrentUserViewModel(supabase, sessionUser, viewerContext),
+      buildPostsViewModel(supabase, [rawPost], sessionUser.id, scopeOptions),
     ]);
 
     return res.render('post', {
@@ -566,7 +603,9 @@ async function reportPost(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const post = await postModel.fetchActivePostById(supabase, postId);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
+    const post = await postModel.fetchActivePostById(supabase, postId, scopeOptions);
     if (!post) return res.status(404).json({ error: 'Post not found.' });
     if (post.author_id === sessionUser.id) {
       return res.status(400).json({ error: 'You cannot report your own post.' });
@@ -604,20 +643,14 @@ async function deletePost(req, res) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const post = await postModel.fetchPostById(supabase, postId);
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
+    const post = await postModel.fetchPostById(supabase, postId, scopeOptions);
 
     if (!post) return res.status(404).json({ error: 'Post not found.' });
 
     const isOwner = post.author_id === sessionUser.id;
-    let isAdmin = normalizeRole(sessionUser.role) === 'admin';
-
-    if (!isAdmin) {
-      const actorProfile = await postModel.fetchProfileById(supabase, sessionUser.id);
-      isAdmin = normalizeRole(actorProfile && actorProfile.role) === 'admin';
-      if (isAdmin) {
-        sessionUser.role = 'admin';
-      }
-    }
+    const isAdmin = Boolean(viewerContext.isGlobalAdmin);
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ error: 'Not allowed.' });

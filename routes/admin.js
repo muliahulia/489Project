@@ -15,6 +15,23 @@ const REPORT_TYPE_MAP = {
   community: 'community',
 };
 
+function requireGlobalAdmin(req, res, next) {
+  const role = req.session
+    && req.session.auth
+    && req.session.auth.user
+    && typeof req.session.auth.user.role === 'string'
+    ? req.session.auth.user.role.trim().toLowerCase()
+    : '';
+
+  if (role === 'admin') {
+    return next();
+  }
+
+  const err = new Error('Forbidden');
+  err.status = 403;
+  return next(err);
+}
+
 function dateKeyForTimeZone(date, timeZone) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone,
@@ -1013,6 +1030,8 @@ async function applyModerationActions(supabase, report, actions, adminUserId) {
     }
   }
 }
+
+router.use(requireAuth, requireGlobalAdmin);
 
 router.get('/', requireAuth, (_req, res) => {
   res.redirect('/admin/dashboard');

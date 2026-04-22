@@ -9,6 +9,11 @@ const {
   buildProfileSlug,
   formatCreatedAt,
 } = require('../lib/utils');
+const {
+  fetchViewerSchoolContext,
+  buildSchoolScopeOptions,
+  canAccessProfile,
+} = require('../lib/schoolScope');
 const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
 const postModel = require('../models/postModel');
 
@@ -72,7 +77,7 @@ async function fetchProfilePostsByAuthorId(supabase, authorId) {
   return data;
 }
 
-async function fetchMembershipCollections(supabase, profileId) {
+async function fetchMembershipCollections(supabase, profileId, scopeOptions) {
   const [courseEnrollmentResult, communityMembershipResult] = await Promise.all([
     supabase
       .from('course_enrollments')
@@ -96,8 +101,8 @@ async function fetchMembershipCollections(supabase, profileId) {
   )];
 
   const [courseRows, communityRows] = await Promise.all([
-    postModel.fetchCoursesByIds(supabase, courseIds),
-    postModel.fetchCommunitiesByIds(supabase, communityIds),
+    postModel.fetchCoursesByIds(supabase, courseIds, scopeOptions),
+    postModel.fetchCommunitiesByIds(supabase, communityIds, scopeOptions),
   ]);
 
   const courses = (courseRows || [])
@@ -119,15 +124,17 @@ async function fetchMembershipCollections(supabase, profileId) {
   return { courses, communities };
 }
 
-async function fetchFollowState(supabase, viewerId, viewedProfileId) {
-  const followersCountResult = await supabase
+async function fetchFollowState(supabase, viewerId, viewedProfileId, scopeOptions) {
+  const followersResult = await supabase
     .from('followers')
-    .select('*', { count: 'exact', head: true })
+    .select('follower_id')
     .eq('following_id', viewedProfileId);
-
-  const followersCount = Number.isInteger(followersCountResult.count)
-    ? followersCountResult.count
-    : 0;
+  const followerIds = Array.isArray(followersResult.data)
+    ? followersResult.data.map((row) => row.follower_id).filter(Boolean)
+    : [];
+  const followerProfiles = await postModel.fetchProfilesByIds(supabase, followerIds, scopeOptions);
+  const visibleFollowerIds = new Set(followerProfiles.map((profile) => profile.id));
+  const followersCount = followerIds.filter((id) => visibleFollowerIds.has(id)).length;
 
   if (!viewerId || !viewedProfileId || viewerId === viewedProfileId) {
     return {
@@ -149,7 +156,7 @@ async function fetchFollowState(supabase, viewerId, viewedProfileId) {
   };
 }
 
-async function fetchFollowersList(supabase, viewedProfileId) {
+async function fetchFollowersList(supabase, viewedProfileId, scopeOptions) {
   const { data, error } = await supabase
     .from('followers')
     .select('follower_id')
@@ -168,7 +175,7 @@ async function fetchFollowersList(supabase, viewedProfileId) {
     return [];
   }
 
-  const followerProfiles = await postModel.fetchProfilesByIds(supabase, followerIds);
+  const followerProfiles = await postModel.fetchProfilesByIds(supabase, followerIds, scopeOptions);
   const followerProfileById = new Map(followerProfiles.map((profile) => [profile.id, profile]));
   const followerMediaById = await resolveProfileMediaMap(supabase, followerProfiles);
 
@@ -235,7 +242,7 @@ async function buildLikeState(supabase, postIds, viewerUserId) {
   };
 }
 
-async function buildCommentState(supabase, postIds) {
+async function buildCommentState(supabase, postIds, scopeOptions) {
   if (!Array.isArray(postIds) || postIds.length === 0) {
     return {
       commentCountByPostId: new Map(),
@@ -243,7 +250,11 @@ async function buildCommentState(supabase, postIds) {
     };
   }
 
-  const { comments, error } = await postModel.fetchCommentsByPostIds(supabase, postIds);
+  const { comments, error } = await postModel.fetchCommentsByPostIds(
+    supabase,
+    postIds,
+    scopeOptions
+  );
   if (error) {
     return {
       commentCountByPostId: new Map(),
@@ -252,7 +263,7 @@ async function buildCommentState(supabase, postIds) {
   }
 
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
-  const profiles = await postModel.fetchProfilesByIds(supabase, authorIds);
+  const profiles = await postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
   const commentCountByPostId = new Map();
@@ -260,6 +271,9 @@ async function buildCommentState(supabase, postIds) {
 
   comments.forEach((comment) => {
     const author = profileById.get(comment.author_id);
+    if (!author) {
+      return;
+    }
     const authorEmail = author && author.email ? author.email : '';
     const authorMedia = profileMediaById.get(comment.author_id);
     const list = commentsByPostId.get(comment.post_id) || [];
@@ -287,7 +301,7 @@ async function buildCommentState(supabase, postIds) {
   };
 }
 
-async function buildPostsViewModel(supabase, postRows, viewerUserId) {
+async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOptions) {
   if (!Array.isArray(postRows) || postRows.length === 0) {
     return [];
   }
@@ -298,18 +312,31 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
   const communityIds = [...new Set(postRows.map((post) => post.community_id).filter(Boolean))];
 
   const [profiles, courses, communities, likeState, commentState] = await Promise.all([
-    postModel.fetchProfilesByIds(supabase, authorIds),
-    postModel.fetchCoursesByIds(supabase, courseIds),
-    postModel.fetchCommunitiesByIds(supabase, communityIds),
+    postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions),
+    postModel.fetchCoursesByIds(supabase, courseIds, scopeOptions),
+    postModel.fetchCommunitiesByIds(supabase, communityIds, scopeOptions),
     buildLikeState(supabase, postIds, viewerUserId),
-    buildCommentState(supabase, postIds),
+    buildCommentState(supabase, postIds, scopeOptions),
   ]);
   const profileById = new Map(profiles.map((row) => [row.id, row]));
   const courseById = new Map(courses.map((row) => [row.id, row]));
   const communityById = new Map(communities.map((row) => [row.id, row]));
   const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
 
-  return postRows.map((post) => {
+  return postRows
+    .filter((post) => {
+      if (!profileById.has(post.author_id)) {
+        return false;
+      }
+      if (post.course_id && !courseById.has(post.course_id)) {
+        return false;
+      }
+      if (post.community_id && !communityById.has(post.community_id)) {
+        return false;
+      }
+      return true;
+    })
+    .map((post) => {
     const author = profileById.get(post.author_id);
     const authorEmail = author && author.email ? author.email : '';
     const authorMedia = profileMediaById.get(post.author_id);
@@ -361,7 +388,7 @@ async function buildPostsViewModel(supabase, postRows, viewerUserId) {
       commentCount: commentState.commentCountByPostId.get(post.id) || 0,
       comments: commentState.commentsByPostId.get(post.id) || [],
     };
-  });
+    });
 }
 
 async function renderProfileByUserId(req, res, userId, options = {}) {
@@ -384,6 +411,13 @@ async function renderProfileByUserId(req, res, userId, options = {}) {
     return renderProfileNotFound(req, res);
   }
 
+  const sessionUser = req.session.auth.user;
+  const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+  if (!canAccessProfile(viewerContext, profile)) {
+    return renderProfileNotFound(req, res);
+  }
+  const scopeOptions = buildSchoolScopeOptions(viewerContext);
+
   const canonicalPath = buildProfilePath(profile.id, profile.first_name, profile.last_name);
   const canonicalSlug = buildProfileSlug(profile.first_name, profile.last_name);
   const requestedSlug = typeof options.requestedSlug === 'string'
@@ -396,7 +430,6 @@ async function renderProfileByUserId(req, res, userId, options = {}) {
     return res.redirect(canonicalPath);
   }
 
-  const sessionUser = req.session.auth.user;
   const isOwnProfile = profile.id === sessionUser.id;
   const profileWithFallbacks = { ...profile };
   if (profile.id === sessionUser.id && !profileWithFallbacks.email) {
@@ -406,12 +439,12 @@ async function renderProfileByUserId(req, res, userId, options = {}) {
   const [media, schoolName, membershipData, postRows, followState, followers] = await Promise.all([
     resolveProfileMedia(supabase, profileWithFallbacks),
     fetchSchoolNameById(supabase, profileWithFallbacks.school_id),
-    fetchMembershipCollections(supabase, profile.id),
+    fetchMembershipCollections(supabase, profile.id, scopeOptions),
     fetchProfilePostsByAuthorId(supabase, profile.id),
-    fetchFollowState(supabase, sessionUser.id, profile.id),
-    fetchFollowersList(supabase, profile.id),
+    fetchFollowState(supabase, sessionUser.id, profile.id, scopeOptions),
+    fetchFollowersList(supabase, profile.id, scopeOptions),
   ]);
-  const posts = await buildPostsViewModel(supabase, postRows, sessionUser.id);
+  const posts = await buildPostsViewModel(supabase, postRows, sessionUser.id, scopeOptions);
 
   return res.render('profile', {
     user: sessionUser,
@@ -437,7 +470,8 @@ async function renderProfileByUserId(req, res, userId, options = {}) {
 
 router.post('/:userId/follow', requireAuth, async (req, res) => {
   const targetUserId = typeof req.params.userId === 'string' ? req.params.userId.trim() : '';
-  const viewerUserId = req.session.auth.user.id;
+  const sessionUser = req.session.auth.user;
+  const viewerUserId = sessionUser.id;
 
   if (!targetUserId) {
     if (wantsJson(req)) {
@@ -454,8 +488,16 @@ router.post('/:userId/follow', requireAuth, async (req, res) => {
   }
 
   const supabase = createSupabaseAdminClient();
+  const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+  const scopeOptions = buildSchoolScopeOptions(viewerContext);
   const targetProfileResult = await fetchProfileById(supabase, targetUserId);
   if (!targetProfileResult.profile) {
+    if (wantsJson(req)) {
+      return res.status(404).json({ error: 'Profile not found.' });
+    }
+    return res.redirect('/profile');
+  }
+  if (!canAccessProfile(viewerContext, targetProfileResult.profile)) {
     if (wantsJson(req)) {
       return res.status(404).json({ error: 'Profile not found.' });
     }
@@ -506,13 +548,13 @@ router.post('/:userId/follow', requireAuth, async (req, res) => {
     nextFollowingState = true;
   }
 
-  const followersCountResult = await supabase
-    .from('followers')
-    .select('*', { count: 'exact', head: true })
-    .eq('following_id', targetUserId);
-  const followersCount = Number.isInteger(followersCountResult.count)
-    ? followersCountResult.count
-    : 0;
+  const followState = await fetchFollowState(
+    supabase,
+    viewerUserId,
+    targetUserId,
+    scopeOptions
+  );
+  const followersCount = followState.followersCount;
 
   if (wantsJson(req)) {
     return res.json({

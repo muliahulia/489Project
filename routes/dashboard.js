@@ -3,6 +3,7 @@ var router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { createSupabaseAdminClient } = require('../lib/supabase');
 const { buildDisplayName, buildInitials } = require('../lib/utils');
+const { fetchViewerSchoolContext, buildSchoolScopeOptions, idsMatch } = require('../lib/schoolScope');
 
 const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'media';
 const SIGNED_IMAGE_TTL_SECONDS = 120;
@@ -102,7 +103,7 @@ function normalizeCommunity(row, index) {
   };
 }
 
-async function fetchAffiliatedCourses(supabase, userId) {
+async function fetchAffiliatedCourses(supabase, userId, scopeOptions) {
   try {
     const membershipResult = await supabase
       .from('course_enrollments')
@@ -121,11 +122,19 @@ async function fetchAffiliatedCourses(supabase, userId) {
       return [];
     }
 
-    const courseResult = await supabase
+    let courseRequest = supabase
       .from('courses')
-      .select('id,name')
+      .select('id,name,school_id')
       .in('id', courseIds)
       .order('name', { ascending: true });
+    if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+      const schoolId = scopeOptions.schoolId || null;
+      if (!schoolId) {
+        return [];
+      }
+      courseRequest = courseRequest.eq('school_id', schoolId);
+    }
+    const courseResult = await courseRequest;
 
     if (courseResult.error || !courseResult.data) {
       return [];
@@ -137,7 +146,7 @@ async function fetchAffiliatedCourses(supabase, userId) {
   }
 }
 
-async function fetchAffiliatedCommunities(supabase, userId) {
+async function fetchAffiliatedCommunities(supabase, userId, scopeOptions) {
   try {
     const membershipResult = await supabase
       .from('community_members')
@@ -158,7 +167,7 @@ async function fetchAffiliatedCommunities(supabase, userId) {
 
     const communityResult = await supabase
       .from('communities')
-      .select('id,name,logo_bucket,logo_path')
+      .select('id,name,logo_bucket,logo_path,creator_id')
       .in('id', communityIds)
       .order('name', { ascending: true });
 
@@ -166,7 +175,25 @@ async function fetchAffiliatedCommunities(supabase, userId) {
       return [];
     }
 
-    const communities = communityResult.data.map((row, index) => normalizeCommunity(row, index));
+    let visibleCommunities = communityResult.data;
+    if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+      const schoolId = scopeOptions.schoolId || null;
+      if (!schoolId) {
+        return [];
+      }
+      const creatorIds = [...new Set(visibleCommunities.map((row) => row.creator_id).filter(Boolean))];
+      const creatorResult = creatorIds.length > 0
+        ? await supabase.from('profiles').select('id,school_id').in('id', creatorIds)
+        : { data: [] };
+      const creatorSchoolById = new Map(
+        (creatorResult.data || []).map((row) => [row.id, row.school_id || null])
+      );
+      visibleCommunities = visibleCommunities.filter((row) =>
+        idsMatch(creatorSchoolById.get(row.creator_id), schoolId)
+      );
+    }
+
+    const communities = visibleCommunities.map((row, index) => normalizeCommunity(row, index));
     const signedUrls = await Promise.all(
       communities.map((community) =>
         buildSignedImageUrl(supabase, community.logoBucket, community.logoPath)
@@ -193,10 +220,12 @@ router.get('/', requireAuth, async (req, res) => {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id,first_name,last_name,email,role')
+      .select('id,first_name,last_name,email,role,school_id')
       .eq('id', userId)
       .maybeSingle();
 
@@ -204,8 +233,8 @@ router.get('/', requireAuth, async (req, res) => {
       profile = data;
     }
 
-    courses = await fetchAffiliatedCourses(supabase, userId);
-    communities = await fetchAffiliatedCommunities(supabase, userId);
+    courses = await fetchAffiliatedCourses(supabase, userId, scopeOptions);
+    communities = await fetchAffiliatedCommunities(supabase, userId, scopeOptions);
   } catch (err) {
     console.log('DASHBOARD ERROR:', err);
   }
