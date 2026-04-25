@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Course</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
+  <style>
+    .main {
+      padding: 2rem;
+    }
+
+    .course-column {
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--navy);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .course-shell,
+    .members-card,
+    .empty-card,
+    .form-banner,
+    .create-post {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+    }
+
+    .course-shell {
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .course-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .course-header-left {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .course-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .course-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .course-meta {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 0.65rem;
+      line-height: 1.6;
+    }
+
+    .course-description {
+      font-size: 0.94rem;
+      color: var(--text-dark);
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .course-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+    }
+
+    .membership-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.95rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text-dark);
+    }
+
+    .membership-btn.join {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--gold);
+    }
+
+    .membership-btn.leave {
+      background: var(--cream);
+    }
+
+    .membership-badge {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .members-card {
+      padding: 1rem 1.2rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .members-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #9aaabb;
+      margin-bottom: 0.75rem;
+    }
+
+    .members-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .member-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+      flex-shrink: 0;
+      letter-spacing: 0.03em;
+      text-decoration: none;
+      overflow: hidden;
+    }
+
+    .member-avatar img,
+    .modal-student-avatar img,
+    .create-post-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .member-avatar:nth-child(2) { background: var(--navy-mid); }
+    .member-avatar:nth-child(3) { background: var(--navy-light); }
+    .member-avatar:nth-child(4) { background: #2c4a6e; }
+    .member-avatar:nth-child(5) { background: #1e3a52; }
+
+    .members-overflow {
+      font-size: 0.82rem;
+      color: var(--navy);
+      font-weight: 600;
+      margin-left: 0.4rem;
+      white-space: nowrap;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      padding: 0;
+      text-decoration: none;
+    }
+
+    .members-overflow:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .empty-card {
+      padding: 1rem 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .form-banner {
+      padding: 0.7rem 0.9rem;
+      font-size: 0.84rem;
+      margin-bottom: 1rem;
+      color: #9b2d22;
+      background: rgba(192,57,43,0.08);
+      border-color: rgba(192,57,43,0.25);
+    }
+
+    .create-post {
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .create-post-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .create-post-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(201,168,76,0.4);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .create-post-input-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--cream);
+      padding: 0.65rem;
+    }
+
+    .create-post-input {
+      flex: 1;
+      min-height: 72px;
+      padding: 0.55rem 0.7rem;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      outline: none;
+      resize: vertical;
+    }
+
+    .create-post-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .create-post-submit {
+      border: none;
+      background: var(--navy);
+      color: var(--gold);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .create-post-submit:hover {
+      background: var(--navy-mid);
+    }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13,27,42,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 40px rgba(13,27,42,0.18);
+      overflow: hidden;
+      margin: 1rem;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--cream);
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      padding: 0.6rem 1.5rem 1.25rem;
+    }
+
+    .modal-student {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-student:last-child {
+      border-bottom: none;
+    }
+
+    .modal-student-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .modal-student-name {
+      font-size: 0.92rem;
+      color: var(--text-dark);
+      text-decoration: none;
+    }
+
+    .modal-student-name:hover,
+    .member-avatar:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header', { user }) %>
+
+  <div class="layout">
+
+    <%- include('sidebar', { activePage: 'courses' }) %>
+
+    <main class="main">
+      <div class="course-column">
+        <% const coursePosts = Array.isArray(posts) ? posts : []; %>
+        <% const courseMembers = Array.isArray(members) ? members : []; %>
+        <% const previewMembers = Array.isArray(memberPreview) ? memberPreview : []; %>
+        <% const notFound = typeof notFoundMessage === 'string' ? notFoundMessage : null; %>
+
+        <a class="back-link" href="/courses">Back to Courses</a>
+
+        <% if (notFound) { %>
+          <div class="empty-card"><%= notFound %></div>
+        <% } else if (course) { %>
+          <div class="course-shell">
+            <div class="course-header">
+              <div class="course-header-left">
+                <div class="course-avatar"><%= course.bubbleText %></div>
+                <div>
+                  <h1 class="course-title"><%= course.name %></h1>
+                  <p class="course-meta"><%= course.instructorName %> · <%= course.memberLabel %> · <%= course.schoolName %></p>
+                  <p class="course-description"><%= course.description %></p>
+                </div>
+              </div>
+
+              <div class="course-actions">
+                <% if (course.canManage) { %>
+                  <a class="membership-btn" href="<%= course.manageHref %>">Manage course</a>
+                <% } %>
+
+                <% if (course.isInstructor) { %>
+                  <span class="membership-badge">Instructor</span>
+                <% } %>
+
+                <% if (!course.isInstructor && !course.isEnrolled) { %>
+                  <form method="post" action="/courses/<%= course.id %>/join">
+                    <input type="hidden" name="redirectTo" value="/courses/<%= course.id %>" />
+                    <button class="membership-btn join" type="submit">Join course</button>
+                  </form>
+                <% } %>
+
+                <% if (!course.isInstructor && course.isEnrolled) { %>
+                  <form method="post" action="/courses/<%= course.id %>/leave">
+                    <input type="hidden" name="redirectTo" value="/courses/<%= course.id %>" />
+                    <button class="membership-btn leave" type="submit">Leave course</button>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <div class="members-card">
+            <div class="members-label">Students</div>
+            <div class="members-row">
+              <% if (previewMembers.length === 0) { %>
+                <span class="modal-student-name">No students enrolled yet.</span>
+              <% } else { %>
+                <% previewMembers.forEach((member) => { %>
+                  <a class="member-avatar" href="<%= member.profileHref || '/profile' %>" title="<%= member.name %>" aria-label="View <%= member.name %> profile">
+                    <% if (member.profileAvatarUrl) { %>
+                      <img src="<%= member.profileAvatarUrl %>" alt="<%= member.name %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+                    <% } else { %>
+                      <%= member.initials %>
+                    <% } %>
+                  </a>
+                <% }) %>
+                <% if (remainingMemberCount > 0) { %>
+                  <button type="button" class="members-overflow" onclick="openMembersModal()">+<%= remainingMemberCount %> more</button>
+                <% } else if (courseMembers.length > 0) { %>
+                  <button type="button" class="members-overflow" onclick="openMembersModal()">View all</button>
+                <% } %>
+              <% } %>
+            </div>
+          </div>
+
+          <% if (formError) { %>
+            <div class="form-banner"><%= formError %></div>
+          <% } %>
+
+          <% if (membershipMessage) { %>
+            <div class="empty-card"><%= membershipMessage %></div>
+          <% } else { %>
+            <div class="create-post">
+              <div class="create-post-top">
+                <div class="create-post-avatar">
+                  <% if (user && user.profileAvatarUrl) { %>
+                    <img src="<%= user.profileAvatarUrl %>" alt="Your profile photo" loading="lazy" referrerpolicy="no-referrer" />
+                  <% } else { %>
+                    <%= user && user.initials ? user.initials : 'UC' %>
+                  <% } %>
+                </div>
+                <form class="create-post-input-wrap" method="post" action="/courses/<%= course.id %>/posts">
+                  <textarea
+                    class="create-post-input"
+                    name="content"
+                    maxlength="4000"
+                    required
+                    placeholder="Share something with this course..."
+                  ></textarea>
+                  <div class="create-post-row">
+                    <button class="create-post-submit" type="submit">Post</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <% if (coursePosts.length === 0) { %>
+              <div class="empty-card">No course posts yet.</div>
+            <% } else { %>
+              <% coursePosts.forEach((post) => { %>
+                <%- include('partials/post-card', { post }) %>
+              <% }) %>
+            <% } %>
+          <% } %>
+        <% } %>
+      </div>
+    </main>
+
+  </div>
+
+  <div class="modal-backdrop" id="members-modal" onclick="handleModalBackdrop(event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="members-modal-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="members-modal-title">Course Students</h2>
+        <button class="modal-close" type="button" onclick="closeMembersModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <% if (courseMembers.length === 0) { %>
+          <div class="modal-student">
+            <span class="modal-student-name">No students enrolled yet.</span>
+          </div>
+        <% } else { %>
+          <% courseMembers.forEach((member) => { %>
+            <div class="modal-student">
+              <div class="modal-student-avatar">
+                <% if (member.profileAvatarUrl) { %>
+                  <img src="<%= member.profileAvatarUrl %>" alt="<%= member.name %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+                <% } else { %>
+                  <%= member.initials %>
+                <% } %>
+              </div>
+              <a class="modal-student-name" href="<%= member.profileHref || '/profile' %>"><%= member.name %></a>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
+
+  <script>
+    const latestCommentTimers = new WeakMap();
+
+    function openMembersModal() {
+      const modal = document.getElementById('members-modal');
+      if (modal) {
+        modal.classList.add('open');
+      }
+    }
+
+    function closeMembersModal() {
+      const modal = document.getElementById('members-modal');
+      if (modal) {
+        modal.classList.remove('open');
+      }
+    }
+
+    function handleModalBackdrop(event) {
+      if (event.target && event.target.id === 'members-modal') {
+        closeMembersModal();
+      }
+    }
+
+    function buildCommentHtml(comment) {
+      return `
+        <div class="post-comment">
+          <div class="post-comment-avatar">${comment.authorAvatarUrl ? `<img src="${comment.authorAvatarUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}" alt="${(comment.authorName || 'User').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')} profile photo" loading="lazy" referrerpolicy="no-referrer"/>` : (comment.authorInitials || 'UC')}</div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong>${comment.authorName || 'Unknown User'}</strong>
+              <span>${comment.createdAtLabel || ''}</span>
+            </div>
+            <div class="post-comment-text">${(comment.content || '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateCommentBadge(postCard, count) {
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      if (!toggleButton) {
+        return;
+      }
+
+      let countNode = toggleButton.querySelector('.comment-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'comment-count';
+        toggleButton.appendChild(document.createTextNode(' '));
+        toggleButton.appendChild(countNode);
+      }
+
+      countNode.textContent = String(count || 0);
+      countNode.classList.toggle('is-hidden', !(count > 0));
+      toggleButton.classList.toggle('has-count', count > 0);
+    }
+
+    function clearLatestCommentHighlight(postCard) {
+      const highlightedComment = postCard.querySelector('.post-comment.focused');
+      if (highlightedComment) {
+        highlightedComment.classList.remove('focused');
+      }
+    }
+
+    function flashLatestComment(postCard) {
+      clearLatestCommentHighlight(postCard);
+
+      const latestComment = postCard.querySelector('.post-comment[data-comment-id]:last-child');
+      if (!latestComment) {
+        return;
+      }
+
+      latestComment.classList.add('focused');
+
+      const existingTimer = latestCommentTimers.get(postCard);
+      if (existingTimer) {
+        window.clearTimeout(existingTimer);
+      }
+
+      const timerId = window.setTimeout(() => {
+        latestComment.classList.remove('focused');
+        latestCommentTimers.delete(postCard);
+      }, 1200);
+
+      latestCommentTimers.set(postCard, timerId);
+      latestComment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function openComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) {
+        return;
+      }
+
+      commentsPanel.hidden = false;
+      toggleButton.classList.add('active');
+      toggleButton.setAttribute('aria-expanded', 'true');
+
+      if (preview) {
+        preview.hidden = true;
+      }
+
+      const input = commentsPanel.querySelector('.post-comment-input');
+      if (input) {
+        input.focus();
+      }
+    }
+
+    function updateLikeBadge(likeButton, count) {
+      if (!likeButton) {
+        return;
+      }
+
+      let countNode = likeButton.querySelector('.like-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'like-count';
+        likeButton.appendChild(document.createTextNode(' '));
+        likeButton.appendChild(countNode);
+      }
+
+      const parsedCount = Number.parseInt(String(count), 10);
+      const safeCount = Number.isFinite(parsedCount) ? Math.max(0, parsedCount) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      likeButton.classList.toggle('has-count', safeCount > 0);
+    }
+
+    function collapseComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+
+      if (!commentsPanel || !toggleButton) {
+        return;
+      }
+
+      commentsPanel.hidden = true;
+      toggleButton.classList.remove('active');
+      toggleButton.setAttribute('aria-expanded', 'false');
+
+      clearLatestCommentHighlight(postCard);
+
+      const timerId = latestCommentTimers.get(postCard);
+      if (timerId) {
+        window.clearTimeout(timerId);
+        latestCommentTimers.delete(postCard);
+      }
+
+      if (preview) {
+        preview.hidden = false;
+      }
+    }
+
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = likeButton.dataset.postId;
+      if (!postId || likeButton.dataset.pending === 'true') {
+        return;
+      }
+
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = Number.parseInt((likeButton.querySelector('.like-count') || {}).textContent || '0', 10) || 0;
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      updateLikeBadge(likeButton, optimisticCount);
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        updateLikeBadge(likeButton, payload.likeCount);
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        updateLikeBadge(likeButton, previousCount);
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const commentTrigger = event.target.closest('.js-comment-toggle, .js-comment-expand');
+      if (!commentTrigger) {
+        return;
+      }
+
+      const postCard = commentTrigger.closest('.post-card');
+      if (!postCard) {
+        return;
+      }
+
+      const isToggleButton = commentTrigger.classList.contains('js-comment-toggle');
+      const isExpandButton = commentTrigger.classList.contains('js-comment-expand');
+      const commentsPanel = postCard.querySelector('.post-comments');
+
+      if (!commentsPanel) {
+        return;
+      }
+
+      if (isToggleButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        } else {
+          collapseComments(postCard);
+        }
+        return;
+      }
+
+      if (isExpandButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        }
+
+        flashLatestComment(postCard);
+      }
+    });
+
+    document.addEventListener('submit', async (event) => {
+      const commentForm = event.target.closest('.js-comment-form');
+      if (!commentForm) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = commentForm.dataset.postId;
+      const input = commentForm.querySelector('.post-comment-input');
+      const submitButton = commentForm.querySelector('.post-comment-submit');
+      const commentList = commentForm.parentElement.querySelector('.post-comment-list');
+      const postCard = commentForm.closest('.post-card');
+      const commentsPanel = postCard ? postCard.querySelector('.post-comments') : null;
+      const content = input ? input.value.trim() : '';
+
+      if (!postId || !input || !submitButton || !commentList) {
+        return;
+      }
+
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Posting...';
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ content }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to save comment.');
+        }
+
+        const comments = Array.isArray(payload.comments) ? payload.comments : [];
+        commentList.innerHTML = comments.map(buildCommentHtml).join('');
+
+        if (commentsPanel) {
+          commentsPanel.hidden = false;
+        }
+
+        const preview = postCard ? postCard.querySelector('.post-comment-preview') : null;
+        if (preview) {
+          preview.hidden = true;
+        }
+
+        if (postCard) {
+          const toggleButton = postCard.querySelector('.js-comment-toggle');
+          if (toggleButton) {
+            toggleButton.classList.add('active');
+            toggleButton.setAttribute('aria-expanded', 'true');
+          }
+        }
+
+        if (postCard && typeof payload.commentCount === 'number') {
+          updateCommentBadge(postCard, payload.commentCount);
+        }
+
+        input.value = '';
+      } catch (_err) {
+        // Intentionally silent to keep the experience lightweight.
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Comment';
+      }
+    });
+  </script>
+
+</body>
+</html>

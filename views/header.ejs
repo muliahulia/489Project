@@ -1,0 +1,101 @@
+<%
+  function deriveInitialsFromUser(sourceUser) {
+    if (!sourceUser || typeof sourceUser !== 'object') {
+      return '';
+    }
+
+    if (typeof sourceUser.initials === 'string' && sourceUser.initials.trim()) {
+      return sourceUser.initials.trim().slice(0, 3).toUpperCase();
+    }
+
+    const firstName = sourceUser.firstName || sourceUser.first_name;
+    const lastName = sourceUser.lastName || sourceUser.last_name;
+
+    if (typeof firstName === 'string' && firstName.trim()) {
+      const first = firstName.trim();
+      if (typeof lastName === 'string' && lastName.trim()) {
+        return `${first[0]}${lastName.trim()[0]}`.toUpperCase();
+      }
+
+      if (first.length >= 2) {
+        return first.slice(0, 2).toUpperCase();
+      }
+    }
+
+    if (typeof sourceUser.email === 'string' && sourceUser.email.trim()) {
+      return sourceUser.email.trim().slice(0, 2).toUpperCase();
+    }
+
+    return '';
+  }
+
+  const headerSearchPlaceholder = typeof searchPlaceholder !== 'undefined' ? searchPlaceholder : 'Search...';
+  const headerSearchId = typeof searchId !== 'undefined' ? searchId : '';
+  const headerSearchOnInput = typeof searchOnInput !== 'undefined' ? searchOnInput : '';
+  const routeUserInitials = deriveInitialsFromUser(typeof user !== 'undefined' ? user : null);
+  const sessionUserInitials = deriveInitialsFromUser(typeof currentUser !== 'undefined' ? currentUser : null);
+  const explicitInitials = typeof initials === 'string' ? initials.trim() : '';
+  const routeUserAvatar =
+    user && typeof user === 'object'
+      ? user.profileAvatarUrl || user.avatarUrl || null
+      : null;
+  const sessionUserAvatar =
+    currentUser && typeof currentUser === 'object'
+      ? currentUser.profileAvatarUrl || currentUser.avatarUrl || null
+      : null;
+  const explicitAvatarUrl = typeof avatarUrl === 'string' && avatarUrl.trim() ? avatarUrl.trim() : '';
+  const headerAvatarUrl = routeUserAvatar || sessionUserAvatar || explicitAvatarUrl || '';
+  const headerInitials = routeUserInitials || sessionUserInitials || explicitInitials || 'UC';
+  const explicitSchoolLogoUrl =
+    typeof schoolLogoUrl === 'string' && schoolLogoUrl.trim() ? schoolLogoUrl.trim() : '';
+  const routeUserSchoolLogo =
+    user && typeof user === 'object' && typeof user.schoolLogoUrl === 'string' && user.schoolLogoUrl.trim()
+      ? user.schoolLogoUrl.trim()
+      : '';
+  const sessionUserSchoolLogo =
+    currentUser && typeof currentUser === 'object' && typeof currentUser.schoolLogoUrl === 'string' && currentUser.schoolLogoUrl.trim()
+      ? currentUser.schoolLogoUrl.trim()
+      : '';
+  const headerSchoolLogoUrl = explicitSchoolLogoUrl || routeUserSchoolLogo || sessionUserSchoolLogo || '';
+  const explicitSchoolName = typeof schoolName === 'string' && schoolName.trim() ? schoolName.trim() : '';
+  const routeUserSchoolName =
+    user && typeof user === 'object' && typeof user.schoolName === 'string' && user.schoolName.trim()
+      ? user.schoolName.trim()
+      : '';
+  const sessionUserSchoolName =
+    currentUser && typeof currentUser === 'object' && typeof currentUser.schoolName === 'string' && currentUser.schoolName.trim()
+      ? currentUser.schoolName.trim()
+      : '';
+  const headerSchoolName = explicitSchoolName || routeUserSchoolName || sessionUserSchoolName || 'your school';
+  const headerSchoolLogoAlt = `${headerSchoolName} logo`;
+%>
+<nav class="topbar">
+  <div class="topbar-brand">
+    <span class="topbar-brand-label">UniConnect at</span>
+    <span class="topbar-school-mark">
+      <% if (headerSchoolLogoUrl) { %>
+        <img src="<%= headerSchoolLogoUrl %>" alt="<%= headerSchoolLogoAlt %>" class="topbar-school-logo" loading="lazy" referrerpolicy="no-referrer" />
+      <% } else { %>
+        <span class="topbar-school-name"><%= headerSchoolName %></span>
+      <% } %>
+    </span>
+  </div>
+  <div class="topbar-search">
+    <span>🔍</span>
+    <input
+      type="text"
+      placeholder="<%= headerSearchPlaceholder %>"
+      <% if (headerSearchId) { %>id="<%= headerSearchId %>"<% } %>
+      <% if (headerSearchOnInput) { %>oninput="<%= headerSearchOnInput %>"<% } %>
+    />
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-avatar">
+      <% if (headerAvatarUrl) { %>
+        <img src="<%= headerAvatarUrl %>" alt="Profile photo" />
+      <% } else { %>
+        <%= headerInitials %>
+      <% } %>
+    </div>
+  </div>
+</nav>

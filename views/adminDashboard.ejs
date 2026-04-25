@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    /* Page-specific styles */
+
+    /*TOPBAR styles*/
+
+    /*MAIN content area*/
+
+    /*Dashboard grid*/
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1.5rem;                          
+    }
+    @media (max-width: 1200px) {
+      .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .cards-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .active-sessions {
+        font-family: 'Playfair Display', serif;
+        font-size: 30px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <%- include('header', { initials: 'JS' }) %>
+
+  <!--LAYOUT container-->
+  <div class="layout">
+
+    <!--SIDEBAR — copy to every page, just change links-->
+    <%- include('sidebar', { activePage: 'adminDashboard', showAdministrative: true }) %>
+
+    <!--MAIN content area--> 
+    <main class="main main-pad main-wide">
+
+      <!--PAGE header + tabs-->
+      <div class="page-header">
+        <h1 class="page-title">Admin Dashboard</h1>
+        <p class="page-subtitle">View site statistics, reports, manage accounts and communities, and view action history</p>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('Overview', this)">Overview</button>
+          <button class="tab-btn" onclick="switchTab('ActionHistory', this)">Action History</button>
+        </div>
+
+        <!--Dashboard cards grid-->
+        <div class="cards-grid">
+          <div class="card">
+            <div class="card-title">Active Users</div>
+            <div class="card-content">
+                <div class="active-sessions"><%= typeof activeUsersToday === 'number' ? activeUsersToday : 0 %> users active today</div>
+                <canvas id="chart-reports"></canvas>
+                <div></div>
+            </div>
+            <div></div>
+            <button class="btn btn-primary" onclick="window.location.href='/admin/users'">View User Statistics</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Reports</div>
+            <div class="active-sessions"><%= typeof reportsToday === 'number' ? reportsToday : 0 %> reports today</div>
+            <canvas id="chart-reports"></canvas>
+            <button class="btn btn-primary" onclick="window.location.href='/admin/reports'">View Reports</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Account Moderation</div>
+            <div class="active-sessions"><%= typeof accountsUnderPenalty === 'number' ? accountsUnderPenalty : 0 %> accounts under penalty</div>
+            <canvas id="chart-account-moderation"></canvas>
+            <button class="btn btn-primary" onclick="window.location.href='/accountModeration'">View Accounts</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Community Moderation</div>
+            <div class="active-sessions"><%= typeof flaggedCommunities === 'number' ? flaggedCommunities : 0 %> flagged communities</div>
+            <canvas id="chart-community-moderation"></canvas>
+            <button class="btn btn-primary" onclick="window.location.href='/communityModeration'">View Communities</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!--TAB switcher-->
+  <script>
+    function switchTab(name, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      const panel = document.getElementById('tab-' + name);
+      if(panel) panel.classList.add('active');
+      btn.classList.add('active');
+    }
+  </script>
+
+</body>
+</html>

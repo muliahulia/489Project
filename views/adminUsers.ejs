@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Admin Users</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    .search-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 260px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.7rem 0.8rem;
+      font: inherit;
+    }
+
+    .table-wrap {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      overflow: auto;
+    }
+
+    .users-table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: collapse;
+    }
+
+    .users-table th,
+    .users-table td {
+      padding: 0.85rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    .users-table th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .users-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: #f6f8fb;
+      color: var(--navy-mid);
+    }
+
+    .empty-state {
+      padding: 1rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header') %>
+
+  <div class="layout">
+    <%- include('sidebar', { activePage: 'adminUsers', showAdministrative: true }) %>
+
+    <main class="main main-pad main-wide">
+      <% const rows = Array.isArray(users) ? users : []; %>
+
+      <div class="page-header">
+        <h1 class="page-title">User Lookup</h1>
+        <p class="page-subtitle">Search users by name or email.</p>
+        <% if (searchQuery) { %>
+          <p class="page-subtitle"><%= rows.length %> matching result<%= rows.length === 1 ? '' : 's' %> for "<%= searchQuery %>".</p>
+        <% } %>
+
+        <form class="search-bar" method="get" action="/admin/users">
+          <input
+            class="search-input"
+            type="text"
+            name="q"
+            value="<%= searchQuery || '' %>"
+            placeholder="Search by first name, last name, or email"
+          />
+          <button class="btn btn-primary" type="submit">Search</button>
+          <% if (searchQuery) { %>
+            <a class="btn btn-secondary" href="/admin/users">Clear</a>
+          <% } %>
+        </form>
+
+        <div class="table-wrap">
+          <% if (rows.length === 0) { %>
+            <p class="empty-state"><%= searchQuery ? 'No matching users found.' : 'Enter a search term to see matching users.' %></p>
+          <% } else { %>
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Joined</th>
+                  <th>Last Login</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach((row) => { %>
+                  <% const joinedText = row.createdAt ? new Date(row.createdAt).toLocaleString('en-US') : 'Unknown'; %>
+                  <% const lastLoginText = row.lastLogin ? new Date(row.lastLogin).toLocaleString('en-US') : 'Never'; %>
+                  <tr>
+                    <td><%= row.fullName %></td>
+                    <td><%= row.email %></td>
+                    <td><%= row.role %></td>
+                    <td>
+                      <span class="status-pill"><%= row.isActive ? 'active' : 'inactive' %></span>
+                    </td>
+                    <td><%= joinedText %></td>
+                    <td><%= lastLoginText %></td>
+                    <td><a class="btn btn-secondary" href="<%= row.viewHref %>">View</a></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } %>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</body>
+</html>

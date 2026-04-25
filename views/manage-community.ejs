@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Manage Community</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
+  <style>
+    /* ── Topbar ── */
+
+    /* ── Main ── */
+    .main {
+      padding: 2rem;
+    }
+
+    .form-column {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ── Page title ── */
+    .page-title {
+      color: var(--text-dark);
+      margin-bottom: 0.4rem;
+    }
+
+    .page-subtitle {
+      font-size: 0.93rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+
+    .form-feedback {
+      border-radius: 10px;
+      padding: 0.7rem 0.9rem;
+      margin-bottom: 1rem;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .form-feedback.error {
+      border: 1px solid #f1b8be;
+      background: #fff4f5;
+      color: #9f2f38;
+    }
+
+    .form-feedback.success {
+      border: 1px solid #b8e5c8;
+      background: #f2fbf5;
+      color: #22663a;
+    }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .breadcrumb a { color: var(--text-muted); transition: color 0.15s; }
+    .breadcrumb a:hover { color: var(--navy); }
+    .breadcrumb span { color: #c5cfd9; }
+
+    /* ── Form card ── */
+    .form-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 1px 6px rgba(13,27,42,0.07);
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Section divider ── */
+    .section-divider {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: #9aaabb;
+      margin: 1.75rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-divider:first-of-type { margin-top: 0; }
+
+    /* ── Labels & inputs ── */
+    .field label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .field input[type="text"],
+    .field textarea,
+    .field select {
+      width: 100%;
+      padding: 0.6rem 0.9rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .field input[type="text"]:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    .field .hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Logo upload ── */
+    .logo-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: #fff;
+      text-align: center;
+    }
+    .logo-upload-area:hover,
+    .logo-upload-area.dragover {
+      border-color: var(--gold);
+      background: rgba(201,168,76,0.04);
+    }
+    .logo-upload-area input[type="file"] { display: none; }
+    .logo-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+    .logo-preview-wrap.visible { display: flex; }
+    .logo-preview {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+    }
+    .logo-preview-name {
+      font-size: 0.85rem;
+      color: var(--text-dark);
+      font-weight: 500;
+    }
+    .logo-preview-remove {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .logo-preview-remove:hover { color: var(--error); }
+    .logo-upload-icon { font-size: 2rem; line-height: 1; }
+    .logo-upload-text { font-size: 0.88rem; color: var(--text-muted); }
+    .logo-upload-text strong { color: var(--navy); }
+
+    /* ── Topic tags ── */
+    .tags-input-wrapper {
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 0.45rem 0.7rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      cursor: text;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .tags-input-wrapper:focus-within {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(201,168,76,0.12);
+      color: var(--navy);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid rgba(201,168,76,0.35);
+    }
+    .tag-chip button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      line-height: 1;
+      padding: 0;
+      display: flex;
+      align-items: center;
+    }
+    .tag-chip button:hover { color: var(--navy); }
+
+    .tags-input-field {
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      min-width: 120px;
+      flex: 1;
+      background: transparent;
+      padding: 0.15rem 0.2rem;
+    }
+    .tags-input-field::placeholder { color: rgba(90,106,122,0.55); }
+
+    /* ── Visibility toggle ── */
+    .visibility-group {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .visibility-option {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .visibility-option input[type="radio"] {
+      display: none;
+    }
+
+    .visibility-card {
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .visibility-option input[type="radio"]:checked + .visibility-card {
+      border-color: var(--gold);
+      background: rgba(201,168,76,0.07);
+    }
+
+    .visibility-card:hover {
+      border-color: rgba(201,168,76,0.5);
+      background: rgba(201,168,76,0.04);
+    }
+
+    .visibility-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .visibility-text strong {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.15rem;
+    }
+
+    .visibility-text span {
+      font-size: 0.79rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* ── Buttons ── */
+    .btn-submit {
+      width: 100%;
+      margin-top: 2rem;
+      padding: 0.8rem 1.5rem;
+      background: var(--navy);
+      color: var(--gold);
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .btn-submit:hover {
+      background: var(--navy-mid);
+      box-shadow: 0 4px 14px rgba(13,27,42,0.18);
+    }
+
+    .btn-cancel {
+      width: 100%;
+      margin-top: 0.75rem;
+      padding: 0.7rem 1.5rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      text-align: center;
+      display: block;
+    }
+    .btn-cancel:hover {
+      border-color: var(--text-muted);
+      color: var(--text-dark);
+    }
+
+    /* ── Character counter ── */
+    .char-counter {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: right;
+    }
+    .char-counter.warn { color: #c0392b; }
+
+    /* ── Danger Zone ── */
+    .danger-card {
+      background: #fff;
+      border: 1.5px solid #f5c6cb;
+      border-radius: 16px;
+      padding: 1.5rem 2rem;
+      box-shadow: 0 1px 6px rgba(13,27,42,0.05);
+    }
+
+    .danger-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: #c0392b;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #f5c6cb;
+    }
+
+    .danger-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .danger-info strong {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.2rem;
+    }
+
+    .danger-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .btn-danger {
+      padding: 0.55rem 1.1rem;
+      background: transparent;
+      color: #c0392b;
+      border: 1.5px solid #c0392b;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-danger:hover {
+      background: #c0392b;
+      color: #fff;
+    }
+
+    /* ── Delete confirm modal ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(13,27,42,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 420px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(13,27,42,0.22);
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.6rem;
+    }
+
+    .modal-body {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-body strong { color: var(--text-dark); }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .modal-actions .btn-danger {
+      flex: 1;
+      text-align: center;
+    }
+
+    .modal-actions .btn-cancel-sm {
+      flex: 1;
+      padding: 0.55rem 1rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      text-align: center;
+    }
+    .modal-actions .btn-cancel-sm:hover {
+      border-color: var(--text-muted);
+      color: var(--text-dark);
+    }
+  </style>
+</head>
+<body>
+
+  <%
+    const activeCommunityId = Number.isInteger(communityId) ? communityId : null;
+    const activeCommunityName = typeof communityName === 'string' && communityName.trim()
+      ? communityName.trim()
+      : 'Community';
+    const activeCommunityDescription = typeof communityDescription === 'string' ? communityDescription : '';
+    const activeCommunityVisibility = communityVisibility === 'private' ? 'private' : 'public';
+    const activeCommunityTopics = Array.isArray(initialTopics) ? initialTopics : [];
+    const manageFormError = typeof formError === 'string' ? formError : '';
+    const manageFormSuccess = typeof formSuccess === 'string' ? formSuccess : '';
+    const activeLogoPath = typeof logoPath === 'string' ? logoPath : '';
+    const activeLogoSignedUrl = typeof logoSignedUrl === 'string' ? logoSignedUrl : '';
+    const activeCommunityHref = activeCommunityId ? `/communities/${activeCommunityId}` : '/communities';
+    const manageAction = activeCommunityId ? `/communities/manage/${activeCommunityId}` : '/communities';
+    const deleteAction = activeCommunityId ? `/communities/manage/${activeCommunityId}/delete` : '/communities';
+  %>
+
+  <%- include('header', { initials: 'JB' }) %>
+
+  <div class="layout">
+
+    <!-- Left Sidebar -->
+    <%- include('sidebar', { activePage: 'communities' }) %>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="form-column">
+
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+          <a href="/communities">Communities</a>
+          <span>›</span>
+          <a href="<%= activeCommunityHref %>"><%= activeCommunityName %></a>
+          <span>›</span>
+          <span>Manage</span>
+        </nav>
+
+        <h1 class="page-title">Manage Community</h1>
+        <p class="page-subtitle">Update the settings for <strong><%= activeCommunityName %></strong>.</p>
+
+        <% if (manageFormError) { %>
+          <div class="form-feedback error"><%= manageFormError %></div>
+        <% } %>
+
+        <% if (manageFormSuccess) { %>
+          <div class="form-feedback success"><%= manageFormSuccess %></div>
+        <% } %>
+
+        <div class="form-card">
+          <form id="manageCommunityForm" method="POST" action="<%= manageAction %>" novalidate>
+            <input type="hidden" name="logoPath" id="logoPath" value="<%= activeLogoPath %>" />
+
+            <!-- ── Basic Info ── -->
+            <div class="section-divider">Basic Info</div>
+
+            <div class="field">
+              <label for="communityName">Community Name <span style="color:var(--error)">*</span></label>
+              <input
+                type="text"
+                id="communityName"
+                name="communityName"
+                placeholder="e.g. Robotics Club"
+                maxlength="60"
+                autocomplete="off"
+                value="<%= activeCommunityName %>"
+                required
+              />
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="hint">Choose a clear, descriptive name.</span>
+                <span class="char-counter" id="nameCounter">22 / 60</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="description">Description</label>
+              <textarea
+                id="description"
+                name="description"
+                placeholder="What is this community about? What can members expect?"
+                maxlength="300"
+              ><%= activeCommunityDescription %></textarea>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="hint">Optional — shown on the community listing page.</span>
+                <span class="char-counter" id="descCounter"><%= activeCommunityDescription.length %> / 300</span>
+              </div>
+            </div>
+
+            <!-- ── Logo ── -->
+            <div class="section-divider">Community Logo</div>
+
+            <div class="field">
+              <label>Logo</label>
+              <div class="logo-upload-area" id="logoUploadArea">
+                <input type="file" id="logoFile" name="logo" accept="image/png, image/jpeg, image/gif, image/webp"/>
+                <div id="logoPlaceholder">
+                  <div class="logo-upload-icon">🖼️</div>
+                  <p class="logo-upload-text"><strong>Click to upload</strong> or drag &amp; drop</p>
+                  <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP - max 5 MB</p>
+                </div>
+                <div class="logo-preview-wrap" id="logoPreviewWrap">
+                  <img class="logo-preview" id="logoPreview" src="" alt="Logo preview"/>
+                  <div>
+                    <p class="logo-preview-name" id="logoFileName"></p>
+                    <button type="button" class="logo-preview-remove" id="logoRemove">Remove</button>
+                  </div>
+                </div>
+              </div>
+              <span class="hint" id="logoStatusHint">Optional - shown next to your community name.</span>
+            </div>
+
+            <!-- ── Topics ── -->
+            <div class="section-divider">Topics</div>
+
+            <div class="field">
+              <label>Topics</label>
+              <div class="tags-input-wrapper" id="tagsWrapper">
+                <!-- chips injected by JS from INITIAL_TAGS -->
+                <input
+                  type="text"
+                  class="tags-input-field"
+                  id="topicsInput"
+                  placeholder="Type a topic and press Enter…"
+                  autocomplete="off"
+                />
+              </div>
+              <span class="hint">Add up to 8 topics to help people discover your community.</span>
+              <input type="hidden" name="topics" id="topicsHidden"/>
+            </div>
+
+            <!-- ── Visibility ── -->
+            <div class="section-divider">Visibility</div>
+
+            <div class="field">
+              <label style="margin-bottom:0.6rem; display:block;">Who can join? <span style="color:var(--error)">*</span></label>
+              <div class="visibility-group">
+
+                <label class="visibility-option">
+                  <input type="radio" name="visibility" value="public" <%= activeCommunityVisibility === 'public' ? 'checked' : '' %>/>
+                  <div class="visibility-card">
+                    <div class="visibility-icon">🌐</div>
+                    <div class="visibility-text">
+                      <strong>Public</strong>
+                      <span>Anyone can find and join this community without approval.</span>
+                    </div>
+                  </div>
+                </label>
+
+                <label class="visibility-option">
+                  <input type="radio" name="visibility" value="private" <%= activeCommunityVisibility === 'private' ? 'checked' : '' %>/>
+                  <div class="visibility-card">
+                    <div class="visibility-icon">🔒</div>
+                    <div class="visibility-text">
+                      <strong>Private</strong>
+                      <span>Only approved members can see posts and join.</span>
+                    </div>
+                  </div>
+                </label>
+
+              </div>
+            </div>
+
+            <!-- ── Actions ── -->
+            <button type="submit" class="btn-submit">Save Changes</button>
+            <a href="<%= activeCommunityHref %>" class="btn-cancel">Cancel</a>
+
+          </form>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="danger-card">
+          <div class="danger-title">Danger Zone</div>
+          <div class="danger-row">
+            <div class="danger-info">
+              <strong>Delete this community</strong>
+              <p>Permanently removes the community, all its posts, and member data. This cannot be undone.</p>
+            </div>
+            <button type="button" class="btn-danger" id="deleteBtn">Delete Community</button>
+          </div>
+          <form id="deleteCommunityForm" method="POST" action="<%= deleteAction %>"></form>
+        </div>
+
+      </div><!-- /.form-column -->
+    </main>
+
+  </div><!-- /.layout -->
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-backdrop" id="deleteModal">
+    <div class="modal">
+      <h2 class="modal-title">Delete Community?</h2>
+      <p class="modal-body">
+        This will permanently delete <strong><%= activeCommunityName %></strong> along with all posts and member data.
+        This action <strong>cannot be undone</strong>.
+      </p>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel-sm" id="cancelDelete">Cancel</button>
+        <button type="button" class="btn-danger" id="confirmDelete">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
+
+  <script>
+    /* ── Pre-filled counter init ── */
+    const nameInput   = document.getElementById('communityName');
+    const nameCounter = document.getElementById('nameCounter');
+    const descInput   = document.getElementById('description');
+    const descCounter = document.getElementById('descCounter');
+    const submitButton = document.querySelector('#manageCommunityForm .btn-submit');
+    const logoPathInput = document.getElementById('logoPath');
+    const logoStatusHint = document.getElementById('logoStatusHint');
+    const SUPABASE_URL = <%- JSON.stringify(supabaseUrl || '') %>;
+    const STORAGE_BUCKET = <%- JSON.stringify(storageBucket || 'media') %>;
+    const EXISTING_LOGO_URL = <%- JSON.stringify(activeLogoSignedUrl || '') %>;
+
+    function updateCounter(input, counter, max, warnAt) {
+      const len = input.value.length;
+      counter.textContent = `${len} / ${max}`;
+      counter.classList.toggle('warn', len >= warnAt);
+    }
+
+    // Initialise counters with pre-filled values
+    updateCounter(nameInput, nameCounter, 60, 55);
+    updateCounter(descInput, descCounter, 300, 270);
+
+    nameInput.addEventListener('input', () => updateCounter(nameInput, nameCounter, 60, 55));
+    descInput.addEventListener('input', () => updateCounter(descInput, descCounter, 300, 270));
+
+    /* ── Topics tag input ── */
+    const INITIAL_TAGS = <%- JSON.stringify(activeCommunityTopics) %>;
+    const MAX_TAGS     = 8;
+    const tags         = [];
+    const wrapper      = document.getElementById('tagsWrapper');
+    const topicsInput  = document.getElementById('topicsInput');
+    const topicsHidden = document.getElementById('topicsHidden');
+
+    function escapeHTML(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function syncHidden() {
+      topicsHidden.value = tags.join(',');
+    }
+
+    function addTag(value) {
+      const v = value.trim().replace(/,+$/, '');
+      if (!v || tags.includes(v) || tags.length >= MAX_TAGS) return;
+      tags.push(v);
+
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.innerHTML = `${escapeHTML(v)}<button type="button" aria-label="Remove ${escapeHTML(v)}">✕</button>`;
+      chip.querySelector('button').addEventListener('click', () => {
+        tags.splice(tags.indexOf(v), 1);
+        chip.remove();
+        syncHidden();
+        topicsInput.placeholder = tags.length === 0 ? 'Type a topic and press Enter…' : '';
+      });
+
+      wrapper.insertBefore(chip, topicsInput);
+      syncHidden();
+      topicsInput.value = '';
+      if (tags.length >= MAX_TAGS) topicsInput.placeholder = 'Max 8 topics reached';
+    }
+
+    // Seed with existing tags
+    INITIAL_TAGS.forEach(addTag);
+
+    topicsInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        addTag(topicsInput.value);
+      } else if (e.key === 'Backspace' && topicsInput.value === '' && tags.length > 0) {
+        const chips = wrapper.querySelectorAll('.tag-chip');
+        chips[chips.length - 1].querySelector('button').click();
+      }
+    });
+
+    topicsInput.addEventListener('blur', () => {
+      if (topicsInput.value.trim()) addTag(topicsInput.value);
+    });
+
+    wrapper.addEventListener('click', () => topicsInput.focus());
+
+    /* ── Form submission ── */
+    function encodePathForStorageUrl(path) {
+      return path
+        .split('/')
+        .map((part) => encodeURIComponent(part))
+        .join('/');
+    }
+
+    async function requestSignedUpload(fileName) {
+      const response = await fetch('/storage/signed-upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          fileName,
+          folder: 'communities',
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload && payload.error ? payload.error : 'Unable to prepare upload.');
+      }
+
+      return payload;
+    }
+
+    async function uploadLogoToStorage(file) {
+      if (!SUPABASE_URL) {
+        throw new Error('Missing SUPABASE_URL for browser uploads.');
+      }
+
+      const signed = await requestSignedUpload(file.name);
+      if (!signed || !signed.token || !signed.path) {
+        throw new Error('Upload token was not returned by the server.');
+      }
+
+      const encodedPath = encodePathForStorageUrl(signed.path);
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/upload/sign/${encodeURIComponent(STORAGE_BUCKET)}/${encodedPath}?token=${encodeURIComponent(signed.token)}`;
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text();
+        throw new Error(message || 'Upload failed.');
+      }
+
+      return signed.path;
+    }
+
+    async function uploadSelectedLogoIfAny() {
+      const file = logoFile.files && logoFile.files[0] ? logoFile.files[0] : null;
+      if (!file) {
+        return null;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Selected file is not an image.');
+      }
+
+      if (file.size > MAX_LOGO_BYTES) {
+        throw new Error('Please choose an image under 5 MB.');
+      }
+
+      submitButton.disabled = true;
+
+      const path = await uploadLogoToStorage(file);
+      logoPathInput.value = path;
+      submitButton.disabled = false;
+      return path;
+    }
+
+    document.getElementById('manageCommunityForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+
+      const name = nameInput.value.trim();
+      if (!name) {
+        nameInput.focus();
+        nameInput.style.borderColor = 'var(--error)';
+        return;
+      }
+
+      try {
+        await uploadSelectedLogoIfAny();
+      } catch (error) {
+        submitButton.disabled = false;
+        logoStatusHint.textContent = 'Unable to upload logo right now. Please try again.';
+        alert('Unable to upload logo right now. Please try again.');
+        return;
+      }
+
+      HTMLFormElement.prototype.submit.call(form);
+    });
+
+    nameInput.addEventListener('input', () => nameInput.style.borderColor = '');
+
+    /* ── Logo upload ── */
+    const logoUploadArea  = document.getElementById('logoUploadArea');
+    const logoFile        = document.getElementById('logoFile');
+    const logoPlaceholder = document.getElementById('logoPlaceholder');
+    const logoPreviewWrap = document.getElementById('logoPreviewWrap');
+    const logoPreview     = document.getElementById('logoPreview');
+    const logoFileName    = document.getElementById('logoFileName');
+    const logoRemove      = document.getElementById('logoRemove');
+    const MAX_LOGO_BYTES  = 5 * 1024 * 1024;
+
+    function showLogoPreview(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      if (file.size > MAX_LOGO_BYTES) {
+        alert('Please choose an image under 5 MB.');
+        logoFile.value = '';
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      logoPreview.src = url;
+      logoFileName.textContent = file.name;
+      logoPlaceholder.style.display = 'none';
+      logoPreviewWrap.classList.add('visible');
+    }
+
+    logoUploadArea.addEventListener('click', (e) => {
+      if (e.target !== logoRemove) logoFile.click();
+    });
+
+    logoFile.addEventListener('change', () => {
+      if (logoFile.files[0]) showLogoPreview(logoFile.files[0]);
+    });
+
+    logoRemove.addEventListener('click', (e) => {
+      e.stopPropagation();
+      logoFile.value = '';
+      logoPathInput.value = '';
+      logoStatusHint.textContent = 'Logo removed. Save changes to persist this update.';
+      logoPreview.src = '';
+      logoPreviewWrap.classList.remove('visible');
+      logoPlaceholder.style.display = '';
+      URL.revokeObjectURL(logoPreview.src);
+    });
+
+    logoUploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      logoUploadArea.classList.add('dragover');
+    });
+    logoUploadArea.addEventListener('dragleave', () => logoUploadArea.classList.remove('dragover'));
+    logoUploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      logoUploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        logoFile.files = dt.files;
+        showLogoPreview(file);
+      }
+    });
+
+    if (EXISTING_LOGO_URL) {
+      logoPreview.src = EXISTING_LOGO_URL;
+      logoFileName.textContent = 'Current logo';
+      logoPlaceholder.style.display = 'none';
+      logoPreviewWrap.classList.add('visible');
+    }
+
+    /* ── Delete community modal ── */
+    const deleteModal  = document.getElementById('deleteModal');
+    document.getElementById('deleteBtn').addEventListener('click', () => {
+      deleteModal.classList.add('open');
+    });
+    document.getElementById('cancelDelete').addEventListener('click', () => {
+      deleteModal.classList.remove('open');
+    });
+    document.getElementById('confirmDelete').addEventListener('click', () => {
+      document.getElementById('deleteCommunityForm').submit();
+    });
+    deleteModal.addEventListener('click', (e) => {
+      if (e.target === deleteModal) deleteModal.classList.remove('open');
+    });
+  </script>
+</body>
+</html>

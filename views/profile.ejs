@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect - Profile</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
+
+  <style>
+    .main {
+      padding: 2rem;
+    }
+
+    .profile-column {
+      max-width: 840px;
+      margin: 0 auto;
+    }
+
+    .profile-shell {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(13, 27, 42, 0.08);
+      overflow: hidden;
+      margin-bottom: 1.2rem;
+    }
+
+    .profile-banner {
+      height: 124px;
+      background: linear-gradient(135deg, var(--navy), #2f5b8a);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .profile-content {
+      padding: 0 1.65rem 1.45rem;
+    }
+
+    .profile-top-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-top: -42px;
+    }
+
+    .profile-avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 4px solid #fff;
+      background: var(--navy);
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .profile-follow-btn {
+      margin-top: 12px;
+      border: none;
+      border-radius: 10px;
+      background: var(--navy);
+      color: var(--gold);
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.55rem 1rem;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      min-width: 118px;
+      text-align: center;
+    }
+
+    .profile-follow-btn.following {
+      background: #2f4f72;
+      color: #fff;
+    }
+
+    .profile-follow-btn:disabled {
+      opacity: 0.75;
+      cursor: default;
+    }
+
+    .profile-name {
+      margin-top: 0.7rem;
+      font-family: 'Playfair Display', serif;
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      line-height: 1.12;
+    }
+
+    .profile-meta-line {
+      margin-top: 0.35rem;
+      font-size: 1.02rem;
+      color: #4f657a;
+      line-height: 1.35;
+    }
+
+    .profile-bio {
+      margin-top: 1rem;
+      font-size: 0.97rem;
+      color: var(--text-dark);
+      line-height: 1.65;
+      max-width: 760px;
+    }
+
+    .profile-info-row {
+      margin-top: 0.95rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.85rem 1.25rem;
+      font-size: 0.9rem;
+      color: #5d6f82;
+    }
+
+    .profile-stats-row {
+      margin-top: 1.1rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.4rem;
+    }
+
+    .profile-stat {
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+
+    .profile-stat:last-child {
+      border-right: none;
+    }
+
+    .profile-stat-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      line-height: 1;
+    }
+
+    .profile-stat-label {
+      margin-top: 0.4rem;
+      font-size: 0.82rem;
+      color: #5d7086;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 600;
+    }
+
+    .profile-tabs {
+      margin-top: 0.8rem;
+      display: flex;
+      gap: 1.15rem;
+      border-bottom: 1px solid var(--border);
+      padding: 0 0.15rem;
+    }
+
+    .profile-tab-btn {
+      background: none;
+      border: none;
+      padding: 0.7rem 0.15rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #5d7086;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .profile-tab-btn.active {
+      color: var(--text-dark);
+      border-bottom-color: var(--gold);
+    }
+
+    .profile-tab-panel {
+      display: none;
+      padding-top: 1.1rem;
+    }
+
+    .profile-tab-panel.active {
+      display: block;
+    }
+
+    .directory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 0.8rem;
+    }
+
+    .directory-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      box-shadow: 0 1px 3px rgba(13, 27, 42, 0.06);
+    }
+
+    .directory-card a {
+      color: var(--navy);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .directory-card a:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .follower-link {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      color: var(--navy);
+      text-decoration: none;
+    }
+
+    .follower-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      background: var(--navy);
+      color: var(--gold);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.86rem;
+      font-weight: 700;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .follower-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .follower-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--navy);
+      line-height: 1.3;
+    }
+
+    .empty-panel-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem 1.1rem;
+      color: #617287;
+    }
+
+    @media (max-width: 800px) {
+      .main {
+        padding: 1.1rem;
+      }
+
+      .profile-name {
+        font-size: 1.65rem;
+      }
+
+      .profile-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+        row-gap: 0.95rem;
+      }
+
+      .profile-stat {
+        border-right: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<%
+  const p = profile || {};
+  const profileInitials = ((p.first_name?.[0] || '') + (p.last_name?.[0] || '') || 'U').toUpperCase();
+  const profileDisplayName = [p.first_name || '', p.last_name || ''].filter(Boolean).join(' ').trim() || p.email || 'Unnamed User';
+  const profileLocation = [p.city || '', p.state || ''].filter(Boolean).join(', ').trim() || p.location || null;
+  const feedPosts = Array.isArray(posts) ? posts : [];
+  const enrolledCourses = Array.isArray(courses) ? courses : [];
+  const memberCommunities = Array.isArray(communities) ? communities : [];
+  const profileFollowers = Array.isArray(followers) ? followers : [];
+  const stats = counts || {};
+  const canFollow = !isOwnProfile;
+  const rawRole = typeof p.role === 'string' ? p.role.trim() : '';
+  const normalizedRole = rawRole.toLowerCase();
+  const profileRole = normalizedRole === 'official'
+    ? 'School Official'
+    : normalizedRole === 'admin'
+      ? 'UniConnect Admin'
+      : rawRole
+        ? rawRole
+          .split(/\s+/)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ')
+        : 'Student';
+%>
+
+<%- include('header', { initials: (currentUser?.firstName?.[0] || currentUser?.email?.[0] || 'U').toUpperCase() }) %>
+
+<div class="layout">
+  <%- include('sidebar', { activePage: 'profile' }) %>
+
+  <main class="main">
+    <div class="profile-column">
+      <section class="profile-shell">
+        <div class="profile-banner" <% if (profileBannerUrl) { %>style="background-image:url('<%= profileBannerUrl %>');"<% } %>></div>
+        <div class="profile-content">
+          <div class="profile-top-row">
+            <div class="profile-avatar">
+              <% if (profileAvatarUrl) { %>
+                <img src="<%= profileAvatarUrl %>" alt="<%= profileDisplayName %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+              <% } else { %>
+                <%= profileInitials %>
+              <% } %>
+            </div>
+
+            <% if (canFollow) { %>
+              <button
+                type="button"
+                class="profile-follow-btn <%= isFollowing ? 'following' : '' %>"
+                id="profileFollowBtn"
+                data-target-id="<%= p.id %>"
+                data-following="<%= isFollowing ? 'true' : 'false' %>"
+              ><%= isFollowing ? 'Following' : '+ Follow' %></button>
+            <% } %>
+          </div>
+
+          <h1 class="profile-name"><%= profileDisplayName %></h1>
+          <p class="profile-meta-line"><%= profileRole %> · <%= profileSchoolName || 'Washington State University' %></p>
+          <p class="profile-bio"><%= p.bio || 'This user has not added a bio yet.' %></p>
+
+          <div class="profile-info-row">
+            <% if (profileLocation) { %>
+              <span>📍 <%= profileLocation %></span>
+            <% } %>
+            <span>✉️ <%= p.email || 'No email' %></span>
+            <span>📅 Joined <%= p.created_at ? new Date(p.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A' %></span>
+          </div>
+
+          <div class="profile-stats-row">
+            <div class="profile-stat">
+              <div class="profile-stat-value" id="statPosts"><%= typeof stats.posts === 'number' ? stats.posts : 0 %></div>
+              <div class="profile-stat-label">Posts</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-value" id="statCourses"><%= typeof stats.courses === 'number' ? stats.courses : 0 %></div>
+              <div class="profile-stat-label">Courses</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-value" id="statCommunities"><%= typeof stats.communities === 'number' ? stats.communities : 0 %></div>
+              <div class="profile-stat-label">Communities</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-value" id="statFollowers"><%= typeof stats.followers === 'number' ? stats.followers : 0 %></div>
+              <div class="profile-stat-label">Followers</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="profile-tabs" role="tablist" aria-label="Profile content sections">
+        <button type="button" class="profile-tab-btn active" data-tab="posts">Posts</button>
+        <button type="button" class="profile-tab-btn" data-tab="courses">Courses</button>
+        <button type="button" class="profile-tab-btn" data-tab="communities">Communities</button>
+        <button type="button" class="profile-tab-btn" data-tab="followers">Followers</button>
+      </nav>
+
+      <section class="profile-tab-panel active" data-panel="posts">
+        <% if (feedPosts.length === 0) { %>
+          <div class="empty-panel-card">No posts yet.</div>
+        <% } else { %>
+          <% feedPosts.forEach((post) => { %>
+            <%- include('partials/post-card', { post }) %>
+          <% }) %>
+        <% } %>
+      </section>
+
+      <section class="profile-tab-panel" data-panel="courses">
+        <% if (enrolledCourses.length === 0) { %>
+          <div class="empty-panel-card">No courses yet.</div>
+        <% } else { %>
+          <div class="directory-grid">
+            <% enrolledCourses.forEach((course) => { %>
+              <div class="directory-card">
+                <a href="<%= course.href %>"><%= course.name %></a>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </section>
+
+      <section class="profile-tab-panel" data-panel="communities">
+        <% if (memberCommunities.length === 0) { %>
+          <div class="empty-panel-card">No communities yet.</div>
+        <% } else { %>
+          <div class="directory-grid">
+            <% memberCommunities.forEach((community) => { %>
+              <div class="directory-card">
+                <a href="<%= community.href %>"><%= community.name %></a>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </section>
+
+      <section class="profile-tab-panel" data-panel="followers">
+        <% if (profileFollowers.length === 0) { %>
+          <div class="empty-panel-card">No followers yet.</div>
+        <% } else { %>
+          <div class="directory-grid">
+            <% profileFollowers.forEach((follower) => { %>
+              <div class="directory-card">
+                <a class="follower-link" href="<%= follower.href %>">
+                  <span class="follower-avatar">
+                    <% if (follower.avatarUrl) { %>
+                      <img src="<%= follower.avatarUrl %>" alt="<%= follower.name %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+                    <% } else { %>
+                      <%= follower.initials %>
+                    <% } %>
+                  </span>
+                  <span class="follower-name"><%= follower.name %></span>
+                </a>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+  (function initProfileTabs() {
+    const tabButtons = Array.from(document.querySelectorAll('.profile-tab-btn'));
+    const tabPanels = Array.from(document.querySelectorAll('.profile-tab-panel'));
+
+    if (!tabButtons.length || !tabPanels.length) {
+      return;
+    }
+
+    function setActiveTab(nextTabKey) {
+      tabButtons.forEach((button) => {
+        button.classList.toggle('active', button.dataset.tab === nextTabKey);
+      });
+
+      tabPanels.forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.panel === nextTabKey);
+      });
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener('click', () => setActiveTab(button.dataset.tab || 'posts'));
+    });
+  })();
+
+  (function initFollowButton() {
+    const followButton = document.getElementById('profileFollowBtn');
+    const followersNode = document.getElementById('statFollowers');
+    if (!followButton || !followersNode) {
+      return;
+    }
+
+    followButton.addEventListener('click', async () => {
+      if (followButton.disabled) {
+        return;
+      }
+
+      const targetId = followButton.dataset.targetId || '';
+      if (!targetId) {
+        return;
+      }
+
+      followButton.disabled = true;
+      const previousLabel = followButton.textContent;
+      followButton.textContent = '...';
+
+      try {
+        const response = await fetch(`/profile/${encodeURIComponent(targetId)}/follow`, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload || payload.ok !== true) {
+          throw new Error(payload && payload.error ? payload.error : 'Unable to update follow state.');
+        }
+
+        const nextFollowing = Boolean(payload.isFollowing);
+        followButton.dataset.following = nextFollowing ? 'true' : 'false';
+        followButton.classList.toggle('following', nextFollowing);
+        followButton.textContent = nextFollowing ? 'Following' : '+ Follow';
+        const followerCount = Number.isInteger(payload.followersCount)
+          ? payload.followersCount
+          : Number.isInteger(payload.connectionsCount) ? payload.connectionsCount : 0;
+        followersNode.textContent = String(followerCount);
+      } catch (_err) {
+        followButton.textContent = previousLabel;
+      } finally {
+        followButton.disabled = false;
+      }
+    });
+  })();
+
+  (function initProfilePostInteractions() {
+    const latestCommentTimers = new WeakMap();
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function buildCommentHtml(comment) {
+      const authorName = comment && comment.authorName ? comment.authorName : 'Unknown User';
+      const authorInitials = comment && comment.authorInitials ? comment.authorInitials : 'UC';
+      const createdAtLabel = comment && comment.createdAtLabel ? comment.createdAtLabel : '';
+      const content = comment && comment.content ? comment.content : '';
+      const avatarUrl = comment && comment.authorAvatarUrl ? comment.authorAvatarUrl : '';
+
+      if (avatarUrl) {
+        return `
+          <div class="post-comment" data-comment-id="${escapeHtml(comment.id)}">
+            <div class="post-comment-avatar">
+              <img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(authorName)} profile photo" loading="lazy" referrerpolicy="no-referrer" />
+            </div>
+            <div class="post-comment-body">
+              <div class="post-comment-meta">
+                <strong>${escapeHtml(authorName)}</strong>
+                <span>${escapeHtml(createdAtLabel)}</span>
+              </div>
+              <div class="post-comment-text">${escapeHtml(content)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="post-comment" data-comment-id="${escapeHtml(comment.id)}">
+          <div class="post-comment-avatar">${escapeHtml(authorInitials)}</div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong>${escapeHtml(authorName)}</strong>
+              <span>${escapeHtml(createdAtLabel)}</span>
+            </div>
+            <div class="post-comment-text">${escapeHtml(content)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateLikeBadge(likeButton, count) {
+      if (!likeButton) return;
+
+      let countNode = likeButton.querySelector('.like-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'like-count';
+        likeButton.appendChild(document.createTextNode(' '));
+        likeButton.appendChild(countNode);
+      }
+
+      const parsed = Number.parseInt(String(count), 10);
+      const safeCount = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      likeButton.classList.toggle('has-count', safeCount > 0);
+    }
+
+    function updateCommentBadge(postCard, count) {
+      if (!postCard) return;
+
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      if (!toggleButton) return;
+
+      let countNode = toggleButton.querySelector('.comment-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'comment-count';
+        toggleButton.appendChild(document.createTextNode(' '));
+        toggleButton.appendChild(countNode);
+      }
+
+      const parsed = Number.parseInt(String(count), 10);
+      const safeCount = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      toggleButton.classList.toggle('has-count', safeCount > 0);
+    }
+
+    function clearLatestCommentHighlight(postCard) {
+      const highlightedComment = postCard.querySelector('.post-comment.focused');
+      if (highlightedComment) highlightedComment.classList.remove('focused');
+    }
+
+    function flashLatestComment(postCard) {
+      clearLatestCommentHighlight(postCard);
+      const latestComment = postCard.querySelector('.post-comment[data-comment-id]:last-child');
+      if (!latestComment) return;
+
+      latestComment.classList.add('focused');
+      const existingTimer = latestCommentTimers.get(postCard);
+      if (existingTimer) window.clearTimeout(existingTimer);
+
+      const timerId = window.setTimeout(() => {
+        latestComment.classList.remove('focused');
+        latestCommentTimers.delete(postCard);
+      }, 1200);
+
+      latestCommentTimers.set(postCard, timerId);
+      latestComment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function openComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton || !commentsPanel.hidden) return;
+
+      commentsPanel.hidden = false;
+      toggleButton.classList.add('active');
+      toggleButton.setAttribute('aria-expanded', 'true');
+      if (preview) preview.hidden = true;
+
+      const input = commentsPanel.querySelector('.post-comment-input');
+      if (input) input.focus();
+    }
+
+    function collapseComments(postCard) {
+      const commentsPanel = postCard.querySelector('.post-comments');
+      const toggleButton = postCard.querySelector('.js-comment-toggle');
+      const preview = postCard.querySelector('.post-comment-preview');
+      if (!commentsPanel || !toggleButton) return;
+
+      commentsPanel.hidden = true;
+      toggleButton.classList.remove('active');
+      toggleButton.setAttribute('aria-expanded', 'false');
+      clearLatestCommentHighlight(postCard);
+
+      const timerId = latestCommentTimers.get(postCard);
+      if (timerId) {
+        window.clearTimeout(timerId);
+        latestCommentTimers.delete(postCard);
+      }
+
+      if (preview) preview.hidden = false;
+    }
+
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) return;
+
+      event.preventDefault();
+      const postId = likeButton.dataset.postId;
+      if (!postId || likeButton.dataset.pending === 'true') return;
+
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = Number.parseInt(
+        (likeButton.querySelector('.like-count') || {}).textContent || '0',
+        10
+      ) || 0;
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      updateLikeBadge(likeButton, optimisticCount);
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        updateLikeBadge(likeButton, payload.likeCount);
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        updateLikeBadge(likeButton, previousCount);
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const commentTrigger = event.target.closest('.js-comment-toggle, .js-comment-expand');
+      if (!commentTrigger) return;
+
+      const postCard = commentTrigger.closest('.post-card');
+      if (!postCard) return;
+
+      const isToggleButton = commentTrigger.classList.contains('js-comment-toggle');
+      const isExpandButton = commentTrigger.classList.contains('js-comment-expand');
+      const commentsPanel = postCard.querySelector('.post-comments');
+      if (!commentsPanel) return;
+
+      if (isToggleButton) {
+        if (commentsPanel.hidden) {
+          openComments(postCard);
+        } else {
+          collapseComments(postCard);
+        }
+        return;
+      }
+
+      if (isExpandButton) {
+        if (commentsPanel.hidden) openComments(postCard);
+        flashLatestComment(postCard);
+      }
+    });
+
+    document.addEventListener('submit', async (event) => {
+      const commentForm = event.target.closest('.js-comment-form');
+      if (!commentForm) return;
+
+      event.preventDefault();
+
+      const postId = commentForm.dataset.postId;
+      const input = commentForm.querySelector('.post-comment-input');
+      const submitButton = commentForm.querySelector('.post-comment-submit');
+      const commentList = commentForm.parentElement.querySelector('.post-comment-list');
+      const postCard = commentForm.closest('.post-card');
+      const commentsPanel = postCard ? postCard.querySelector('.post-comments') : null;
+      const content = input ? input.value.trim() : '';
+
+      if (!postId || !input || !submitButton || !commentList) return;
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Posting...';
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to save comment.');
+        }
+
+        const comments = Array.isArray(payload.comments) ? payload.comments : [];
+        commentList.innerHTML = comments.map(buildCommentHtml).join('');
+
+        if (commentsPanel) commentsPanel.hidden = false;
+
+        const preview = postCard ? postCard.querySelector('.post-comment-preview') : null;
+        if (preview) preview.hidden = true;
+
+        if (postCard) {
+          const toggleButton = postCard.querySelector('.js-comment-toggle');
+          if (toggleButton) {
+            toggleButton.classList.add('active');
+            toggleButton.setAttribute('aria-expanded', 'true');
+          }
+        }
+
+        if (postCard && typeof payload.commentCount !== 'undefined') {
+          updateCommentBadge(postCard, payload.commentCount);
+        }
+
+        if (postCard) {
+          const panel = postCard.querySelector('.post-comments');
+          if (panel && panel.hidden) openComments(postCard);
+        }
+
+        input.value = '';
+      } catch (_err) {
+        // no-op
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Comment';
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>

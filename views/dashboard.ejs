@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <!-- Tailwind required for footer -->
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
+  <style>
+    /* ── Topbar ── */
+
+    /* ── Main ── */
+    .main {
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .dash-column {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    /* ── Greeting ── */
+    .greeting-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.3rem;
+    }
+
+    .greeting-quote {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Section label ── */
+    .dash-section-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #9aaabb;
+      margin-bottom: 0.85rem;
+    }
+
+    /* ── Scroll card (shared by courses & communities) ── */
+    .scroll-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+
+    .scroll-row {
+      display: flex;
+      gap: 1.1rem;
+      align-items: flex-start;
+      /* allow horizontal scroll on small viewports */
+      min-width: max-content;
+    }
+
+    /* ── Circle item ── */
+    .circle-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .circle-bubble {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 0.72rem;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      line-height: 1.25;
+      padding: 0.4rem;
+      border: 2px solid var(--border);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .circle-bubble.has-image {
+      padding: 0;
+      overflow: hidden;
+      background: #e9eef5;
+      color: transparent;
+    }
+
+    .circle-logo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .circle-item:hover .circle-bubble {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.2);
+    }
+
+    .circle-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 72px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Vary community bubble colors for visual distinction */
+    .circle-bubble.community-1 { background: var(--navy-mid); }
+    .circle-bubble.community-2 { background: #2c4a6e; }
+    .circle-bubble.community-3 { background: var(--navy-light); }
+    .circle-bubble.community-4 { background: #1e3a52; }
+    .circle-bubble.community-5 { background: var(--navy); }
+
+    .empty-state {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      padding: 0.2rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header', { initials: user && user.initials ? user.initials : '?' }) %>
+
+  <div class="layout">
+
+    <!-- Left Sidebar -->
+    <%- include('sidebar', { activePage: 'dashboard' }) %>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="dash-column">
+        <% const dashboardCourses = Array.isArray(courses) ? courses : []; %>
+        <% const dashboardCommunities = Array.isArray(communities) ? communities : []; %>
+
+        <!-- Greeting -->
+        <h1 class="greeting-name">Hello, <%= user && user.firstName ? user.firstName : 'there' %>!</h1>
+        <p class="greeting-quote">"The secret of getting ahead is getting started." — Mark Twain</p>
+
+        <!-- Your Courses -->
+        <div class="dash-section-label">Your courses</div>
+        <div class="scroll-card">
+          <% if (dashboardCourses.length === 0) { %>
+            <p class="empty-state">No course affiliations yet.</p>
+          <% } else { %>
+            <div class="scroll-row">
+              <% dashboardCourses.forEach((course) => { %>
+                <a href="/courses/<%= course.id %>" class="circle-item">
+                  <div class="circle-bubble <%= course.imageUrl ? 'has-image' : '' %>">
+                    <% if (course.imageUrl) { %>
+                      <img src="<%= course.imageUrl %>" alt="<%= course.name %> logo" class="circle-logo" loading="lazy" referrerpolicy="no-referrer"/>
+                    <% } else { %>
+                      <%= course.bubbleText %>
+                    <% } %>
+                  </div>
+                  <span class="circle-label" title="<%= course.name %>"><%= course.name %></span>
+                </a>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
+
+        <!-- Your Communities -->
+        <div class="dash-section-label">Your communities</div>
+        <div class="scroll-card">
+          <% if (dashboardCommunities.length === 0) { %>
+            <p class="empty-state">No community affiliations yet.</p>
+          <% } else { %>
+            <div class="scroll-row">
+              <% dashboardCommunities.forEach((community) => { %>
+                <a href="/communities" class="circle-item">
+                  <div class="circle-bubble <%= community.imageUrl ? 'has-image' : community.colorClass %>">
+                    <% if (community.imageUrl) { %>
+                      <img src="<%= community.imageUrl %>" alt="<%= community.name %> logo" class="circle-logo" loading="lazy" referrerpolicy="no-referrer"/>
+                    <% } else { %>
+                      <%= community.bubbleText %>
+                    <% } %>
+                  </div>
+                  <span class="circle-label" title="<%= community.name %>"><%= community.name %></span>
+                </a>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
+
+      </div><!-- /.dash-column -->
+    </main>
+
+  </div><!-- /.layout -->
+
+  <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
+
+</body>
+</html>

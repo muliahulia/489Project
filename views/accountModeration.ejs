@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Account Moderation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    /* Page-specific styles — same as Settings page */
+
+  </style>
+</head>
+<body class="moderation-page">
+
+  <%- include('header', { initials: 'LG' }) %>
+
+  <div class="layout">
+
+    <%- include('sidebar', { activePage: 'accountModeration', showAdministrative: true }) %>
+
+    <!-- MAIN content area -->
+    <main class="main main-pad main-wide">
+
+      <div class="page-header">
+        <h1 class="page-title">Account Moderation</h1>
+        <p class="page-subtitle">Search for a user and update account settings.</p>
+      </div>
+
+      <!-- Save confirmation -->
+        <div class="save-alert" id="save-alert" style="display:none;">✅ Changes saved.</div>
+
+      <!-- USER LIST CARD -->
+      <div class="card">
+        <div class="card-title">Users</div>
+        <div class="user-list" id="userList"></div>
+      </div>
+
+      <!-- USER DETAIL CARD -->
+      <div class="card" id="userFormCard" style="display:none;">
+        <div class="card-title">Edit User</div>
+        <div class="form-row">
+          <div>
+            <label>Username</label>
+            <input type="text" id="username">
+          </div>
+          <div>
+            <label>Email</label>
+            <input type="email" id="email">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Role</label>
+            <select id="role">
+              <option value="user">User</option>
+              <option value="moderator">Moderator</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label>Status</label>
+            <select id="status">
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="deleted">Deleted</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" onclick="cancelEdit()">Cancel</button>
+          <button class="btn-primary" onclick="saveUser()">Save Changes</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const users = [
+      { id:1, username:"John Doe", email:"john@example.com", role:"user", status:"active" },
+      { id:2, username:"Jane Smith", email:"jane@example.com", role:"moderator", status:"active" },
+      { id:3, username:"Alice Johnson", email:"alice@example.com", role:"user", status:"suspended" }
+    ];
+
+    const userListEl = document.getElementById('userList');
+    const userFormCard = document.getElementById('userFormCard');
+    let selectedUser = null;
+
+    function renderUsers(list) {
+      userListEl.innerHTML = '';
+      list.forEach(u => {
+        const div = document.createElement('div');
+        div.className = 'user-item';
+        div.textContent = `${u.username} (${u.email})`;
+        div.onclick = () => selectUser(u, div);
+        if(selectedUser && selectedUser.id === u.id) div.classList.add('active');
+        userListEl.appendChild(div);
+      });
+    }
+
+    function filterUsers() {
+      const q = document.getElementById('searchUsers').value.toLowerCase();
+      const filtered = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+      renderUsers(filtered);
+    }
+
+    function selectUser(user, element) {
+      selectedUser = user;
+      renderUsers(users);
+      userFormCard.style.display = 'block';
+      document.getElementById('username').value = user.username;
+      document.getElementById('email').value = user.email;
+      document.getElementById('role').value = user.role;
+      document.getElementById('status').value = user.status;
+    }
+
+    function saveUser() {
+      if(!selectedUser) return;
+      selectedUser.username = document.getElementById('username').value;
+      selectedUser.email = document.getElementById('email').value;
+      selectedUser.role = document.getElementById('role').value;
+      selectedUser.status = document.getElementById('status').value;
+      document.getElementById('save-alert').style.display = 'flex';
+      setTimeout(()=>document.getElementById('save-alert').style.display='none', 3000);
+      renderUsers(users);
+    }
+
+    function cancelEdit() {
+      selectedUser = null;
+      userFormCard.style.display = 'none';
+      renderUsers(users);
+    }
+
+    renderUsers(users);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Schools</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <style>
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .status-message {
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .status-message.success {
+      border: 1px solid #bfe6cf;
+      background: #f3fbf7;
+      color: #1d6a43;
+    }
+
+    .status-message.error {
+      border: 1px solid #f0c7c7;
+      background: #fff7f7;
+      color: #8f2f2f;
+    }
+
+    .table-wrap {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      overflow: auto;
+    }
+
+    .schools-table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    .schools-table th,
+    .schools-table td {
+      padding: 0.85rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: middle;
+      font-size: 0.9rem;
+    }
+
+    .schools-table th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .schools-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .domain-text {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.86rem;
+    }
+
+    .thumb {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8fafc;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .empty-state {
+      padding: 1rem;
+      color: var(--text-muted);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 27, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      padding: 1rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 560px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 28px rgba(13, 27, 42, 0.2);
+      padding: 1rem;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      margin: 0;
+      color: var(--text-dark);
+    }
+
+    .modal-close {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--text-muted);
+    }
+
+    .modal-form-group {
+      margin-bottom: 0.8rem;
+    }
+
+    .modal-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      font: inherit;
+      color: var(--text-dark);
+      background: #fff;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+    }
+
+    .logo-upload-area {
+      border: 1.5px dashed var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .logo-upload-area:hover,
+    .logo-upload-area.dragover {
+      border-color: var(--blue);
+      background: #eef5ff;
+    }
+
+    .logo-upload-area input[type="file"] { display: none; }
+
+    .logo-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .logo-preview-wrap.visible { display: flex; }
+
+    .logo-preview {
+      width: 54px;
+      height: 54px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .logo-preview-name {
+      margin: 0;
+      color: var(--text-dark);
+      font-size: 0.86rem;
+      word-break: break-all;
+      text-align: left;
+      max-width: 240px;
+    }
+
+    .logo-preview-remove {
+      margin-top: 0.25rem;
+      border: none;
+      background: transparent;
+      color: var(--error);
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .logo-upload-icon { font-size: 1.8rem; line-height: 1; }
+
+    .logo-upload-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin: 0.2rem 0;
+    }
+
+    .logo-upload-text strong { color: var(--navy); }
+
+    .upload-help {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header') %>
+
+  <div class="layout">
+    <%- include('sidebar', {
+      activePage: 'schoolModeration',
+      showAdministrative: true,
+      schoolModerationHref: '/moderation/school',
+      schoolModerationLabel: 'Schools'
+    }) %>
+
+    <main class="main main-pad main-wide">
+      <% const rows = Array.isArray(schools) ? schools : []; %>
+
+      <div class="page-header">
+        <h1 class="page-title">Schools</h1>
+        <p class="page-subtitle">Manage schools, their domains, and brand assets.</p>
+      </div>
+
+      <% if (successMessage) { %>
+        <div class="status-message success"><%= successMessage %></div>
+      <% } %>
+      <% if (errorMessage) { %>
+        <div class="status-message error"><%= errorMessage %></div>
+      <% } %>
+
+      <div class="card">
+        <div class="top-row">
+          <div class="card-title">School Directory</div>
+          <button class="btn btn-primary" type="button" onclick="openModal('addSchoolModal')">Add School</button>
+        </div>
+
+        <div class="table-wrap">
+          <% if (rows.length === 0) { %>
+            <p class="empty-state">No schools found.</p>
+          <% } else { %>
+            <table class="schools-table">
+              <thead>
+                <tr>
+                  <th>Logo</th>
+                  <th>Name</th>
+                  <th>Domain</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach((row) => { %>
+                  <tr>
+                    <td>
+                      <span class="thumb">
+                        <% if (row.logoUrl) { %>
+                          <img src="<%= row.logoUrl %>" alt="<%= row.name || 'School' %> logo" loading="lazy" referrerpolicy="no-referrer"/>
+                        <% } else { %>
+                          None
+                        <% } %>
+                      </span>
+                    </td>
+                    <td><%= row.name || 'Unnamed School' %></td>
+                    <td>
+                      <% if (row.domain) { %>
+                        <span class="domain-text"><%= row.domain %></span>
+                      <% } else { %>
+                        -
+                      <% } %>
+                    </td>
+                    <td>
+                      <button
+                        class="btn btn-secondary"
+                        type="button"
+                        data-school-id="<%= row.id || '' %>"
+                        data-school-name="<%= row.name || '' %>"
+                        data-school-domain="<%= row.domain || '' %>"
+                        data-school-logo-url="<%= row.logoUrl || '' %>"
+                        onclick="openEditSchoolModal(this)"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } %>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="addSchoolModal" onclick="closeModalOnBackdrop(event, 'addSchoolModal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Add School</h2>
+        <button class="modal-close" type="button" onclick="closeModal('addSchoolModal')">&times;</button>
+      </div>
+      <form method="post" action="/moderation/school" id="addSchoolForm">
+        <div class="modal-form-group">
+          <label class="detail-label" for="schoolName">School Name</label>
+          <input class="modal-input" id="schoolName" name="name" type="text" required maxlength="160" placeholder="University of Example" />
+        </div>
+        <div class="modal-form-group">
+          <label class="detail-label" for="schoolDomain">Domain</label>
+          <input class="modal-input" id="schoolDomain" name="domain" type="text" required maxlength="255" placeholder="example.edu" />
+        </div>
+        <div class="modal-form-group">
+          <label class="detail-label" for="schoolLogoFile">Upload Logo (Optional)</label>
+          <div class="logo-upload-area" id="logoUploadArea">
+            <input id="schoolLogoFile" name="logoFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+            <div id="logoPlaceholder">
+              <div class="logo-upload-icon">🖼️</div>
+              <p class="logo-upload-text"><strong>Click to upload</strong> or drag &amp; drop</p>
+              <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP - max 5 MB</p>
+            </div>
+            <div class="logo-preview-wrap" id="logoPreviewWrap">
+              <img class="logo-preview" id="logoPreview" src="" alt="Logo preview"/>
+              <div>
+                <p class="logo-preview-name" id="logoFileName"></p>
+                <button type="button" class="logo-preview-remove" id="logoRemove">Remove</button>
+              </div>
+            </div>
+          </div>
+          <span class="upload-help" id="schoolLogoUploadStatus">Optional - shown in the schools table.</span>
+          <input type="hidden" id="schoolLogoPath" name="logoPath" value="" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" type="button" onclick="closeModal('addSchoolModal')">Cancel</button>
+          <button class="btn btn-primary" type="submit" id="createSchoolSubmit">Create School</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="editSchoolModal" onclick="closeModalOnBackdrop(event, 'editSchoolModal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit School</h2>
+        <button class="modal-close" type="button" onclick="closeModal('editSchoolModal')">&times;</button>
+      </div>
+      <form method="post" action="/moderation/school" id="editSchoolForm">
+        <div class="modal-form-group">
+          <label class="detail-label" for="editSchoolName">School Name</label>
+          <input class="modal-input" id="editSchoolName" name="name" type="text" required maxlength="160" />
+        </div>
+        <div class="modal-form-group">
+          <label class="detail-label" for="editSchoolDomain">Domain</label>
+          <input class="modal-input" id="editSchoolDomain" name="domain" type="text" required maxlength="255" />
+        </div>
+        <div class="modal-form-group">
+          <label class="detail-label" for="editSchoolLogoFile">Upload New Logo (Optional)</label>
+          <div class="logo-upload-area" id="editLogoUploadArea">
+            <input id="editSchoolLogoFile" name="logoFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+            <div id="editLogoPlaceholder">
+              <div class="logo-upload-icon">🖼️</div>
+              <p class="logo-upload-text"><strong>Click to upload</strong> or drag &amp; drop</p>
+              <p class="logo-upload-text" style="font-size:0.75rem;">PNG, JPG, GIF or WebP - max 5 MB</p>
+            </div>
+            <div class="logo-preview-wrap" id="editLogoPreviewWrap">
+              <img class="logo-preview" id="editLogoPreview" src="" alt="Logo preview"/>
+              <div>
+                <p class="logo-preview-name" id="editLogoFileName"></p>
+                <button type="button" class="logo-preview-remove" id="editLogoRemove">Remove</button>
+              </div>
+            </div>
+          </div>
+          <span class="upload-help" id="editSchoolLogoUploadStatus">Leave unchanged to keep current logo.</span>
+          <input type="hidden" id="editSchoolLogoPath" name="logoPath" value="" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" type="button" onclick="closeModal('editSchoolModal')">Cancel</button>
+          <button class="btn btn-primary" type="submit" id="editSchoolSubmit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = <%- JSON.stringify(supabaseUrl || '') %>;
+    const STORAGE_BUCKET = <%- JSON.stringify(storageBucket || 'media') %>;
+    const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+
+    function openModal(id) {
+      var modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.add('open');
+      }
+    }
+
+    function closeModal(id) {
+      var modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.remove('open');
+      }
+    }
+
+    function closeModalOnBackdrop(event, id) {
+      if (event.target && event.target.id === id) {
+        closeModal(id);
+      }
+    }
+
+    function encodePathForStorageUrl(path) {
+      return path
+        .split('/')
+        .map((part) => encodeURIComponent(part))
+        .join('/');
+    }
+
+    async function requestSignedUpload(fileName) {
+      const response = await fetch('/storage/signed-upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          fileName,
+          folder: 'schools',
+          bucket: STORAGE_BUCKET,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload && payload.error ? payload.error : 'Unable to prepare upload.');
+      }
+
+      return payload;
+    }
+
+    async function uploadLogoToStorage(file) {
+      if (!SUPABASE_URL) {
+        throw new Error('Missing SUPABASE_URL for browser uploads.');
+      }
+
+      const signed = await requestSignedUpload(file.name);
+      if (!signed || !signed.token || !signed.path) {
+        throw new Error('Upload token was not returned by the server.');
+      }
+
+      const uploadBucket = signed.bucket || STORAGE_BUCKET;
+      const encodedPath = encodePathForStorageUrl(signed.path);
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/upload/sign/${encodeURIComponent(uploadBucket)}/${encodedPath}?token=${encodeURIComponent(signed.token)}`;
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text();
+        throw new Error(message || 'Upload failed.');
+      }
+
+      return signed.path;
+    }
+
+    function setupUploader(config) {
+      const logoUploadArea = document.getElementById(config.uploadAreaId);
+      const logoFileInput = document.getElementById(config.fileInputId);
+      const logoPathInput = document.getElementById(config.pathInputId);
+      const uploadStatus = document.getElementById(config.statusId);
+      const logoPlaceholder = document.getElementById(config.placeholderId);
+      const logoPreviewWrap = document.getElementById(config.previewWrapId);
+      const logoPreview = document.getElementById(config.previewId);
+      const logoFileName = document.getElementById(config.fileNameId);
+      const logoRemove = document.getElementById(config.removeId);
+
+      function clearPreview(defaultStatusText) {
+        logoFileInput.value = '';
+        logoPathInput.value = '';
+        logoPreview.src = '';
+        logoPreviewWrap.classList.remove('visible');
+        logoPlaceholder.style.display = '';
+        uploadStatus.textContent = defaultStatusText;
+      }
+
+      function showLogoPreview(file) {
+        if (!file || !file.type.startsWith('image/')) return;
+        if (file.size > MAX_LOGO_BYTES) {
+          uploadStatus.textContent = 'Please choose an image under 5 MB.';
+          logoFileInput.value = '';
+          return;
+        }
+
+        const url = URL.createObjectURL(file);
+        logoPreview.src = url;
+        logoFileName.textContent = file.name;
+        logoPlaceholder.style.display = 'none';
+        logoPreviewWrap.classList.add('visible');
+        uploadStatus.textContent = config.selectedMessage;
+      }
+
+      logoUploadArea.addEventListener('click', function (event) {
+        if (event.target !== logoRemove) {
+          logoFileInput.click();
+        }
+      });
+
+      logoFileInput.addEventListener('change', function () {
+        if (logoFileInput.files[0]) {
+          showLogoPreview(logoFileInput.files[0]);
+        }
+      });
+
+      logoRemove.addEventListener('click', function (event) {
+        event.stopPropagation();
+        clearPreview(config.defaultStatusMessage);
+      });
+
+      logoUploadArea.addEventListener('dragover', function (event) {
+        event.preventDefault();
+        logoUploadArea.classList.add('dragover');
+      });
+
+      logoUploadArea.addEventListener('dragleave', function () {
+        logoUploadArea.classList.remove('dragover');
+      });
+
+      logoUploadArea.addEventListener('drop', function (event) {
+        event.preventDefault();
+        logoUploadArea.classList.remove('dragover');
+        const file = event.dataTransfer.files[0];
+        if (file) {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          logoFileInput.files = dt.files;
+          showLogoPreview(file);
+        }
+      });
+
+      return {
+        logoFileInput,
+        logoPathInput,
+        uploadStatus,
+        logoPlaceholder,
+        logoPreviewWrap,
+        logoPreview,
+        logoFileName,
+        clearPreview,
+      };
+    }
+
+    const addUploader = setupUploader({
+      uploadAreaId: 'logoUploadArea',
+      fileInputId: 'schoolLogoFile',
+      pathInputId: 'schoolLogoPath',
+      statusId: 'schoolLogoUploadStatus',
+      placeholderId: 'logoPlaceholder',
+      previewWrapId: 'logoPreviewWrap',
+      previewId: 'logoPreview',
+      fileNameId: 'logoFileName',
+      removeId: 'logoRemove',
+      defaultStatusMessage: 'Optional - shown in the schools table.',
+      selectedMessage: 'Logo selected. It will upload when you create the school.',
+    });
+
+    const editUploader = setupUploader({
+      uploadAreaId: 'editLogoUploadArea',
+      fileInputId: 'editSchoolLogoFile',
+      pathInputId: 'editSchoolLogoPath',
+      statusId: 'editSchoolLogoUploadStatus',
+      placeholderId: 'editLogoPlaceholder',
+      previewWrapId: 'editLogoPreviewWrap',
+      previewId: 'editLogoPreview',
+      fileNameId: 'editLogoFileName',
+      removeId: 'editLogoRemove',
+      defaultStatusMessage: 'Leave unchanged to keep current logo.',
+      selectedMessage: 'New logo selected. It will upload when you save changes.',
+    });
+
+    async function handleSchoolFormSubmit(event, uploader, submitButtonId, actionLabel) {
+      const form = event.currentTarget;
+      const submitBtn = document.getElementById(submitButtonId);
+      const file = uploader.logoFileInput && uploader.logoFileInput.files && uploader.logoFileInput.files[0]
+        ? uploader.logoFileInput.files[0]
+        : null;
+
+      if (!file) {
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        event.preventDefault();
+        uploader.uploadStatus.textContent = 'Selected file is not an image.';
+        return;
+      }
+
+      if (file.size > MAX_LOGO_BYTES) {
+        event.preventDefault();
+        uploader.uploadStatus.textContent = 'Please choose an image under 5 MB.';
+        return;
+      }
+
+      event.preventDefault();
+      submitBtn.disabled = true;
+      uploader.uploadStatus.textContent = 'Uploading logo...';
+
+      try {
+        const logoPath = await uploadLogoToStorage(file);
+        uploader.logoPathInput.value = logoPath;
+        uploader.uploadStatus.textContent = `Logo uploaded. ${actionLabel}...`;
+        HTMLFormElement.prototype.submit.call(form);
+      } catch (error) {
+        submitBtn.disabled = false;
+        uploader.uploadStatus.textContent = error && error.message
+          ? `Upload failed: ${error.message}`
+          : 'Unable to upload logo right now. Please try again.';
+      }
+    }
+
+    document.getElementById('addSchoolForm').addEventListener('submit', function (event) {
+      return handleSchoolFormSubmit(event, addUploader, 'createSchoolSubmit', 'Creating school');
+    });
+
+    document.getElementById('editSchoolForm').addEventListener('submit', function (event) {
+      return handleSchoolFormSubmit(event, editUploader, 'editSchoolSubmit', 'Saving changes');
+    });
+
+    function openEditSchoolModal(button) {
+      const schoolId = button.getAttribute('data-school-id') || '';
+      const schoolName = button.getAttribute('data-school-name') || '';
+      const schoolDomain = button.getAttribute('data-school-domain') || '';
+      const schoolLogoUrl = button.getAttribute('data-school-logo-url') || '';
+      const editForm = document.getElementById('editSchoolForm');
+      const editName = document.getElementById('editSchoolName');
+      const editDomain = document.getElementById('editSchoolDomain');
+
+      if (!schoolId) {
+        return;
+      }
+
+      editForm.action = `/moderation/school/${encodeURIComponent(schoolId)}`;
+      editName.value = schoolName;
+      editDomain.value = schoolDomain;
+      editUploader.logoPathInput.value = '';
+      editUploader.logoFileInput.value = '';
+
+      if (schoolLogoUrl) {
+        editUploader.logoPreview.src = schoolLogoUrl;
+        editUploader.logoFileName.textContent = 'Current logo';
+        editUploader.logoPlaceholder.style.display = 'none';
+        editUploader.logoPreviewWrap.classList.add('visible');
+      } else {
+        editUploader.logoPreview.src = '';
+        editUploader.logoPreviewWrap.classList.remove('visible');
+        editUploader.logoPlaceholder.style.display = '';
+      }
+
+      editUploader.uploadStatus.textContent = 'Leave unchanged to keep current logo.';
+      openModal('editSchoolModal');
+    }
+  </script>
+
+</body>
+</html>

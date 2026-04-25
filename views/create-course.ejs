@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Create Course</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
+  <style>
+    .main {
+      padding: 2rem;
+    }
+
+    .form-column {
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .page-title {
+      color: var(--text-dark);
+      margin-bottom: 0.45rem;
+    }
+
+    .page-subtitle {
+      font-size: 0.93rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .form-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 1px 6px rgba(13,27,42,0.07);
+    }
+
+    .error-banner,
+    .info-banner {
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .error-banner {
+      border: 1px solid rgba(176, 58, 46, 0.24);
+      background: rgba(176, 58, 46, 0.06);
+      color: #8f2f25;
+    }
+
+    .info-banner {
+      border: 1px solid var(--border);
+      background: var(--cream);
+      color: var(--text-muted);
+    }
+
+    .field {
+      margin-bottom: 1.2rem;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.45rem;
+    }
+
+    .field input[type="text"],
+    .field input[type="number"],
+    .field textarea {
+      width: 100%;
+      padding: 0.7rem 0.95rem;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.92rem;
+      color: var(--text-dark);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .field input[type="text"]:focus,
+    .field input[type="number"]:focus,
+    .field textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 140px;
+    }
+
+    .field .hint {
+      display: block;
+      margin-top: 0.45rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      padding: 0.75rem 1.15rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .btn-primary {
+      border: none;
+      background: var(--navy);
+      color: var(--gold);
+    }
+
+    .btn-primary:hover {
+      background: var(--navy-mid);
+    }
+
+    .btn-secondary {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--navy);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--navy);
+      background: var(--cream);
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header', { user }) %>
+
+  <div class="layout">
+    <%- include('sidebar', { activePage: 'createCourse' }) %>
+
+    <main class="main">
+      <div class="form-column">
+        <h1 class="page-title">Create Course</h1>
+        <p class="page-subtitle">Create a course for <%= schoolName %>. Only school officials can access this form, and the new course will automatically be linked to your affiliated school.</p>
+
+        <% if (formError) { %>
+          <div class="error-banner"><%= formError %></div>
+        <% } %>
+
+        <div class="form-card">
+          <div class="info-banner">
+            This course will appear in the course directory for students and staff affiliated with <strong><%= schoolName %></strong>.
+          </div>
+
+          <form method="post" action="/courses/create">
+            <div class="field-grid">
+              <div class="field">
+                <label for="course_prefix">Course prefix</label>
+                <input
+                  id="course_prefix"
+                  name="course_prefix"
+                  type="text"
+                  maxlength="16"
+                  value="<%= formValues && formValues.coursePrefix ? formValues.coursePrefix : '' %>"
+                  placeholder="Example: CPT_S"
+                />
+                <span class="hint">Optional short code such as `CPT_S` or `MATH`.</span>
+              </div>
+
+              <div class="field">
+                <label for="course_number">Course number</label>
+                <input
+                  id="course_number"
+                  name="course_number"
+                  type="number"
+                  min="0"
+                  max="32767"
+                  step="1"
+                  value="<%= formValues && formValues.courseNumber ? formValues.courseNumber : '' %>"
+                  placeholder="Example: 489"
+                />
+                <span class="hint">Optional numeric code stored with the course record.</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="instructor_name">Instructor</label>
+              <input
+                id="instructor_name"
+                name="instructor_name"
+                type="text"
+                maxlength="120"
+                value="<%= formValues && formValues.instructorName ? formValues.instructorName : '' %>"
+                placeholder="Example: Dr. Maya Chen"
+                required
+              />
+              <span class="hint">This is the name shown on the course card and detail page.</span>
+            </div>
+
+            <div class="field">
+              <label for="name">Course name</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                maxlength="120"
+                value="<%= formValues && formValues.name ? formValues.name : '' %>"
+                placeholder="Example: Introduction to Data Structures"
+                required
+              />
+              <span class="hint">Keep it short and recognizable. Maximum 120 characters.</span>
+            </div>
+
+            <div class="field">
+              <label for="description">Course description</label>
+              <textarea
+                id="description"
+                name="description"
+                maxlength="1000"
+                placeholder="Add a brief description so students know what this course covers."><%= formValues && formValues.description ? formValues.description : '' %></textarea>
+              <span class="hint">Optional, but helpful. Maximum 1000 characters.</span>
+            </div>
+
+            <div class="actions">
+              <button class="btn-primary" type="submit">Create course</button>
+              <a class="btn-secondary" href="/courses">Back to courses</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
+
+</body>
+</html>

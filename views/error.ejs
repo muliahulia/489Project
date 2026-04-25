@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Error</title>
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+  </head>
+  <body>
+    <main style="max-width: 720px; margin: 3rem auto; padding: 0 1rem;">
+      <h1><%= message %></h1>
+      <h2>Status: <%= error && error.status ? error.status : 500 %></h2>
+      <% if (error && error.stack) { %>
+        <pre style="white-space: pre-wrap;"><%= error.stack %></pre>
+      <% } %>
+    </main>
+  </body>
+</html>

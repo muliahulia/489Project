@@ -1,0 +1,1074 @@
+const { createSupabaseAdminClient } = require('../lib/supabase');
+const {
+  buildDisplayName,
+  buildInitials,
+  buildProfilePath,
+  formatCreatedAt: formatPostDate,
+} = require('../lib/utils');
+const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
+const { toPositiveInteger } = require('../lib/numberUtils');
+const {
+  buildBubbleText,
+  buildProfileDisplayName,
+  buildSessionFallbackUser,
+  buildAuthorRoleMeta,
+} = require('../lib/profileView');
+const {
+  fetchLikeState,
+  buildCommentCollections,
+} = require('../lib/postEngagement');
+const {
+  normalizeRole,
+  idsMatch,
+  fetchViewerSchoolContext,
+  buildSchoolScopeOptions,
+} = require('../lib/schoolScope');
+const communityModel = require('../models/communityModel');
+const userActivityLogModel = require('../models/userActivityLogModel');
+
+const PREVIEW_MEMBER_COUNT = 5;
+const DEFAULT_DESCRIPTION = 'No description has been added for this community yet.';
+
+function normalizeCreatePayload(body) {
+  const source = body || {};
+  const communityName = typeof source.communityName === 'string' ? source.communityName.trim() : '';
+  const description = typeof source.description === 'string' ? source.description.trim() : '';
+  const visibility = typeof source.visibility === 'string' ? source.visibility.trim().toLowerCase() : 'public';
+  const logoPath = communityModel.normalizeStoragePath(source.logoPath);
+
+  return {
+    communityName,
+    description,
+    isPrivate: visibility === 'private',
+    logoPath,
+  };
+}
+
+function formatFoundingLabel(timestamp) {
+  if (!timestamp) {
+    return 'Founding year unknown';
+  }
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return 'Founding year unknown';
+  }
+
+  return `Founded ${date.getFullYear()}`;
+}
+
+function fallbackRedirectForCommunity(communityId) {
+  return `/communities/${communityId}`;
+}
+
+async function buildCommunityManageAccess(supabase, profile, community, creatorProfile) {
+  const role = normalizeRole(profile && profile.role);
+  const profileId = profile && profile.id ? profile.id : null;
+  const profileSchoolId = profile && profile.school_id ? profile.school_id : null;
+  const isCreator = Boolean(
+    community && community.creator_id && profileId && idsMatch(community.creator_id, profileId)
+  );
+
+  if (role === 'admin') {
+    return { allowed: true, reason: null, isCreator };
+  }
+
+  let affiliatedSchoolId = creatorProfile && creatorProfile.school_id
+    ? creatorProfile.school_id
+    : null;
+  if (!affiliatedSchoolId && community && community.creator_id) {
+    const creator = await communityModel.fetchProfileById(supabase, community.creator_id);
+    affiliatedSchoolId = creator && creator.school_id ? creator.school_id : null;
+  }
+
+  if (!idsMatch(profileSchoolId, affiliatedSchoolId)) {
+    return {
+      allowed: false,
+      reason: 'This community is not available to your school.',
+      isCreator,
+    };
+  }
+
+  if (isCreator || role === 'official') {
+    return { allowed: true, reason: null, isCreator };
+  }
+
+  return {
+    allowed: false,
+    reason: 'You do not have permission to manage this community.',
+    isCreator,
+  };
+}
+
+async function fetchCommunitySchoolAccess(supabase, communityId, viewerContext) {
+  const community = await communityModel.fetchCommunityIdentity(supabase, communityId);
+  if (!community) {
+    return { exists: false, allowed: false, community: null, creatorProfile: null };
+  }
+
+  if (viewerContext && viewerContext.isGlobalAdmin) {
+    return { exists: true, allowed: true, community, creatorProfile: null };
+  }
+
+  const creatorProfile = community.creator_id
+    ? await communityModel.fetchProfileById(supabase, community.creator_id)
+    : null;
+  const allowed = Boolean(
+    creatorProfile
+    && viewerContext
+    && idsMatch(viewerContext.schoolId, creatorProfile.school_id)
+  );
+
+  return { exists: true, allowed, community, creatorProfile };
+}
+
+async function buildLikeState(supabase, postIds, userId) {
+  return fetchLikeState({
+    postIds,
+    userId,
+    fetchLikeRows: (ids) => communityModel.fetchLikeRowsByPostIds(supabase, ids),
+    fetchUserLikeRows: (ids, viewerUserId) =>
+      communityModel.fetchUserLikeRowsByPostIds(supabase, ids, viewerUserId),
+  });
+}
+
+async function buildCommentState(supabase, postIds, scopeOptions) {
+  if (!Array.isArray(postIds) || postIds.length === 0) {
+    return buildCommentCollections();
+  }
+
+  const comments = await communityModel.fetchCommentsByPostIds(supabase, postIds);
+  const commentAuthorIds = [...new Set(comments.map((row) => row.author_id).filter(Boolean))];
+  let commentAuthorProfiles = await communityModel.fetchProfilesByIds(supabase, commentAuthorIds);
+  if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+    const schoolId = scopeOptions.schoolId || null;
+    commentAuthorProfiles = commentAuthorProfiles.filter((profile) =>
+      idsMatch(profile.school_id, schoolId)
+    );
+  }
+  const commentAuthorMediaById = await resolveProfileMediaMap(supabase, commentAuthorProfiles);
+  return buildCommentCollections({
+    comments,
+    profiles: commentAuthorProfiles,
+    profileMediaById: commentAuthorMediaById,
+    formatDateLabel: formatPostDate,
+    skipUnknownAuthors: true,
+  });
+}
+
+function buildEmptyCommunityPageModel(notFoundMessage) {
+  return {
+    community: null,
+    members: [],
+    memberPreview: [],
+    remainingMemberCount: 0,
+    posts: [],
+    notFoundMessage,
+  };
+}
+
+async function buildCommunityMembersViewModel(
+  supabase,
+  memberIds,
+  creatorProfile,
+  scopeOptions
+) {
+  let memberProfiles = await communityModel.fetchProfilesByIds(supabase, memberIds);
+  if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+    const schoolId = scopeOptions.schoolId || null;
+    memberProfiles = memberProfiles.filter((profile) => idsMatch(profile.school_id, schoolId));
+  }
+  const memberMediaById = await resolveProfileMediaMap(supabase, memberProfiles);
+  const profileById = new Map(memberProfiles.map((row) => [row.id, row]));
+  const creatorMedia = creatorProfile ? await resolveProfileMedia(supabase, creatorProfile) : null;
+
+  const visibleMemberIds = memberIds.filter((memberId) =>
+    profileById.has(memberId)
+    || (creatorProfile && creatorProfile.id === memberId)
+  );
+
+  const members = visibleMemberIds
+    .map((memberId) => {
+      const profile = profileById.get(memberId);
+
+      if (!profile && creatorProfile && creatorProfile.id === memberId) {
+        return {
+          id: memberId,
+          name: buildProfileDisplayName(creatorProfile),
+          initials: buildInitials(creatorProfile.first_name, creatorProfile.last_name, creatorProfile.email),
+          profileAvatarUrl: creatorMedia && creatorMedia.avatarUrl ? creatorMedia.avatarUrl : null,
+          profileHref: buildProfilePath(
+            memberId,
+            creatorProfile.first_name,
+            creatorProfile.last_name
+          ),
+        };
+      }
+
+      return {
+        id: memberId,
+        name: buildProfileDisplayName(profile),
+        initials: buildInitials(
+          profile && profile.first_name,
+          profile && profile.last_name,
+          profile && profile.email
+        ),
+        profileAvatarUrl: memberMediaById.get(memberId)?.avatarUrl || null,
+        profileHref: buildProfilePath(
+          memberId,
+          profile && profile.first_name,
+          profile && profile.last_name
+        ),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+
+  return members;
+}
+
+async function buildCommunityPostsViewModel(
+  supabase,
+  postRows,
+  communityRow,
+  viewerUserId,
+  scopeOptions
+) {
+  const postIds = postRows.map((row) => row.id).filter(Boolean);
+  const postAuthorIds = [...new Set(postRows.map((row) => row.author_id).filter(Boolean))];
+  let [postAuthorProfiles, likeState, commentState] = await Promise.all([
+    communityModel.fetchProfilesByIds(supabase, postAuthorIds),
+    buildLikeState(supabase, postIds, viewerUserId),
+    buildCommentState(supabase, postIds, scopeOptions),
+  ]);
+  if (scopeOptions && !scopeOptions.isGlobalAdmin) {
+    const schoolId = scopeOptions.schoolId || null;
+    postAuthorProfiles = postAuthorProfiles.filter((profile) =>
+      idsMatch(profile.school_id, schoolId)
+    );
+  }
+  const postAuthorMediaById = await resolveProfileMediaMap(supabase, postAuthorProfiles);
+  const postAuthorById = new Map(postAuthorProfiles.map((row) => [row.id, row]));
+
+  return postRows
+    .filter((row) => postAuthorById.has(row.author_id))
+    .map((row) => {
+      const author = postAuthorById.get(row.author_id);
+      const authorName = buildProfileDisplayName(author);
+      const authorMedia = postAuthorMediaById.get(row.author_id);
+      const roleMeta = buildAuthorRoleMeta(author && author.role);
+      const content = row.content && String(row.content).trim() ? String(row.content).trim() : '';
+
+      return {
+        id: row.id,
+        authorId: row.author_id,
+        authorProfileHref: buildProfilePath(
+          row.author_id,
+          author && author.first_name,
+          author && author.last_name
+        ),
+        authorName,
+        authorRole: roleMeta.normalizedRole,
+        authorRoleLabel: roleMeta.roleLabel,
+        authorInitials: buildInitials(
+          author && author.first_name,
+          author && author.last_name,
+          author && author.email
+        ),
+        authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
+        createdAtLabel: formatPostDate(row.created_at),
+        scopeLabel: communityRow.name || 'Community',
+        scopeHref: `/communities/${communityRow.id}`,
+        content: content || 'No content',
+        likeCount: likeState.likeCountByPostId.get(row.id) || 0,
+        liked: likeState.likedPostIds.has(row.id),
+        commentCount: commentState.commentCountByPostId.get(row.id) || 0,
+        comments: commentState.commentsByPostId.get(row.id) || [],
+      };
+    });
+}
+
+function buildViewerAccessProfile(profile, sessionUser, options = {}) {
+  if (profile) {
+    return profile;
+  }
+
+  return {
+    id: sessionUser.id,
+    role: options.role || sessionUser.role || 'student',
+    school_id: options.schoolId || sessionUser.schoolId || null,
+  };
+}
+
+async function buildCommunityPageModel(supabase, communityId, viewerProfile, scopeOptions) {
+  const viewerUserId = viewerProfile && viewerProfile.id ? viewerProfile.id : null;
+  if (!communityId) {
+    return buildEmptyCommunityPageModel('No communities are available yet.');
+  }
+
+  const communityData = await communityModel.fetchCommunityPageData(
+    supabase,
+    communityId,
+    scopeOptions
+  );
+  if (!communityData || !communityData.community) {
+    return buildEmptyCommunityPageModel('Community not found.');
+  }
+
+  const communityRow = communityData.community;
+  const creatorProfile = communityData.creatorProfile;
+  const memberIds = communityData.memberIds;
+  const postRows = communityData.postRows;
+  const memberIdSet = new Set(memberIds);
+  const manageAccess = await buildCommunityManageAccess(
+    supabase,
+    viewerProfile,
+    communityRow,
+    creatorProfile
+  );
+  const isCreator = Boolean(manageAccess.isCreator);
+  const isMember = Boolean(viewerUserId && memberIdSet.has(viewerUserId));
+  const [members, posts] = await Promise.all([
+    buildCommunityMembersViewModel(supabase, memberIds, creatorProfile, scopeOptions),
+    buildCommunityPostsViewModel(
+      supabase,
+      postRows,
+      communityRow,
+      viewerUserId,
+      scopeOptions
+    ),
+  ]);
+
+  const memberCount = members.length;
+  const creatorName = buildProfileDisplayName(creatorProfile);
+  const memberLabel = `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`;
+  const metadataParts = [memberLabel, formatFoundingLabel(communityRow.created_at)];
+
+  if (creatorProfile) {
+    metadataParts.push(`Created by ${creatorName}`);
+  }
+
+  const description = communityRow.description && String(communityRow.description).trim()
+    ? String(communityRow.description).trim()
+    : DEFAULT_DESCRIPTION;
+
+  return {
+    community: {
+      id: communityRow.id,
+      name: communityRow.name || 'Untitled Community',
+      description,
+      metaLine: metadataParts.join(' · '),
+      isPrivate: Boolean(communityRow.is_private),
+      isCreator,
+      canManage: manageAccess.allowed,
+      isMember,
+      canJoin: !isMember,
+      canLeave: isMember && !isCreator,
+      canPost: isMember,
+    },
+    members,
+    memberPreview: members.slice(0, PREVIEW_MEMBER_COUNT),
+    remainingMemberCount: Math.max(0, members.length - PREVIEW_MEMBER_COUNT),
+    posts,
+    notFoundMessage: null,
+  };
+}
+
+async function renderCommunity(req, res, explicitCommunityId) {
+  const sessionUser = req.session.auth.user;
+  const fallbackUser = buildSessionFallbackUser(sessionUser);
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const scopeOptions = buildSchoolScopeOptions(viewerContext);
+    const currentProfile = await communityModel.fetchProfileById(supabase, sessionUser.id);
+    const currentMedia = currentProfile ? await resolveProfileMedia(supabase, currentProfile) : null;
+    const currentFirstName = (currentProfile && currentProfile.first_name) || sessionUser.firstName || null;
+    const currentLastName =
+      (currentProfile && typeof currentProfile.last_name === 'string')
+        ? currentProfile.last_name
+        : sessionUser.lastName || null;
+
+    const user = {
+      id: sessionUser.id,
+      firstName: currentFirstName,
+      lastName: currentLastName,
+      fullName: buildDisplayName(
+        currentFirstName,
+        currentLastName,
+        (currentProfile && currentProfile.email) || sessionUser.email
+      ),
+      email: (currentProfile && currentProfile.email) || sessionUser.email,
+      initials: buildInitials(
+        currentFirstName,
+        currentLastName,
+        (currentProfile && currentProfile.email) || sessionUser.email
+      ),
+      profileAvatarUrl: currentMedia && currentMedia.avatarUrl ? currentMedia.avatarUrl : null,
+    };
+
+    const viewerAccessProfile = buildViewerAccessProfile(currentProfile, sessionUser, {
+      role: viewerContext.role || sessionUser.role || 'student',
+      schoolId: viewerContext.schoolId || sessionUser.schoolId || null,
+    });
+
+    const communityId = await communityModel.resolveCommunityId(
+      supabase,
+      sessionUser.id,
+      explicitCommunityId,
+      scopeOptions
+    );
+    const viewModel = await buildCommunityPageModel(
+      supabase,
+      communityId,
+      viewerAccessProfile,
+      scopeOptions
+    );
+
+    return res.render('community', {
+      user,
+      community: viewModel.community,
+      members: viewModel.members,
+      memberPreview: viewModel.memberPreview,
+      remainingMemberCount: viewModel.remainingMemberCount,
+      posts: viewModel.posts,
+      notFoundMessage: viewModel.notFoundMessage,
+      formError: typeof req.query.error === 'string' ? req.query.error : null,
+    });
+  } catch (_err) {
+    return res.status(500).render('community', {
+      user: fallbackUser,
+      community: null,
+      members: [],
+      memberPreview: [],
+      remainingMemberCount: 0,
+      posts: [],
+      notFoundMessage: 'Unable to load this community right now.',
+      formError: null,
+    });
+  }
+}
+
+async function listCommunities(req, res) {
+  const sessionUser = req.session && req.session.auth ? req.session.auth.user : null;
+  try {
+    const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const { communities, memberships } = await communityModel.fetchCommunityDirectoryData(supabase);
+    let visibleCommunities = communities;
+
+    if (!viewerContext.isGlobalAdmin) {
+      const schoolId = viewerContext.schoolId || null;
+      if (!schoolId) {
+        visibleCommunities = [];
+      } else {
+        const creatorIds = [...new Set(communities.map((row) => row.creator_id).filter(Boolean))];
+        const creatorProfiles = creatorIds.length > 0
+          ? await communityModel.fetchProfilesByIds(supabase, creatorIds)
+          : [];
+        const creatorSchoolById = new Map(
+          creatorProfiles.map((profile) => [profile.id, profile.school_id || null])
+        );
+        visibleCommunities = communities.filter((community) =>
+          idsMatch(creatorSchoolById.get(community.creator_id), schoolId)
+        );
+      }
+    }
+
+    const visibleCommunityIdSet = new Set(
+      visibleCommunities.map((community) => community.id).filter(Boolean)
+    );
+    let visibleMemberships = memberships.filter((membership) =>
+      membership && visibleCommunityIdSet.has(membership.community_id)
+    );
+    if (!viewerContext.isGlobalAdmin && viewerContext.schoolId) {
+      const memberUserIds = [...new Set(
+        visibleMemberships.map((membership) => membership.user_id).filter(Boolean)
+      )];
+      const memberProfiles = memberUserIds.length > 0
+        ? await communityModel.fetchProfilesByIds(supabase, memberUserIds)
+        : [];
+      const visibleMemberUserIds = new Set(
+        memberProfiles
+          .filter((profile) => idsMatch(profile.school_id, viewerContext.schoolId))
+          .map((profile) => profile.id)
+      );
+      visibleMemberships = visibleMemberships.filter((membership) =>
+        visibleMemberUserIds.has(membership.user_id)
+      );
+    }
+    const memberSetByCommunityId = new Map();
+
+    visibleMemberships.forEach((membership) => {
+      if (!membership || !membership.community_id || !membership.user_id) {
+        return;
+      }
+
+      const existing = memberSetByCommunityId.get(membership.community_id) || new Set();
+      existing.add(membership.user_id);
+      memberSetByCommunityId.set(membership.community_id, existing);
+    });
+
+    const communityCards = visibleCommunities.map((community, index) => {
+      const memberSet = memberSetByCommunityId.get(community.id) || new Set();
+
+      if (community.creator_id) {
+        memberSet.add(community.creator_id);
+      }
+
+      const memberCount = memberSet.size;
+      const name = (community.name && String(community.name).trim()) || 'Untitled Community';
+      const description =
+        (community.description && String(community.description).trim()) ||
+        DEFAULT_DESCRIPTION;
+
+      return {
+        id: community.id,
+        name,
+        description,
+        memberCount,
+        memberLabel: `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`,
+        bubbleText: buildBubbleText(name),
+        avatarClass: `v${(index % 8) + 1}`,
+        logoBucket: community.logo_bucket || communityModel.DEFAULT_STORAGE_BUCKET,
+        logoPath: communityModel.normalizeStoragePath(community.logo_path),
+        logoUrl: null,
+      };
+    });
+
+    const logoUrls = await Promise.all(
+      communityCards.map((community) =>
+        communityModel.createSignedImageUrl(supabase, community.logoBucket, community.logoPath)
+      )
+    );
+
+    logoUrls.forEach((logoUrl, index) => {
+      communityCards[index].logoUrl = logoUrl;
+    });
+
+    return res.render('communities', {
+      communities: communityCards,
+    });
+  } catch (_err) {
+    return res.render('communities', {
+      communities: [],
+    });
+  }
+}
+
+function showCreateCommunity(req, res) {
+  return res.render('create-community', {
+    formError: typeof req.query.error === 'string' ? req.query.error : null,
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    storageBucket: communityModel.DEFAULT_STORAGE_BUCKET,
+  });
+}
+
+async function createCommunity(req, res) {
+  const sessionUser = req.session.auth.user;
+  const { communityName, description, isPrivate, logoPath } = normalizeCreatePayload(req.body);
+  const requestContext = {
+    ip: req.ip || null,
+    userAgent: req.get('user-agent') || null,
+  };
+
+  if (!communityName) {
+    try {
+      const logSupabase = createSupabaseAdminClient();
+      await userActivityLogModel.insertUserActivityLog(logSupabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_invalid',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          reason: 'missing_name',
+          hasDescription: Boolean(description),
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          ...requestContext,
+        },
+      });
+    } catch (logErr) {
+      console.error('COMMUNITY CREATE VALIDATION LOG ERROR:', {
+        userId: sessionUser.id,
+        message: logErr && logErr.message ? logErr.message : null,
+      });
+    }
+    return res.redirect(
+      '/communities/create-community?error=' + encodeURIComponent('Community name is required.')
+    );
+  }
+
+  let supabase = null;
+  try {
+    supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const resolvedSchoolId = viewerContext.schoolId || sessionUser.schoolId || null;
+    if (!resolvedSchoolId) {
+      await userActivityLogModel.insertUserActivityLog(supabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_blocked',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          reason: 'missing_school_id',
+          attemptedName: communityName,
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          isGlobalAdmin: Boolean(viewerContext.isGlobalAdmin),
+          ...requestContext,
+        },
+      });
+      return res.redirect(
+        '/communities/create-community?error='
+        + encodeURIComponent('Your profile must be linked to a school to create communities.')
+      );
+    }
+    const createResult = await communityModel.createCommunityRecord(supabase, {
+      name: communityName,
+      description,
+      creatorId: sessionUser.id,
+      schoolId: resolvedSchoolId,
+      isPrivate,
+      logoBucket: communityModel.DEFAULT_STORAGE_BUCKET,
+      logoPath,
+    });
+    const createdCommunity = createResult.community;
+
+    if (!createdCommunity) {
+      if (createResult.error) {
+        console.error('CREATE COMMUNITY DB ERROR:', {
+          userId: sessionUser.id,
+          code: createResult.error.code || null,
+          message: createResult.error.message || null,
+          details: createResult.error.details || null,
+          hint: createResult.error.hint || null,
+        });
+      }
+      await userActivityLogModel.insertUserActivityLog(supabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_failed',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          attemptedName: communityName,
+          schoolId: resolvedSchoolId,
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          dbErrorCode: createResult.error && createResult.error.code ? createResult.error.code : null,
+          dbErrorMessage: createResult.error && createResult.error.message
+            ? createResult.error.message
+            : null,
+          dbErrorDetails: createResult.error && createResult.error.details
+            ? createResult.error.details
+            : null,
+          dbErrorHint: createResult.error && createResult.error.hint ? createResult.error.hint : null,
+          ...requestContext,
+        },
+      });
+      return res.redirect(
+        '/communities/create-community?error=' +
+          encodeURIComponent('Unable to create community right now.')
+      );
+    }
+
+    const membershipUpserted = await communityModel.upsertCommunityMembership(supabase, {
+      userId: sessionUser.id,
+      communityId: createdCommunity.id,
+      role: 'owner',
+    });
+
+    if (!membershipUpserted) {
+      console.error('COMMUNITY OWNER MEMBERSHIP UPSERT FAILED:', {
+        userId: sessionUser.id,
+        communityId: createdCommunity.id,
+      });
+    }
+
+    await userActivityLogModel.insertUserActivityLog(supabase, {
+      userId: sessionUser.id,
+      actionType: 'community_created',
+      targetType: 'community',
+      targetId: createdCommunity.id,
+      metadata: {
+        name: communityName,
+        schoolId: resolvedSchoolId,
+        isPrivate,
+        hasDescription: Boolean(description),
+        hasLogoPath: Boolean(logoPath),
+        ownerMembershipUpserted: membershipUpserted,
+        ...requestContext,
+      },
+    });
+
+    return res.redirect(`/communities/${createdCommunity.id}`);
+  } catch (err) {
+    console.error('CREATE COMMUNITY ERROR:', {
+      userId: sessionUser.id,
+      message: err && err.message ? err.message : 'Unknown create-community error',
+      stack: err && err.stack ? err.stack : null,
+    });
+    if (supabase) {
+      await userActivityLogModel.insertUserActivityLog(supabase, {
+        userId: sessionUser.id,
+        actionType: 'community_create_failed',
+        targetType: 'community',
+        targetId: null,
+        metadata: {
+          attemptedName: communityName,
+          schoolId: sessionUser.schoolId || null,
+          isPrivate,
+          hasLogoPath: Boolean(logoPath),
+          reason: 'unexpected_exception',
+          errorMessage: err && err.message ? err.message : null,
+          ...requestContext,
+        },
+      });
+    }
+    return res.redirect(
+      '/communities/create-community?error=' + encodeURIComponent('Unable to create community right now.')
+    );
+  }
+}
+
+async function showManageCommunity(req, res) {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const [community, profile] = await Promise.all([
+      communityModel.fetchCommunityForManage(supabase, communityId),
+      communityModel.fetchProfileById(supabase, sessionUser.id),
+    ]);
+
+    if (!community) {
+      return res.redirect('/communities');
+    }
+
+    const viewerAccessProfile = buildViewerAccessProfile(profile, sessionUser);
+    const manageAccess = await buildCommunityManageAccess(
+      supabase,
+      viewerAccessProfile,
+      community
+    );
+
+    if (!manageAccess.allowed) {
+      return res.redirect(
+        `/communities/${communityId}?error=${encodeURIComponent(manageAccess.reason)}`
+      );
+    }
+
+    const logoSignedUrl = await communityModel.createSignedImageUrl(
+      supabase,
+      community.logo_bucket || communityModel.DEFAULT_STORAGE_BUCKET,
+      community.logo_path
+    );
+
+    return res.render('manage-community', {
+      communityId: community.id,
+      communityName: community.name || 'Community',
+      communityDescription:
+        typeof community.description === 'string' ? community.description : '',
+      communityVisibility: community.is_private ? 'private' : 'public',
+      logoPath: communityModel.normalizeStoragePath(community.logo_path) || '',
+      logoSignedUrl: logoSignedUrl || '',
+      supabaseUrl: process.env.SUPABASE_URL || '',
+      storageBucket: communityModel.DEFAULT_STORAGE_BUCKET,
+      initialTopics: [],
+      formError: typeof req.query.error === 'string' ? req.query.error : null,
+      formSuccess: typeof req.query.success === 'string' ? req.query.success : null,
+    });
+  } catch (_err) {
+    return res.redirect('/communities');
+  }
+}
+
+async function updateCommunity(req, res) {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+  const { communityName, description, isPrivate, logoPath } = normalizeCreatePayload(req.body);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  if (!communityName) {
+    return res.redirect(
+      `/communities/manage/${communityId}?error=` +
+      encodeURIComponent('Community name is required.')
+    );
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const [community, profile] = await Promise.all([
+      communityModel.fetchCommunityForManage(supabase, communityId),
+      communityModel.fetchProfileById(supabase, sessionUser.id),
+    ]);
+    if (!community) {
+      return res.redirect('/communities');
+    }
+
+    const viewerAccessProfile = buildViewerAccessProfile(profile, sessionUser);
+    const manageAccess = await buildCommunityManageAccess(
+      supabase,
+      viewerAccessProfile,
+      community
+    );
+    if (!manageAccess.allowed) {
+      return res.redirect(
+        `/communities/${communityId}?error=${encodeURIComponent(manageAccess.reason)}`
+      );
+    }
+
+    const updatedCommunity = await communityModel.updateCommunityById(supabase, {
+      communityId,
+      name: communityName,
+      description,
+      isPrivate,
+      logoBucket: communityModel.DEFAULT_STORAGE_BUCKET,
+      logoPath,
+    });
+
+    if (!updatedCommunity) {
+      return res.redirect(
+        `/communities/manage/${communityId}?error=` +
+        encodeURIComponent('Unable to save changes right now.')
+      );
+    }
+
+    return res.redirect(
+      `/communities/manage/${communityId}?success=` +
+      encodeURIComponent('Community updated successfully.')
+    );
+  } catch (_err) {
+    return res.redirect(
+      `/communities/manage/${communityId}?error=` +
+      encodeURIComponent('Unable to save changes right now.')
+    );
+  }
+}
+
+async function deleteCommunity(req, res) {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const [community, profile] = await Promise.all([
+      communityModel.fetchCommunityForManage(supabase, communityId),
+      communityModel.fetchProfileById(supabase, sessionUser.id),
+    ]);
+
+    if (!community) {
+      return res.redirect('/communities');
+    }
+
+    const viewerAccessProfile = buildViewerAccessProfile(profile, sessionUser);
+    const manageAccess = await buildCommunityManageAccess(
+      supabase,
+      viewerAccessProfile,
+      community
+    );
+    if (!manageAccess.allowed) {
+      return res.redirect(
+        `/communities/${communityId}?error=${encodeURIComponent(manageAccess.reason)}`
+      );
+    }
+
+    const cleanupSucceeded = await communityModel.removeCommunityWithDependencies(
+      supabase,
+      communityId
+    );
+    if (!cleanupSucceeded) {
+      return res.redirect(
+        `/communities/manage/${communityId}?error=` +
+        encodeURIComponent('Unable to delete this community right now.')
+      );
+    }
+
+    const deleted = await communityModel.deleteCommunityById(supabase, communityId);
+    if (!deleted) {
+      return res.redirect(
+        `/communities/manage/${communityId}?error=` +
+        encodeURIComponent('Unable to delete this community right now.')
+      );
+    }
+
+    return res.redirect('/communities');
+  } catch (_err) {
+    return res.redirect(
+      `/communities/manage/${communityId}?error=` +
+      encodeURIComponent('Unable to delete this community right now.')
+    );
+  }
+}
+
+async function showCommunityById(req, res) {
+  const sessionUser = req.session.auth.user;
+  const explicitCommunityId = toPositiveInteger(req.params.id);
+
+  if (!explicitCommunityId) {
+    return res.status(404).render('community', {
+      user: buildSessionFallbackUser(sessionUser),
+      community: null,
+      members: [],
+      memberPreview: [],
+      remainingMemberCount: 0,
+      posts: [],
+      notFoundMessage: 'Community not found.',
+      formError: null,
+    });
+  }
+
+  return renderCommunity(req, res, explicitCommunityId);
+}
+
+async function joinCommunity(req, res) {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const access = await fetchCommunitySchoolAccess(supabase, communityId, viewerContext);
+
+    if (!access.exists || !access.allowed) {
+      return res.redirect('/communities');
+    }
+
+    await communityModel.joinCommunity(supabase, sessionUser.id, communityId);
+  } catch (_err) {
+    // Ignore and redirect to destination.
+  }
+
+  const redirectTo = typeof req.body.redirectTo === 'string' && req.body.redirectTo.trim()
+    ? req.body.redirectTo.trim()
+    : fallbackRedirectForCommunity(communityId);
+
+  return res.redirect(redirectTo);
+}
+
+async function leaveCommunity(req, res) {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const access = await fetchCommunitySchoolAccess(supabase, communityId, viewerContext);
+
+    if (!access.exists || !access.allowed) {
+      return res.redirect('/communities');
+    }
+
+    if (access.community.creator_id !== sessionUser.id) {
+      await communityModel.leaveCommunity(supabase, sessionUser.id, communityId);
+    }
+  } catch (_err) {
+    // Ignore and redirect to destination.
+  }
+
+  const redirectTo = typeof req.body.redirectTo === 'string' && req.body.redirectTo.trim()
+    ? req.body.redirectTo.trim()
+    : fallbackRedirectForCommunity(communityId);
+
+  return res.redirect(redirectTo);
+}
+
+async function createCommunityPost(req, res) {
+  const sessionUser = req.session.auth.user;
+  const communityId = toPositiveInteger(req.params.id);
+  const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+  const redirectBase = communityId ? `/communities/${communityId}` : '/communities';
+
+  if (!communityId) {
+    return res.redirect('/communities');
+  }
+
+  if (!content) {
+    return res.redirect(
+      `${redirectBase}?error=${encodeURIComponent('Post content cannot be empty.')}`
+    );
+  }
+
+  if (content.length > 4000) {
+    return res.redirect(
+      `${redirectBase}?error=${encodeURIComponent('Post content is too long (max 4000 characters).')}`
+    );
+  }
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+    const access = await fetchCommunitySchoolAccess(supabase, communityId, viewerContext);
+
+    if (!access.exists || !access.allowed) {
+      return res.redirect('/communities');
+    }
+
+    const postAccess = await communityModel.userCanPostInCommunity(
+      supabase,
+      communityId,
+      sessionUser.id
+    );
+
+    if (!postAccess.exists) {
+      return res.redirect('/communities');
+    }
+
+    if (!postAccess.allowed) {
+      return res.redirect(
+        `${redirectBase}?error=${encodeURIComponent('Join this community before posting.')}`
+      );
+    }
+
+    const created = await communityModel.createCommunityPost(supabase, {
+      authorId: sessionUser.id,
+      communityId,
+      content,
+    });
+
+    if (!created) {
+      return res.redirect(
+        `${redirectBase}?error=${encodeURIComponent('Unable to publish post right now.')}`
+      );
+    }
+
+    return res.redirect(redirectBase);
+  } catch (_err) {
+    return res.redirect(
+      `${redirectBase}?error=${encodeURIComponent('Unable to publish post right now.')}`
+    );
+  }
+}
+
+module.exports = {
+  listCommunities,
+  showCreateCommunity,
+  createCommunity,
+  showManageCommunity,
+  updateCommunity,
+  deleteCommunity,
+  showCommunityById,
+  joinCommunity,
+  leaveCommunity,
+  createCommunityPost,
+};

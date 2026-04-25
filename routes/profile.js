@@ -1,0 +1,556 @@
+var express = require('express');
+var router = express.Router();
+const { requireAuth } = require('../middleware/auth');
+const { createSupabaseAdminClient } = require('../lib/supabase');
+const { wantsJson } = require('../lib/http');
+const {
+  buildInitials,
+  buildProfilePath,
+  buildProfileSlug,
+  formatCreatedAt,
+} = require('../lib/utils');
+const {
+  buildProfileDisplayName,
+  buildAuthorRoleMeta,
+} = require('../lib/profileView');
+const {
+  fetchLikeState,
+  buildCommentCollections,
+} = require('../lib/postEngagement');
+const {
+  fetchViewerSchoolContext,
+  buildSchoolScopeOptions,
+  canAccessProfile,
+} = require('../lib/schoolScope');
+const { resolveProfileMedia, resolveProfileMediaMap } = require('../lib/profileMedia');
+const postModel = require('../models/postModel');
+
+async function fetchProfileById(supabase, userId) {
+  if (!userId) {
+    return { profile: null, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    return { profile: null, error };
+  }
+
+  return { profile: data || null, error: null };
+}
+
+async function fetchSchoolNameById(supabase, schoolId) {
+  if (!schoolId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('schools')
+    .select('id,name')
+    .eq('id', schoolId)
+    .maybeSingle();
+
+  if (error || !data || !data.name) {
+    return null;
+  }
+
+  return data.name;
+}
+
+async function fetchProfilePostsByAuthorId(supabase, authorId) {
+  if (!authorId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id,author_id,content,image_url,is_official,community_id,course_id,created_at,is_deleted')
+    .eq('author_id', authorId)
+    .eq('is_deleted', false)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data;
+}
+
+async function fetchMembershipCollections(supabase, profileId, scopeOptions) {
+  const [courseEnrollmentResult, communityMembershipResult] = await Promise.all([
+    supabase
+      .from('course_enrollments')
+      .select('course_id')
+      .eq('user_id', profileId),
+    supabase
+      .from('community_members')
+      .select('community_id')
+      .eq('user_id', profileId),
+  ]);
+
+  const courseIds = [...new Set(
+    (courseEnrollmentResult.data || [])
+      .map((row) => row.course_id)
+      .filter(Boolean)
+  )];
+  const communityIds = [...new Set(
+    (communityMembershipResult.data || [])
+      .map((row) => row.community_id)
+      .filter(Boolean)
+  )];
+
+  const [courseRows, communityRows] = await Promise.all([
+    postModel.fetchCoursesByIds(supabase, courseIds, scopeOptions),
+    postModel.fetchCommunitiesByIds(supabase, communityIds, scopeOptions),
+  ]);
+
+  const courses = (courseRows || [])
+    .map((row) => ({
+      id: row.id,
+      name: row.name || 'Untitled Course',
+      href: `/courses/${row.id}`,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, 'en', { sensitivity: 'base' }));
+
+  const communities = (communityRows || [])
+    .map((row) => ({
+      id: row.id,
+      name: row.name || 'Untitled Community',
+      href: `/communities/${row.id}`,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, 'en', { sensitivity: 'base' }));
+
+  return { courses, communities };
+}
+
+async function fetchFollowState(supabase, viewerId, viewedProfileId, scopeOptions) {
+  const followersResult = await supabase
+    .from('followers')
+    .select('follower_id')
+    .eq('following_id', viewedProfileId);
+  const followerIds = Array.isArray(followersResult.data)
+    ? followersResult.data.map((row) => row.follower_id).filter(Boolean)
+    : [];
+  const followerProfiles = await postModel.fetchProfilesByIds(supabase, followerIds, scopeOptions);
+  const visibleFollowerIds = new Set(followerProfiles.map((profile) => profile.id));
+  const followersCount = followerIds.filter((id) => visibleFollowerIds.has(id)).length;
+
+  if (!viewerId || !viewedProfileId || viewerId === viewedProfileId) {
+    return {
+      isFollowing: false,
+      followersCount,
+    };
+  }
+
+  const existingFollowResult = await supabase
+    .from('followers')
+    .select('follower_id,following_id')
+    .eq('follower_id', viewerId)
+    .eq('following_id', viewedProfileId)
+    .maybeSingle();
+
+  return {
+    isFollowing: Boolean(existingFollowResult.data),
+    followersCount,
+  };
+}
+
+async function fetchFollowersList(supabase, viewedProfileId, scopeOptions) {
+  const { data, error } = await supabase
+    .from('followers')
+    .select('follower_id')
+    .eq('following_id', viewedProfileId);
+
+  if (error || !Array.isArray(data) || data.length === 0) {
+    return [];
+  }
+
+  const followerIds = [...new Set(
+    data
+      .map((row) => row.follower_id)
+      .filter(Boolean)
+  )];
+  if (followerIds.length === 0) {
+    return [];
+  }
+
+  const followerProfiles = await postModel.fetchProfilesByIds(supabase, followerIds, scopeOptions);
+  const followerProfileById = new Map(followerProfiles.map((profile) => [profile.id, profile]));
+  const followerMediaById = await resolveProfileMediaMap(supabase, followerProfiles);
+
+  return followerIds
+    .map((followerId) => {
+      const follower = followerProfileById.get(followerId);
+      if (!follower) {
+        return null;
+      }
+
+      const followerEmail = follower.email || '';
+      const media = followerMediaById.get(followerId);
+      return {
+        id: follower.id,
+        name: buildProfileDisplayName(follower),
+        initials: buildInitials(follower.first_name, follower.last_name, followerEmail),
+        avatarUrl: media && media.avatarUrl ? media.avatarUrl : null,
+        href: buildProfilePath(follower.id, follower.first_name, follower.last_name),
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.name.localeCompare(right.name, 'en', { sensitivity: 'base' }));
+}
+
+function renderProfileNotFound(req, res) {
+  return res.status(404).render('error', {
+    message: 'Profile not found.',
+    error: req.app.get('env') === 'development' ? new Error('Profile not found.') : {},
+  });
+}
+
+async function buildLikeState(supabase, postIds, viewerUserId) {
+  return fetchLikeState({
+    postIds,
+    userId: viewerUserId,
+    fetchLikeRows: (ids) => postModel.fetchLikeRowsByPostIds(supabase, ids),
+    fetchUserLikeRows: (ids, userId) =>
+      postModel.fetchUserLikeRowsByPostIds(supabase, ids, userId),
+    skipUserLikesWithoutUserId: true,
+  });
+}
+
+async function buildCommentState(supabase, postIds, scopeOptions) {
+  if (!Array.isArray(postIds) || postIds.length === 0) {
+    return buildCommentCollections();
+  }
+
+  const { comments, error } = await postModel.fetchCommentsByPostIds(
+    supabase,
+    postIds,
+    scopeOptions
+  );
+  if (error) {
+    return buildCommentCollections();
+  }
+
+  const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))];
+  const profiles = await postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions);
+  const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
+  return buildCommentCollections({
+    comments,
+    profiles,
+    profileMediaById,
+    formatDateLabel: formatCreatedAt,
+    skipUnknownAuthors: true,
+  });
+}
+
+async function buildPostsViewModel(supabase, postRows, viewerUserId, scopeOptions) {
+  if (!Array.isArray(postRows) || postRows.length === 0) {
+    return [];
+  }
+
+  const postIds = postRows.map((post) => post.id).filter(Boolean);
+  const authorIds = [...new Set(postRows.map((post) => post.author_id).filter(Boolean))];
+  const courseIds = [...new Set(postRows.map((post) => post.course_id).filter(Boolean))];
+  const communityIds = [...new Set(postRows.map((post) => post.community_id).filter(Boolean))];
+
+  const [profiles, courses, communities, likeState, commentState] = await Promise.all([
+    postModel.fetchProfilesByIds(supabase, authorIds, scopeOptions),
+    postModel.fetchCoursesByIds(supabase, courseIds, scopeOptions),
+    postModel.fetchCommunitiesByIds(supabase, communityIds, scopeOptions),
+    buildLikeState(supabase, postIds, viewerUserId),
+    buildCommentState(supabase, postIds, scopeOptions),
+  ]);
+  const profileById = new Map(profiles.map((row) => [row.id, row]));
+  const courseById = new Map(courses.map((row) => [row.id, row]));
+  const communityById = new Map(communities.map((row) => [row.id, row]));
+  const profileMediaById = await resolveProfileMediaMap(supabase, profiles);
+
+  return postRows
+    .filter((post) => {
+      if (!profileById.has(post.author_id)) {
+        return false;
+      }
+      if (post.course_id && !courseById.has(post.course_id)) {
+        return false;
+      }
+      if (post.community_id && !communityById.has(post.community_id)) {
+        return false;
+      }
+      return true;
+    })
+    .map((post) => {
+    const author = profileById.get(post.author_id);
+    const authorEmail = author && author.email ? author.email : '';
+    const authorMedia = profileMediaById.get(post.author_id);
+    const roleMeta = buildAuthorRoleMeta(author && author.role);
+    const course = courseById.get(post.course_id);
+    const community = communityById.get(post.community_id);
+    let scopeLabel = 'General';
+    let scopeHref = '/feed';
+
+    if (community) {
+      scopeLabel = community.name || 'Community';
+      scopeHref = `/communities/${community.id}`;
+    } else if (course) {
+      scopeLabel = course.name || 'Course';
+      scopeHref = `/courses/${course.id}`;
+    }
+
+    return {
+      id: post.id,
+      authorId: post.author_id,
+      authorProfileHref: buildProfilePath(
+        post.author_id,
+        author && author.first_name,
+        author && author.last_name
+      ),
+      authorName: buildProfileDisplayName(author),
+      authorRole: roleMeta.normalizedRole,
+      authorRoleLabel: roleMeta.roleLabel,
+      authorInitials: buildInitials(
+        author && author.first_name,
+        author && author.last_name,
+        authorEmail
+      ),
+      authorAvatarUrl: authorMedia && authorMedia.avatarUrl ? authorMedia.avatarUrl : null,
+      createdAtLabel: formatCreatedAt(post.created_at),
+      scopeLabel,
+      scopeHref,
+      content: post.content,
+      imageUrl: post.image_url || null,
+      likeCount: likeState.likeCountByPostId.get(post.id) || 0,
+      liked: likeState.likedPostIds.has(post.id),
+      commentCount: commentState.commentCountByPostId.get(post.id) || 0,
+      comments: commentState.commentsByPostId.get(post.id) || [],
+    };
+    });
+}
+
+function shouldRedirectToCanonicalProfile(options, canonicalSlug) {
+  const requestedSlug = typeof options.requestedSlug === 'string'
+    ? options.requestedSlug.trim().toLowerCase()
+    : '';
+  return Boolean(options.forceCanonicalRedirect) || requestedSlug !== canonicalSlug;
+}
+
+function buildProfileWithSessionFallbacks(profile, sessionUser) {
+  const profileWithFallbacks = { ...profile };
+  if (profile.id === sessionUser.id && !profileWithFallbacks.email) {
+    profileWithFallbacks.email = sessionUser.email || null;
+  }
+  return profileWithFallbacks;
+}
+
+async function buildProfileRenderData(supabase, profile, sessionUser, scopeOptions) {
+  const [media, schoolName, membershipData, postRows, followState, followers] = await Promise.all([
+    resolveProfileMedia(supabase, profile),
+    fetchSchoolNameById(supabase, profile.school_id),
+    fetchMembershipCollections(supabase, profile.id, scopeOptions),
+    fetchProfilePostsByAuthorId(supabase, profile.id),
+    fetchFollowState(supabase, sessionUser.id, profile.id, scopeOptions),
+    fetchFollowersList(supabase, profile.id, scopeOptions),
+  ]);
+  const posts = await buildPostsViewModel(supabase, postRows, sessionUser.id, scopeOptions);
+
+  return {
+    media,
+    schoolName,
+    membershipData,
+    followState,
+    followers,
+    posts,
+  };
+}
+
+async function renderProfileByUserId(req, res, userId, options = {}) {
+  const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+  if (!normalizedUserId) {
+    return renderProfileNotFound(req, res);
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { profile, error } = await fetchProfileById(supabase, normalizedUserId);
+
+  if (error) {
+    return res.status(500).render('error', {
+      message: 'Unable to load profile.',
+      error: req.app.get('env') === 'development' ? error : {},
+    });
+  }
+
+  if (!profile) {
+    return renderProfileNotFound(req, res);
+  }
+
+  const sessionUser = req.session.auth.user;
+  const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+  if (!canAccessProfile(viewerContext, profile)) {
+    return renderProfileNotFound(req, res);
+  }
+  const scopeOptions = buildSchoolScopeOptions(viewerContext);
+
+  const canonicalPath = buildProfilePath(profile.id, profile.first_name, profile.last_name);
+  const canonicalSlug = buildProfileSlug(profile.first_name, profile.last_name);
+  if (shouldRedirectToCanonicalProfile(options, canonicalSlug)) {
+    return res.redirect(canonicalPath);
+  }
+
+  const isOwnProfile = profile.id === sessionUser.id;
+  const profileWithFallbacks = buildProfileWithSessionFallbacks(profile, sessionUser);
+  const renderData = await buildProfileRenderData(
+    supabase,
+    profileWithFallbacks,
+    sessionUser,
+    scopeOptions
+  );
+
+  return res.render('profile', {
+    user: sessionUser,
+    currentUser: sessionUser,
+    profile: profileWithFallbacks,
+    profileAvatarUrl: renderData.media.avatarUrl,
+    profileBannerUrl: renderData.media.bannerUrl,
+    profileSchoolName: renderData.schoolName || 'Washington State University',
+    isOwnProfile,
+    isFollowing: renderData.followState.isFollowing,
+    counts: {
+      posts: renderData.posts.length,
+      courses: renderData.membershipData.courses.length,
+      communities: renderData.membershipData.communities.length,
+      followers: renderData.followState.followersCount,
+    },
+    courses: renderData.membershipData.courses,
+    communities: renderData.membershipData.communities,
+    followers: renderData.followers,
+    posts: renderData.posts,
+  });
+}
+
+router.post('/:userId/follow', requireAuth, async (req, res) => {
+  const targetUserId = typeof req.params.userId === 'string' ? req.params.userId.trim() : '';
+  const sessionUser = req.session.auth.user;
+  const viewerUserId = sessionUser.id;
+
+  if (!targetUserId) {
+    if (wantsJson(req)) {
+      return res.status(400).json({ error: 'Invalid user id.' });
+    }
+    return res.redirect('/profile');
+  }
+
+  if (targetUserId === viewerUserId) {
+    if (wantsJson(req)) {
+      return res.status(400).json({ error: 'You cannot follow yourself.' });
+    }
+    return res.redirect('/profile');
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const viewerContext = await fetchViewerSchoolContext(supabase, sessionUser);
+  const scopeOptions = buildSchoolScopeOptions(viewerContext);
+  const targetProfileResult = await fetchProfileById(supabase, targetUserId);
+  if (!targetProfileResult.profile) {
+    if (wantsJson(req)) {
+      return res.status(404).json({ error: 'Profile not found.' });
+    }
+    return res.redirect('/profile');
+  }
+  if (!canAccessProfile(viewerContext, targetProfileResult.profile)) {
+    if (wantsJson(req)) {
+      return res.status(404).json({ error: 'Profile not found.' });
+    }
+    return res.redirect('/profile');
+  }
+
+  const existingFollowResult = await supabase
+    .from('followers')
+    .select('follower_id,following_id')
+    .eq('follower_id', viewerUserId)
+    .eq('following_id', targetUserId)
+    .maybeSingle();
+
+  if (existingFollowResult.error) {
+    if (wantsJson(req)) {
+      return res.status(500).json({ error: 'Unable to update follow state.' });
+    }
+    return res.redirect(buildProfilePath(targetUserId, targetProfileResult.profile.first_name, targetProfileResult.profile.last_name));
+  }
+
+  let nextFollowingState = false;
+
+  if (existingFollowResult.data) {
+    const deleteResult = await supabase
+      .from('followers')
+      .delete()
+      .eq('follower_id', viewerUserId)
+      .eq('following_id', targetUserId);
+
+    if (deleteResult.error) {
+      if (wantsJson(req)) {
+        return res.status(500).json({ error: 'Unable to update follow state.' });
+      }
+      return res.redirect(buildProfilePath(targetUserId, targetProfileResult.profile.first_name, targetProfileResult.profile.last_name));
+    }
+  } else {
+    const insertResult = await supabase
+      .from('followers')
+      .insert({ follower_id: viewerUserId, following_id: targetUserId });
+
+    if (insertResult.error) {
+      if (wantsJson(req)) {
+        return res.status(500).json({ error: 'Unable to update follow state.' });
+      }
+      return res.redirect(buildProfilePath(targetUserId, targetProfileResult.profile.first_name, targetProfileResult.profile.last_name));
+    }
+
+    nextFollowingState = true;
+  }
+
+  const followState = await fetchFollowState(
+    supabase,
+    viewerUserId,
+    targetUserId,
+    scopeOptions
+  );
+  const followersCount = followState.followersCount;
+
+  if (wantsJson(req)) {
+    return res.json({
+      ok: true,
+      isFollowing: nextFollowingState,
+      followersCount,
+      connectionsCount: followersCount,
+    });
+  }
+
+  return res.redirect(buildProfilePath(
+    targetUserId,
+    targetProfileResult.profile.first_name,
+    targetProfileResult.profile.last_name
+  ));
+});
+
+router.get('/', requireAuth, async (req, res) => {
+  const sessionUserId = req.session.auth.user.id;
+  return renderProfileByUserId(req, res, sessionUserId, {
+    forceCanonicalRedirect: true,
+  });
+});
+
+router.get('/:userId', requireAuth, async (req, res) => {
+  return renderProfileByUserId(req, res, req.params.userId, {
+    forceCanonicalRedirect: true,
+  });
+});
+
+router.get('/:userId/:nameSlug', requireAuth, async (req, res) => {
+  return renderProfileByUserId(req, res, req.params.userId, {
+    requestedSlug: req.params.nameSlug,
+  });
+});
+
+module.exports = router;

@@ -1,0 +1,396 @@
+<div class="post-card" data-post-id="<%= post.id %>">
+  <% const postComments = Array.isArray(post.comments) ? post.comments : []; %>
+  <% const latestComment = postComments.length > 0 ? postComments[postComments.length - 1] : null; %>
+  <% const showExpandedComments = Boolean(typeof expandComments !== 'undefined' ? expandComments : false); %>
+  <% const currentUser = locals.user || {}; %>
+  <% const currentUserRole = typeof currentUser.role === 'string' ? currentUser.role.trim().toLowerCase() : ''; %>
+  <% const isOwner = currentUser.id && post.authorId === currentUser.id; %>
+  <% const isAdmin = currentUserRole === 'admin'; %>
+  <% const postAuthorHref = post.authorProfileHref || '/profile'; %>
+  <% const postAuthorRole = typeof post.authorRole === 'string' ? post.authorRole.trim().toLowerCase() : ''; %>
+  <% const postAuthorRoleLabel = typeof post.authorRoleLabel === 'string' ? post.authorRoleLabel.trim() : ''; %>
+  <% const likeCountValue = Number(post.likeCount) || 0; %>
+  <% const commentCountValue = Number(post.commentCount) || 0; %>
+  <% const hasLikeCount = likeCountValue > 0; %>
+  <% const hasCommentCount = commentCountValue > 0; %>
+
+  <div class="post-actions">
+    <button
+      class="post-action-btn like-btn js-like-btn <%= post.liked ? 'active' : '' %> <%= hasLikeCount ? 'has-count' : '' %>"
+      title="Like"
+      data-post-id="<%= post.id %>"
+      data-liked="<%= post.liked ? 'true' : 'false' %>"
+      aria-pressed="<%= post.liked ? 'true' : 'false' %>"
+    >
+      👍 <span class="like-count <%= hasLikeCount ? '' : 'is-hidden' %>"><%= likeCountValue %></span>
+    </button>
+    <button class="post-action-btn comment-btn js-comment-toggle <%= hasCommentCount ? 'has-count' : '' %>" title="Comment" type="button" data-post-id="<%= post.id %>">
+      💬 <span class="comment-count <%= hasCommentCount ? '' : 'is-hidden' %>"><%= commentCountValue %></span>
+    </button>
+    <div class="post-menu">
+      <button
+        class="post-action-btn post-menu-toggle js-post-menu-toggle"
+        type="button"
+        title="More actions"
+        aria-haspopup="true"
+        aria-expanded="false"
+        data-post-id="<%= post.id %>"
+      >⋯</button>
+      <div class="post-menu-list" data-post-id="<%= post.id %>" hidden>
+        <button class="post-menu-item js-report-btn" type="button" data-post-id="<%= post.id %>">
+          <span class="post-menu-emoji" aria-hidden="true">🚩</span>
+          <span>Report</span>
+        </button>
+        <% if (isOwner || isAdmin) { %>
+          <button class="post-menu-item is-danger js-delete-btn" type="button" data-post-id="<%= post.id %>">
+            <span class="post-menu-emoji" aria-hidden="true">🗑️</span>
+            <span>Delete</span>
+          </button>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="post-author">
+    <div class="post-avatar-initials">
+      <% if (post.authorAvatarUrl) { %>
+        <img src="<%= post.authorAvatarUrl %>" alt="<%= post.authorName %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+      <% } else { %>
+        <%= post.authorInitials %>
+      <% } %>
+    </div>
+    <div class="post-author-info">
+      <div class="post-author-name-row">
+        <span class="post-author-name"><a href="<%= postAuthorHref %>"><%= post.authorName %></a></span>
+        <% if (postAuthorRoleLabel) { %>
+          <span class="post-author-role-pill <%= postAuthorRole === 'admin' ? 'is-admin' : 'is-official' %>"><%= postAuthorRoleLabel %></span>
+        <% } %>
+      </div>
+      <span class="post-meta"><a href="/post/<%= post.id %>"><%= post.createdAtLabel %></a></span>
+      <span class="post-community"><a href="<%= post.scopeHref %>"><%= post.scopeLabel %></a></span>
+    </div>
+  </div>
+
+  <div class="post-body"><%= post.content %></div>
+
+  <% if (post.imageUrl) { %>
+    <div class="post-image">
+      <button
+        class="post-image-button js-post-image-trigger"
+        type="button"
+        data-image-url="<%= post.imageUrl %>"
+        aria-label="View image larger"
+      >
+        <img class="post-image-media" src="<%= post.imageUrl %>" alt="Post image" loading="lazy"/>
+      </button>
+    </div>
+  <% } %>
+
+  <% if (latestComment && !showExpandedComments) { %>
+    <div class="post-comment-preview" data-post-id="<%= post.id %>">
+      <div class="post-comment post-comment-preview-item">
+        <div class="post-comment-avatar">
+          <% if (latestComment.authorAvatarUrl) { %>
+            <img src="<%= latestComment.authorAvatarUrl %>" alt="<%= latestComment.authorName %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+          <% } else { %>
+            <%= latestComment.authorInitials %>
+          <% } %>
+        </div>
+        <div class="post-comment-body">
+          <div class="post-comment-preview-copy">
+            <span class="post-comment-preview-copy-inner">
+              <strong class="post-comment-preview-name"><%= latestComment.authorName %></strong>
+              <span class="post-comment-text post-comment-preview-text"><%= latestComment.content %></span>
+            </span>
+            <button class="post-comment-show-more js-comment-expand" type="button" data-post-id="<%= post.id %>">Show more</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="post-comments" data-post-id="<%= post.id %>" <%= showExpandedComments ? '' : 'hidden' %>>
+    <div class="post-comment-list">
+      <% postComments.forEach((comment) => { %>
+        <div class="post-comment" data-comment-id="<%= comment.id %>">
+          <div class="post-comment-avatar">
+            <% if (comment.authorAvatarUrl) { %>
+              <img src="<%= comment.authorAvatarUrl %>" alt="<%= comment.authorName %> profile photo" loading="lazy" referrerpolicy="no-referrer" />
+            <% } else { %>
+              <%= comment.authorInitials %>
+            <% } %>
+          </div>
+          <div class="post-comment-body">
+            <div class="post-comment-meta">
+              <strong><%= comment.authorName %></strong>
+              <span><%= comment.createdAtLabel %></span>
+            </div>
+            <div class="post-comment-text"><%= comment.content %></div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <form class="post-comment-form js-comment-form" method="post" action="/feed/posts/<%= post.id %>/comments" data-post-id="<%= post.id %>">
+      <textarea class="post-comment-input" name="content" rows="2" maxlength="2000" placeholder="Write a comment..."></textarea>
+      <div class="post-comment-form-actions">
+        <button class="post-comment-submit" type="submit">Comment</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Report modal -->
+  <div class="report-modal" id="report-modal-<%= post.id %>" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:14px; padding:1.5rem; max-width:420px; width:90%;">
+      <h3 style="margin-bottom:1rem;">Report Post</h3>
+      <textarea id="report-reason-<%= post.id %>" maxlength="250" rows="3" placeholder="Describe the reason for reporting..." style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid var(--border); margin-bottom:1rem;"></textarea>
+      <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+        <button onclick="closeReport('<%= post.id %>')" style="padding:0.5rem 1rem; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer;">Cancel</button>
+        <button onclick="submitReport('<%= post.id %>')" style="padding:0.5rem 1rem; border-radius:8px; border:none; background:var(--navy); color:white; cursor:pointer;">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (!window.__postCardSharedBindings) {
+    window.__postCardSharedBindings = true;
+
+    function ensureImageLightbox() {
+      let lightbox = document.getElementById('post-image-lightbox');
+      if (lightbox) return lightbox;
+
+      lightbox = document.createElement('div');
+      lightbox.id = 'post-image-lightbox';
+      lightbox.className = 'post-image-lightbox';
+      lightbox.hidden = true;
+      lightbox.innerHTML = `
+        <div class="post-image-lightbox-dialog" role="dialog" aria-modal="true" aria-label="Image preview">
+          <button type="button" class="post-image-lightbox-close js-post-image-close" aria-label="Close image preview">×</button>
+          <img class="post-image-lightbox-image" alt="Expanded post image" />
+        </div>
+      `;
+      document.body.appendChild(lightbox);
+      return lightbox;
+    }
+
+    window.openPostImage = function openPostImage(imageUrl) {
+      if (!imageUrl) return;
+
+      const lightbox = ensureImageLightbox();
+      const img = lightbox.querySelector('.post-image-lightbox-image');
+      if (!img) return;
+
+      img.src = imageUrl;
+      lightbox.hidden = false;
+      document.body.style.overflow = 'hidden';
+    };
+
+    window.closePostImage = function closePostImage() {
+      const lightbox = document.getElementById('post-image-lightbox');
+      if (!lightbox) return;
+
+      const img = lightbox.querySelector('.post-image-lightbox-image');
+      if (img) img.src = '';
+      lightbox.hidden = true;
+      document.body.style.overflow = '';
+    };
+
+    function ensureNoticeStack() {
+      let stack = document.getElementById('ui-notice-stack');
+      if (stack) return stack;
+
+      stack = document.createElement('div');
+      stack.id = 'ui-notice-stack';
+      stack.className = 'ui-notice-stack';
+      document.body.appendChild(stack);
+      return stack;
+    }
+
+    window.showUiNotice = function showUiNotice(message, variant) {
+      const stack = ensureNoticeStack();
+      const notice = document.createElement('div');
+      const typeClass = variant === 'success' ? 'ui-notice-success' : 'ui-notice-error';
+      notice.className = `ui-notice ${typeClass}`;
+      notice.textContent = message || 'Something went wrong.';
+      stack.appendChild(notice);
+
+      window.setTimeout(() => {
+        if (notice.parentNode) notice.parentNode.removeChild(notice);
+      }, 3200);
+    };
+
+    function ensureConfirmOverlay() {
+      let overlay = document.getElementById('ui-confirm-overlay');
+      if (overlay) return overlay;
+
+      overlay = document.createElement('div');
+      overlay.id = 'ui-confirm-overlay';
+      overlay.className = 'ui-confirm-overlay';
+      overlay.hidden = true;
+      overlay.innerHTML = `
+        <div class="ui-confirm-dialog" role="dialog" aria-modal="true" aria-label="Confirm action">
+          <div class="ui-confirm-title">Please confirm</div>
+          <div class="ui-confirm-message js-ui-confirm-message"></div>
+          <div class="ui-confirm-actions">
+            <button type="button" class="ui-confirm-btn ui-confirm-btn-cancel js-ui-confirm-cancel">Cancel</button>
+            <button type="button" class="ui-confirm-btn ui-confirm-btn-confirm js-ui-confirm-confirm">Confirm</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      return overlay;
+    }
+
+    window.confirmUi = function confirmUi(message) {
+      const overlay = ensureConfirmOverlay();
+      const messageNode = overlay.querySelector('.js-ui-confirm-message');
+      const cancelBtn = overlay.querySelector('.js-ui-confirm-cancel');
+      const confirmBtn = overlay.querySelector('.js-ui-confirm-confirm');
+
+      if (messageNode) {
+        messageNode.textContent = message || 'Are you sure?';
+      }
+
+      return new Promise((resolve) => {
+        const close = (value) => {
+          overlay.hidden = true;
+          overlay.onclick = null;
+          if (cancelBtn) cancelBtn.onclick = null;
+          if (confirmBtn) confirmBtn.onclick = null;
+          resolve(value);
+        };
+
+        overlay.hidden = false;
+        overlay.onclick = (event) => {
+          if (event.target === overlay) close(false);
+        };
+        if (cancelBtn) cancelBtn.onclick = () => close(false);
+        if (confirmBtn) confirmBtn.onclick = () => close(true);
+      });
+    };
+
+    window.closeReport = function closeReport(postId) {
+      const modal = document.getElementById('report-modal-' + postId);
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.submitReport = async function submitReport(postId) {
+      const reasonNode = document.getElementById('report-reason-' + postId);
+      const reason = reasonNode ? reasonNode.value.trim() : '';
+      if (!reason) {
+        window.showUiNotice('Please enter a reason.', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/feed/posts/' + postId + '/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
+        });
+
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload.error || 'Unable to submit report.');
+        }
+
+        window.closeReport(postId);
+        if (reasonNode) reasonNode.value = '';
+      } catch (_) {
+        window.showUiNotice(_.message || 'Unable to submit report.', 'error');
+      }
+    };
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        window.closePostImage();
+        document.querySelectorAll('.post-menu-list').forEach((menu) => {
+          menu.hidden = true;
+        });
+        document.querySelectorAll('.js-post-menu-toggle').forEach((toggle) => {
+          toggle.setAttribute('aria-expanded', 'false');
+        });
+      }
+    });
+
+    function closeAllPostMenus() {
+      document.querySelectorAll('.post-menu-list').forEach((menu) => {
+        menu.hidden = true;
+      });
+      document.querySelectorAll('.js-post-menu-toggle').forEach((toggle) => {
+        toggle.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    document.addEventListener('click', async (e) => {
+      const menuToggle = e.target.closest('.js-post-menu-toggle');
+      if (menuToggle) {
+        const postId = menuToggle.dataset.postId || '';
+        const menu = document.querySelector(`.post-menu-list[data-post-id="${postId}"]`);
+        const isExpanded = menuToggle.getAttribute('aria-expanded') === 'true';
+        closeAllPostMenus();
+        if (menu && !isExpanded) {
+          menu.hidden = false;
+          menuToggle.setAttribute('aria-expanded', 'true');
+        }
+        return;
+      }
+
+      if (!e.target.closest('.post-menu')) {
+        closeAllPostMenus();
+      }
+
+      const imageTrigger = e.target.closest('.js-post-image-trigger');
+      if (imageTrigger) {
+        const imageUrl = imageTrigger.dataset.imageUrl || '';
+        window.openPostImage(imageUrl);
+        return;
+      }
+
+      const lightbox = e.target.closest('#post-image-lightbox');
+      if (lightbox) {
+        if (e.target === lightbox || e.target.closest('.js-post-image-close')) {
+          window.closePostImage();
+        }
+        return;
+      }
+
+      const reportBtn = e.target.closest('.js-report-btn');
+      if (reportBtn) {
+        closeAllPostMenus();
+        const postId = reportBtn.dataset.postId;
+        const modal = document.getElementById('report-modal-' + postId);
+        if (modal) {
+          if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+          }
+          modal.style.display = 'flex';
+        }
+      }
+
+      const deleteBtn = e.target.closest('.js-delete-btn');
+      if (deleteBtn) {
+        closeAllPostMenus();
+        const postId = deleteBtn.dataset.postId;
+        const confirmed = await window.confirmUi('Delete this post?');
+        if (!confirmed) return;
+
+        try {
+          const res = await fetch('/feed/posts/' + postId, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json' },
+          });
+          if (res.ok) {
+            const card = deleteBtn.closest('.post-card');
+            if (card) card.remove();
+          } else {
+            window.showUiNotice('Unable to delete post.', 'error');
+          }
+        } catch (_) {
+          window.showUiNotice('Unable to delete post.', 'error');
+        }
+      }
+    });
+  }
+</script>

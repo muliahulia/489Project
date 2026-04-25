@@ -1,0 +1,40 @@
+<%
+  const currentPage = typeof activePage !== 'undefined' ? activePage : '';
+  const userRole = currentUser && typeof currentUser.role === 'string' ? currentUser.role.trim().toLowerCase() : '';
+  const roleAllowsAdministrative = userRole === 'admin';
+  const canCreateCourses = userRole === 'official';
+  const hasAdministrative = typeof showAdministrative !== 'undefined'
+    ? showAdministrative
+    : roleAllowsAdministrative || canCreateCourses;
+  const schoolHref = typeof schoolModerationHref !== 'undefined' ? schoolModerationHref : '/moderation/school';
+  const schoolLabel = typeof schoolModerationLabel !== 'undefined' ? schoolModerationLabel : 'Schools';
+  const canViewSchoolsOption = roleAllowsAdministrative;
+%>
+
+<aside class="sidebar">
+  <div class="sidebar-label">Main</div>
+  <a href="/dashboard" class="<%= currentPage === 'dashboard' ? 'active' : '' %>">🏠 Home</a>
+  <a href="/feed" class="<%= currentPage === 'feed' ? 'active' : '' %>">📰 Feed</a>
+  <a href="/communities" class="<%= currentPage === 'communities' ? 'active' : '' %>">👥 Communities</a>
+  <a href="/courses" class="<%= currentPage === 'courses' ? 'active' : '' %>">📚 Courses</a>
+
+  <% if (hasAdministrative) { %>
+    <div class="sidebar-label">Administrative</div>
+    <% if (canCreateCourses) { %>
+      <a href="/courses/create" class="<%= currentPage === 'createCourse' ? 'active' : '' %>">➕ Create Course</a>
+    <% } %>
+    <% if (roleAllowsAdministrative) { %>
+      <a href="/admin/dashboard" class="<%= currentPage === 'adminDashboard' ? 'active' : '' %>">📊 Dashboard</a>
+      <a href="/admin/users" class="<%= currentPage === 'adminUsers' ? 'active' : '' %>">👥 Users</a>
+      <a href="/admin/reports" class="<%= currentPage === 'reportDashboard' ? 'active' : '' %>">🚩 Reports</a>
+      <% if (canViewSchoolsOption) { %>
+        <a href="<%= schoolHref %>" class="<%= currentPage === 'schoolModeration' ? 'active' : '' %>">🏫 <%= schoolLabel %></a>
+      <% } %>
+    <% } %>
+  <% } %>
+
+  <div class="sidebar-label">Account</div>
+  <a href="/profile" class="<%= currentPage === 'profile' ? 'active' : '' %>">👤 Profile</a>
+  <a href="/settings" class="<%= currentPage === 'settings' ? 'active' : '' %>">⚙️ Settings</a>
+  <a href="/login">🚪 Log Out</a>
+</aside>

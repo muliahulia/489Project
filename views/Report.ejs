@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UniConnect — Report Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/stylesheets/style.css"/>
+<style>
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .detail-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .field-label {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+    display: block;
+  }
+
+  .field-value,
+  .field-textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.65rem 0.75rem;
+    color: var(--text-dark);
+    min-height: 42px;
+    font: inherit;
+  }
+
+  .field-value.readonly {
+    background: #f8fafc;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .field-textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .status-message {
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .status-message.success {
+    border: 1px solid #bfe6cf;
+    background: #f3fbf7;
+    color: #1d6a43;
+  }
+
+  .status-message.error {
+    border: 1px solid #f0c7c7;
+    background: #fff7f7;
+    color: #8f2f2f;
+  }
+
+  .moderation-actions {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem;
+    background: #fff;
+    margin-top: 1rem;
+  }
+
+  .moderation-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .moderation-checkbox:last-child {
+    margin-bottom: 0;
+  }
+
+  .action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .decision-actions {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .btn-resolve {
+    background: #1f8a4c;
+    border-color: #1f8a4c;
+    color: #fff;
+  }
+
+  .btn-resolve:hover {
+    background: #18703d;
+    border-color: #18703d;
+  }
+
+  .btn-reject {
+    background: #c0392b;
+    border-color: #c0392b;
+    color: #fff;
+  }
+
+  .btn-reject:hover {
+    background: #a33124;
+    border-color: #a33124;
+  }
+
+  .helper-text {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.45rem;
+  }
+</style>
+</head>
+<body>
+
+<%- include('header', { initials: currentUser && currentUser.initials ? currentUser.initials : 'JS' }) %>
+
+<div class="layout">
+  <%- include('sidebar', { activePage: 'reportDashboard', showAdministrative: true }) %>
+
+  <main class="main main-pad main-contained">
+    <% const detail = report || {}; %>
+    <% const createdText = detail.createdAt ? new Date(detail.createdAt).toLocaleString('en-US') : 'Unknown'; %>
+
+    <div class="card">
+      <div class="card-title">Report Detail</div>
+
+      <% if (saveSuccess) { %>
+        <div class="status-message success">Moderation update saved.</div>
+      <% } %>
+      <% if (saveError) { %>
+        <div class="status-message error"><%= saveError %></div>
+      <% } %>
+
+      <form method="post" action="/admin/reports/<%= detail.reportTypeSlug || '' %>/<%= detail.id %>">
+        <input type="hidden" name="decision" id="decisionInput" value="resolved" />
+
+        <div class="detail-grid">
+          <div>
+            <span class="field-label">Report Type</span>
+            <div class="field-value readonly"><%= detail.reportType || 'Unknown' %></div>
+          </div>
+          <div>
+            <span class="field-label">Created</span>
+            <div class="field-value readonly"><%= createdText %></div>
+          </div>
+          <div>
+            <span class="field-label">Reported By</span>
+            <div class="field-value readonly"><%= detail.reporter || 'Unknown User' %></div>
+          </div>
+          <div>
+            <span class="field-label">Reported</span>
+            <div class="field-value readonly"><%= detail.reported || 'Unknown User' %></div>
+          </div>
+        </div>
+
+        <% if (detail.contentLabel) { %>
+          <div style="margin-bottom: 1rem;">
+            <span class="field-label">Reported Content</span>
+            <div class="field-value readonly"><%= detail.contentLabel %></div>
+          </div>
+        <% } %>
+
+        <div style="margin-bottom: 1rem;">
+          <span class="field-label">Reason</span>
+          <div class="field-value readonly"><%= detail.reason || 'No reason provided' %></div>
+        </div>
+
+        <div>
+          <span class="field-label">Admin Note</span>
+          <textarea class="field-textarea" name="adminNote" placeholder="Add moderation notes..."><%= detail.adminNote || '' %></textarea>
+        </div>
+
+        <div class="moderation-actions" id="resolveActions">
+          <span class="field-label">Moderation Actions (Resolve only)</span>
+          <label class="moderation-checkbox">
+            <input type="checkbox" name="moderationActions" value="penalize_user" />
+            <span>Penalize user</span>
+          </label>
+          <label class="moderation-checkbox">
+            <input type="checkbox" name="moderationActions" value="remove_content" />
+            <span>Remove content</span>
+          </label>
+          <p class="helper-text">These actions are applied only when Resolve is clicked.</p>
+        </div>
+
+        <div class="action-row">
+          <a class="btn btn-secondary" href="<%= detail.backHref || '/admin/reports' %>">Back to Reports</a>
+          <div class="decision-actions">
+            <button type="submit" class="btn btn-resolve" onclick="setDecision('resolved')">Resolve</button>
+            <button type="submit" class="btn btn-reject" onclick="setDecision('rejected')">Reject</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script>
+  function setDecision(value) {
+    var decisionInput = document.getElementById('decisionInput');
+    var actionsContainer = document.getElementById('resolveActions');
+    if (decisionInput) {
+      decisionInput.value = value;
+    }
+
+    var checkboxes = actionsContainer ? actionsContainer.querySelectorAll('input[type="checkbox"]') : [];
+    var isResolve = value === 'resolved';
+
+    checkboxes.forEach(function (checkbox) {
+      checkbox.disabled = !isResolve;
+      if (!isResolve) {
+        checkbox.checked = false;
+      }
+    });
+  }
+</script>
+
+</body>
+</html>

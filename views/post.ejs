@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Post</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
+  <style>
+    .main {
+      margin-right: 260px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .feed-column {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    .back-to-feed {
+      display: inline-block;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--navy);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .back-to-feed:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .right-sidebar {
+      position: fixed;
+      top: var(--topbar-h);
+      right: 0;
+      bottom: 0;
+      width: 260px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-right: none;
+      padding: 1.5rem 1.25rem;
+      overflow-y: auto;
+      z-index: 90;
+    }
+
+    .right-sidebar-section {
+      margin-bottom: 2rem;
+    }
+
+    .right-sidebar-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.75rem;
+    }
+
+    .right-sidebar-item {
+      display: block;
+      padding: 0.45rem 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .right-sidebar-item:last-child {
+      border-bottom: none;
+    }
+
+    .right-sidebar-item:hover {
+      color: var(--navy);
+    }
+
+    .post-status {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 1024px) {
+      .main {
+        margin-right: 0;
+      }
+
+      .right-sidebar {
+        position: static;
+        width: 100%;
+        border-right: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header', { initials: user && user.initials ? user.initials : 'UC' }) %>
+
+  <div class="layout">
+
+    <%- include('sidebar', { activePage: 'feed' }) %>
+
+    <main class="main">
+
+      <div class="feed-column">
+        <% const pageNotFoundMessage = typeof notFoundMessage === 'string' ? notFoundMessage : null; %>
+        <a class="back-to-feed" href="/feed">Back to Feed</a>
+
+        <% if (pageNotFoundMessage) { %>
+          <div class="post-status"><%= pageNotFoundMessage %></div>
+        <% } else if (post) { %>
+          <%- include('partials/post-card', { post, expandComments: true }) %>
+        <% } %>
+      </div>
+
+    </main>
+
+    <aside class="right-sidebar">
+      <div class="right-sidebar-section">
+        <h2 class="right-sidebar-title">Courses</h2>
+        <% if (!Array.isArray(courses) || courses.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% courses.forEach((course) => { %>
+            <a href="/courses/<%= course.id %>" class="right-sidebar-item"><%= course.name %></a>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <div class="right-sidebar-section">
+        <h2 class="right-sidebar-title">Communities</h2>
+        <% if (!Array.isArray(communities) || communities.length === 0) { %>
+          <span class="right-sidebar-item">None yet</span>
+        <% } else { %>
+          <% communities.forEach((community) => { %>
+            <a href="/communities" class="right-sidebar-item"><%= community.name %></a>
+          <% }) %>
+        <% } %>
+      </div>
+    </aside>
+
+  </div>
+
+  <%- include('footer', { footerLayout: 'sidebarBoth' }) %>
+
+  <script>
+    function updateLikeBadge(likeButton, count) {
+      if (!likeButton) {
+        return;
+      }
+
+      let countNode = likeButton.querySelector('.like-count');
+      if (!countNode) {
+        countNode = document.createElement('span');
+        countNode.className = 'like-count';
+        likeButton.appendChild(document.createTextNode(' '));
+        likeButton.appendChild(countNode);
+      }
+
+      const parsedCount = Number.parseInt(String(count), 10);
+      const safeCount = Number.isFinite(parsedCount) ? Math.max(0, parsedCount) : 0;
+      countNode.textContent = String(safeCount);
+      countNode.classList.toggle('is-hidden', safeCount === 0);
+      likeButton.classList.toggle('has-count', safeCount > 0);
+    }
+
+    document.addEventListener('click', async (event) => {
+      const likeButton = event.target.closest('.js-like-btn');
+      if (!likeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const postId = likeButton.dataset.postId;
+      if (!postId || likeButton.dataset.pending === 'true') {
+        return;
+      }
+
+      const previousLiked = likeButton.dataset.liked === 'true';
+      const previousCount = Number.parseInt((likeButton.querySelector('.like-count') || {}).textContent || '0', 10) || 0;
+
+      const optimisticLiked = !previousLiked;
+      const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
+
+      likeButton.dataset.pending = 'true';
+      likeButton.classList.add('pending');
+      likeButton.dataset.liked = optimisticLiked ? 'true' : 'false';
+      likeButton.setAttribute('aria-pressed', optimisticLiked ? 'true' : 'false');
+      likeButton.classList.toggle('active', optimisticLiked);
+      updateLikeBadge(likeButton, optimisticCount);
+
+      try {
+        const response = await fetch(`/feed/posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to update like.');
+        }
+
+        likeButton.dataset.liked = payload.liked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', payload.liked ? 'true' : 'false');
+        likeButton.classList.toggle('active', Boolean(payload.liked));
+        updateLikeBadge(likeButton, payload.likeCount);
+      } catch (_err) {
+        likeButton.dataset.liked = previousLiked ? 'true' : 'false';
+        likeButton.setAttribute('aria-pressed', previousLiked ? 'true' : 'false');
+        likeButton.classList.toggle('active', previousLiked);
+        updateLikeBadge(likeButton, previousCount);
+      } finally {
+        likeButton.dataset.pending = 'false';
+        likeButton.classList.remove('pending');
+      }
+    });
+  </script>
+
+</body>
+</html>

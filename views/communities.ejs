@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniConnect — Communities</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/stylesheets/style.css"/>
+  <!-- Tailwind required for footer -->
+  <link rel="stylesheet" href="/stylesheets/tailwind.css"/>
+  <style>
+    /* ── Main ── */
+    .main {
+      padding: 2rem;
+    }
+
+    .communities-column {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      color: var(--text-dark);
+      margin-bottom: 0;
+    }
+
+    .btn-create {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      background: var(--navy);
+      color: var(--gold);
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+    .btn-create:hover {
+      background: var(--navy-mid);
+      box-shadow: 0 3px 10px rgba(13,27,42,0.18);
+    }
+
+    .community-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1rem;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .community-card:hover {
+      border-color: var(--gold);
+      box-shadow: 0 2px 10px rgba(201,168,76,0.15);
+    }
+
+    .club-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 0.72rem;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      line-height: 1.3;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+    }
+
+    .club-avatar-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .club-avatar.v1 { background: var(--navy); }
+    .club-avatar.v2 { background: var(--navy-mid); }
+    .club-avatar.v3 { background: var(--navy-light); }
+    .club-avatar.v4 { background: #2c4a6e; }
+    .club-avatar.v5 { background: #1e3a52; }
+    .club-avatar.v6 { background: #163044; }
+    .club-avatar.v7 { background: #0f2233; }
+    .club-avatar.v8 { background: #20364f; }
+
+    .club-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      min-width: 0;
+    }
+
+    .club-name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .club-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-dark);
+    }
+
+    .club-members {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .club-description {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .empty-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      color: var(--text-muted);
+      box-shadow: 0 1px 4px rgba(13,27,42,0.07);
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('header') %>
+
+  <div class="layout">
+
+    <!-- Left Sidebar -->
+    <%- include('sidebar', { activePage: 'communities' }) %>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="communities-column">
+
+        <% const communityList = Array.isArray(communities) ? communities : []; %>
+
+        <div class="page-header">
+          <h1 class="page-title">Communities</h1>
+          <a href="/communities/create-community" class="btn-create">+ Create Community</a>
+        </div>
+
+        <% if (communityList.length === 0) { %>
+          <div class="empty-card">No communities are available yet.</div>
+        <% } %>
+
+        <% communityList.forEach((community) => { %>
+          <a href="/communities/<%= community.id %>" class="community-card">
+            <div class="club-avatar <%= community.logoUrl ? '' : community.avatarClass %>">
+              <% if (community.logoUrl) { %>
+                <img src="<%= community.logoUrl %>" alt="<%= community.name %> logo" class="club-avatar-img" loading="lazy" referrerpolicy="no-referrer"/>
+              <% } else { %>
+                <%= community.bubbleText %>
+              <% } %>
+            </div>
+            <div class="club-info">
+              <div class="club-name-row">
+                <span class="club-name"><%= community.name %></span>
+                <span class="club-members"><%= community.memberLabel %></span>
+              </div>
+              <p class="club-description"><%= community.description %></p>
+            </div>
+          </a>
+        <% }) %>
+
+      </div><!-- /.communities-column -->
+    </main>
+
+  </div><!-- /.layout -->
+
+  <%- include('footer', { footerLayout: 'sidebarLeft' }) %>
+
+</body>
+</html>
